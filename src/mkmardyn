@@ -1,0 +1,6 @@
+#!/bin/sh
+#
+make clean
+make -f Makefile.noter
+make clean
+make -f Makefile
