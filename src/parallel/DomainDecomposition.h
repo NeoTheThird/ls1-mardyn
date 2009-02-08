@@ -79,7 +79,7 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
  public:
   //! The Constructor sets up the topology and determines the ranks of 
   //! the neighbours
-  DomainDecomposition(int *argc, char ***argv);
+  DomainDecomposition(int* argc, char ***argv);
 
   //! The Destructor finalizes MPI
   ~DomainDecomposition();
@@ -94,8 +94,9 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   //! that i.e. have to be moved to the lower right neighbour are
   //! moved to the right neighbour first and then from the right neighbour
   //! to the lower neighbour.
-  void exchangeMolecules(datastructures::ParticleContainer<Molecule>* moleculeContainer, 
-                          const vector<Component>& components, Domain* domain);
+  void exchangeMolecules(
+    datastructures::ParticleContainer<Molecule>* moleculeContainer,
+    const vector<Component>& components, Domain* domain, double rc);
   
   //! @brief append the molecule date of all processes to the file
   //!
@@ -160,7 +161,10 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   char processorName[MPI_MAX_PROCESSOR_NAME];
 
   //! with the given number of processes, the dimensions of the grid are calculated
-  void setGridSize(int num_procs);
+  virtual void setGridSize(int num_procs);
+#ifdef COMPLEX_POTENTIAL_SET
+  virtual void setY2GridSize(int num_procs);
+#endif
 };
 
 #endif /*DOMAINDECOMPOSITION_H_*/

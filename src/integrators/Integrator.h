@@ -74,6 +74,16 @@ class integrators::Integrator{
       datastructures::ParticleContainer<Molecule>* moleculeContainer,
       Domain* domain
     ) = 0;
+    virtual void init1D
+    (
+       unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* moleculeContainer
+    ) = 0;
+    virtual void zOscillation
+    (
+       unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* moleculeContainer
+    ) = 0;
 #endif
 
     //! @brief inform the integrator that the integration should continue

@@ -28,7 +28,7 @@ int main(int argc, char** argv){
   // runner.run();
   cout << " <> ";
 #endif
-  Simulation simulation(&argc, &argv);
+  Simulation simulation(argc, argv);
   
   cout << "Simulation object created.\n";
   double runtime = double(clock())/CLOCKS_PER_SEC;

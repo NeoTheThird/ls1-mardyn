@@ -38,7 +38,7 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
   //! Additionally, the molecules from the boundary region are duplicated
   //! and copied into the corresponding halo-regions.
   void exchangeMolecules(datastructures::ParticleContainer<Molecule>* moleculeContainer, 
-                                 const vector<Component>& components, Domain* domain);
+                                 const vector<Component>& components, Domain* domain, double rc);
   
   //! @brief opends the file(append), loops over all molecules and writes each into the file                          
   void writeMoleculesToFile(string filename, datastructures::ParticleContainer<Molecule>* moleculeContainer);
@@ -84,7 +84,10 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
  
   /* with the given number of processes, the dimensions of the grid are calculated *
    * grid_size: a array for the number of processes in each dimension              */
-  void setGridSize(int num_procs);
+  virtual void setGridSize(int num_procs);
+#ifdef COMPLEX_POTENTIAL_SET
+  virtual void setY2GridSize(int num_procs);
+#endif
 
   //! Logging interface
   static utils::Log _log;

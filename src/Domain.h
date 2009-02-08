@@ -131,11 +131,17 @@ class Domain{
     //! \li NumberOfMolecules: One token follows with the number of molecules
     //!
     //! An example can be seen in the documentation of this class
-#ifdef COMPLEX_POTENTIAL_SET
-    void readPhaseSpaceHeader(double timestep, double cutoffTersoff);
-#else
-    void readPhaseSpaceHeader(double timestep);
+    void readPhaseSpaceHeader(
+       double timestep
+#ifdef TRUNCATED_SHIFTED
+          ,
+       double cutoff
 #endif
+#ifdef COMPLEX_POTENTIAL_SET
+          ,
+       double cutoffTersoff
+#endif
+    );
 
     //! @brief reads in the data of all molecules
     //! 
@@ -151,7 +157,12 @@ class Domain{
     //! 
     //! An example can be seen in the documentation of this class
     //! @param particleContainer Here the Molecules from the input file are stored 
-    void readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer);
+    void readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
+#ifdef TRUNCATED_SHIFTED
+          ,
+       double cutoffRadius
+#endif
+);
 
     //! @brief writes a checkpoint file that can be used to continue the simulation
     //!
@@ -332,7 +343,25 @@ class Domain{
 #endif
 
    double getGlobalLength(int d) { return this->_globalLength[d]; }
-    
+
+   void setupRDF(double interval, unsigned bins);
+   void resetRDF();
+   void collectRDF(parallel::DomainDecompBase* domainDecomp);
+   void outputRDF(const char* prefix, unsigned i, unsigned j);
+   void accumulateRDF();
+   void tickRDF() { this->_universalTimesteps++; }
+   inline void observeRDF(unsigned i) { this->_localCtr[i] ++; }
+   inline void observeRDF(double dd, unsigned i, unsigned j)
+   {
+      if(dd > this->ddmax) return;
+      if(i > j) { this->observeRDF(dd, j, i); return; }
+      unsigned l = (unsigned)(sqrt(dd)/this->_universalInterval);
+      this->_localDistribution[i][j-i][l] ++;
+   }
+   void thermostatOff() { this->_universalNVE = true; }
+   void thermostatOn() { this->_universalNVE = false; }
+   bool NVE() { return this->_universalNVE; }
+
   private:
     //! Logging interface
     static utils::Log _log;  
@@ -405,6 +434,7 @@ class Domain{
     map<int, double> _universalThermostatDirectedVelocity[3];
     map<int, double> _localThermostatDirectedVelocity[3];
 #endif
+    bool _universalNVE;
 
 #ifdef COMPLEX_POTENTIAL_SET
     /// calculate new value of the uniform acceleration each # timesteps
@@ -456,6 +486,14 @@ class Domain{
     map<unsigned, bool> _universalProfiledComponents;
 #endif
 
+    bool _doCollectRDF;
+    double _universalInterval;
+    unsigned _universalBins;
+    unsigned _universalTimesteps, _universalAccumulatedTimesteps;
+    double ddmax;
+    unsigned long *_localCtr, *_globalCtr, *_globalAccumulatedCtr;
+    unsigned long ***_localDistribution, ***_globalDistribution, ***_globalAccumulatedDistribution;
+
     //! local sum (over all molecules) of the mass multiplied with the squared velocity
     map<int, double> _local2KETrans;
     //! local sum (over all molecules) of the moment of inertia 
@@ -472,7 +510,7 @@ class Domain{
     double _UpotCorr;
     //! Virial correction for the error made by the cutoff
     //! @todo local or global?
-    double _VirialCorr;     
+    double _VirialCorr;
 
     //! @todo comment
     double _currentTime;

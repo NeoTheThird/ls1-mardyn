@@ -147,6 +147,44 @@ void integrators::Leapfrog::transition3to1(datastructures::ParticleContainer<Mol
 }
 
 #ifdef COMPLEX_POTENTIAL_SET
+/*
+ * diese Version beschleunigt nur in z-Richtung
+ *
+void integrators::Leapfrog::accelerateUniformly
+(
+   datastructures::ParticleContainer<Molecule>* molCont,
+   Domain* domain   )
+{
+   map<unsigned, double>* additionalAcceleration = domain->getUAA();
+   vector<Component> comp = domain->getComponents();
+   vector<Component>::iterator compit;
+   map<unsigned, double> componentwiseVelocityDelta;
+   for(compit = comp.begin(); compit != comp.end(); compit++)
+   {
+      unsigned cosetid = domain->getComponentSet(compit->ID());
+      if(cosetid != 0)
+            componentwiseVelocityDelta[compit->ID()]
+               = _timestepLength * additionalAcceleration[2][cosetid];
+      else
+            componentwiseVelocityDelta[compit->ID()] = 0;
+   }
+
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+   {
+      unsigned cid = thismol->componentid();
+#ifndef NDEBUG
+      assert(componentwiseVelocityDelta.find(cid) != componentwiseVelocityDelta.end());
+#endif
+      thismol->vadd(0.0, 0.0, componentwiseVelocityDelta[cid]);
+   }
+}
+ *
+ */
+
+/*
+ * diese Version beschleunigt in alle Raumrichtungen
+ */
 void integrators::Leapfrog::accelerateUniformly
 (
    datastructures::ParticleContainer<Molecule>* molCont,
@@ -191,6 +229,41 @@ void integrators::Leapfrog::accelerateUniformly
    }
 }
 
+/*
+ * diese Version beschleunigt nur in z-Richtung
+ *
+void integrators::Leapfrog::accelerateInstantaneously
+(
+   datastructures::ParticleContainer<Molecule>* molCont,
+   Domain* domain   )
+{
+   vector<Component> comp = domain->getComponents();
+   vector<Component>::iterator compit;
+   map<unsigned, double> componentwiseVelocityDelta;
+   for(compit = comp.begin(); compit != comp.end(); compit++)
+   {
+      unsigned cosetid = domain->getComponentSet(compit->ID());
+      if(cosetid != 0)
+            componentwiseVelocityDelta[compit->ID()]
+               = domain->getMissingVelocity(cosetid, 2);
+      else
+            componentwiseVelocityDelta[compit->ID()] = 0;
+   }
+
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+   {
+      unsigned cid = thismol->componentid();
+      assert(componentwiseVelocityDelta.find(cid) != componentwiseVelocityDelta.end());
+      thismol->vadd(0.0, 0.0, componentwiseVelocityDelta[cid]);
+   }
+}
+ *
+ */
+
+/*
+ * diese Version beschleunigt in alle Raumrichtungen
+ */
 void integrators::Leapfrog::accelerateInstantaneously
 (
    datastructures::ParticleContainer<Molecule>* molCont,
@@ -219,5 +292,25 @@ void integrators::Leapfrog::accelerateInstantaneously
       thismol->vadd( componentwiseVelocityDelta[0][cid],
                      componentwiseVelocityDelta[1][cid], componentwiseVelocityDelta[2][cid] );
    }
+}
+
+void integrators::Leapfrog::init1D(
+   unsigned zoscillator,
+   datastructures::ParticleContainer<Molecule>* molCont
+)
+{
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+      if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->setXY();
+}
+
+void integrators::Leapfrog::zOscillation(
+   unsigned zoscillator,
+   datastructures::ParticleContainer<Molecule>* molCont
+      )
+{
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+      if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->resetXY();
 }
 #endif

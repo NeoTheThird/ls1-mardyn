@@ -29,7 +29,7 @@ void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>
       _resultStream << "\tN(" << i << ")\tvx vy vz\tv(" << i << ")\tax ay az\ta(" << i << ")\t";
 #endif
     _resultStream << "\n";
-    _resultStream.precision(5);
+    _resultStream.precision(6);
   }
 }
 
@@ -64,6 +64,7 @@ void md_io::ResultWriter::doOutput(datastructures::ParticleContainer<Molecule>* 
     }
 #endif
     _resultStream << "\n";
+    _resultStream.flush();
   }
 }
 

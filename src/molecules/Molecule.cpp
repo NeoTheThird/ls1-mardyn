@@ -31,7 +31,6 @@ using namespace std;
 
 Domain* Molecule::_domain;
 
-
 Molecule::Molecule(unsigned long id, int componentid
                   , double rx, double ry, double rz
                   , double vx, double vy, double vz
@@ -57,7 +56,9 @@ Molecule::Molecule(unsigned long id, int componentid
   m_D[2]=Dz;
   m_sites_d=m_sites_F=m_osites_e=NULL;
 #ifdef COMPLEX_POTENTIAL_SET
-   m_Tersoff_neighbours = map<Molecule*, bool>();
+   m_curTN = 0;
+   // m_Tersoff_neighbours = map<Molecule*, bool>();
+   fixedx = rx; fixedy = ry;
 #endif
   if(components) setupCache(components);
 }
@@ -89,7 +90,7 @@ Molecule::Molecule(const Molecule& m)
 #ifdef COMPLEX_POTENTIAL_SET
   m_dipoles = m.m_dipoles;
   m_tersoff = m.m_tersoff;
-#ifdef DEBUG
+#ifndef NDEBUG
   if(!m_tersoff)
   {
      cout << "\nmolecule " << m_id << " (" << m_r[0] << " / "
@@ -97,6 +98,11 @@ Molecule::Molecule(const Molecule& m)
           << ") \nSEVERE TERSOFF VECTOR NULL POINTER ERROR (cf. Molecule.cpp).\n";
      exit(1);
   }
+  // if(m_tersoff->size() > 0)
+  // {
+  //    cout << "creating Tersoff centre " << m_id << "(alpha).\n";
+  //    cout.flush();
+  // }
 #endif
 #endif
   m_m=m.m_m;
@@ -140,8 +146,11 @@ Molecule::Molecule(const Molecule& m)
 
   //m_nextincell=m.m_nextincell;  // not necessary -> temporary only
 #ifdef COMPLEX_POTENTIAL_SET
-  m_Tersoff_neighbours = map<Molecule*, bool>();
+  m_curTN = 0;
+  // m_Tersoff_neighbours = map<Molecule*, bool>();
   // m_Tersoff_neighbours = m.m_Tersoff_neighbours;
+  fixedx = m.fixedx;
+  fixedy = m.fixedy;
 #endif
 }
 
@@ -175,6 +184,14 @@ Molecule::Molecule(istream& istrm, streamtype type, const vector<Component>* com
   }
   m_sites_d=m_sites_F=NULL;
   if(components) setupCache(components);
+  
+#ifndef NDEBUG
+  if(m_tersoff->size() > 0)
+  {
+     cout << "creating Tersoff centre " << m_id << "(beta).\n";
+     cout.flush();
+  }
+#endif
 }
 
 double Molecule::dist2(const Molecule& a, double L[3], double dr[]) const
@@ -197,11 +214,22 @@ void Molecule::upd_preF(double dt, double vcorr, double Dcorr)
   assert(m_m);
   double dt_halve=.5*dt;
   double dtInv2m=dt_halve/m_m;
+  /*
+#ifndef NDEBUG
+  cout << "m" << m_id << " \tr' = (" << m_r[0] << " / " << m_r[1] << " / " << m_r[2];
+#endif
+  */
   for(unsigned short d=0;d<3;++d)
   {
     m_v[d]=vcorr*m_v[d]+dtInv2m*m_F[d];
     m_r[d]+=dt*m_v[d];
   }
+  /*
+#ifndef NDEBUG
+  cout << "), \n\tv = (" << m_v[0] << " " << m_v[1] << " " << m_v[2]
+       << "), \n\tr'' = (" << m_r[0] << " / " << m_r[1] << " / " << m_r[2] << ")\n";
+#endif
+  */
 
   double w[3];
   m_q.rotate(m_D,w);
@@ -282,6 +310,13 @@ void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
     Iw2+=m_I[d]*w[d]*w[d];
   }
   sumIw2+=Iw2;
+
+  /*
+#ifndef NDEBUG
+  cout << "m" << this->m_id << " \tF = (" << m_F[0] << " " << m_F[1] << " " << m_F[2]
+       << "), \n\tv = " << m_v[0] << " " << m_v[1] << " " << m_v[2] << "\n";
+#endif
+  */
 }
 
 void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2)
@@ -363,7 +398,53 @@ void Molecule::save_restart(ostream& ostrm) const
   ostrm.write((const char *)&m_M[2],sizeof(m_M[2]));
 }
 
+#ifdef COMPLEX_POTENTIAL_SET
+void Molecule::addTersoffNeighbour(Molecule* m, bool pairType)
+{
+   // this->m_Tersoff_neighbours.insert(pair<Molecule*, bool>(m, (pairType > 0)));
+   for(int j=0; j<m_curTN; j++)
+   {
+      if(m->m_id == m_Tersoff_neighbours_first[j]->id())
+      {
+         this->m_Tersoff_neighbours_first[j] = m;
+         this->m_Tersoff_neighbours_second[j] = pairType;
+         return;
+      }
+   }
 
+   this->m_Tersoff_neighbours_first[m_curTN] = m;
+   this->m_Tersoff_neighbours_second[m_curTN] = pairType;
+   this->m_curTN++;
+   if(m_curTN > MAXTN)
+   {
+      cout << "A severe error occurred. ID " << m->m_id << " has more than " << MAXTN << " Tersoff neighbours.\n";
+      cerr << "<Error> Tersoff neighbour list overflow.\n";
+      exit(17);
+   }
+}
+
+double Molecule::tersoffParameters(double params[15]) //returns delta_r
+{
+   const Tersoff* t = &((*(this->m_tersoff))[0]);
+   params[ 0] = t->R();
+   params[ 1] = t->S();
+   params[ 2] = t->h();
+   params[ 3] = t->cSquare();
+   params[ 4] = t->dSquare();
+   params[ 5] = t->A();
+   params[ 6] = t->minusLambda();
+   params[ 7] = t->minusMu();
+   params[ 8] = t->beta();
+   params[ 9] = t->n();
+   params[10] = 3.141592653589 / (t->S() - t->R());
+   params[11] = 1.0 + t->cSquare()/t->dSquare();
+   params[12] = t->S() * t->S();
+   params[13] = -(t->B());
+   params[14] = -0.5 / t->n();
+
+   return 0.00000003*(t->S() - t->R());
+}
+#endif
 
 
 // private functions

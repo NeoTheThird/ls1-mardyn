@@ -205,6 +205,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
 #ifdef COMPLEX_POTENTIAL_SET
     double getTersoffCutoff() { return this->_tersoffCutoffRadius; }
 #endif
+    virtual void countParticles(Domain* d);
     
   private:
     //! Logging interface
@@ -239,7 +240,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     //! high corner of the bounding box around the linked cells (including halo)
     double _haloBoundingBoxMax[3];  
     
-    //! Number of Cells in each spacial dimension (including halo)
+    //! Number of Cells in each spatial dimension (including halo)
     int _cellsPerDimension[3];
     //! Halo width (in cells) in each dimension
     int _haloWidthInNumCells[3];

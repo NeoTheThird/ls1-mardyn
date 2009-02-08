@@ -63,21 +63,39 @@ class LJcenter : public Site
 {
 public:
   /// Constructor
-  LJcenter(double x, double y, double z ,double m, double eps, double sigma)
+  LJcenter(double x, double y, double z ,double m, double eps, double sigma
+#ifdef TRUNCATED_SHIFTED
+    ,
+    double shift
+#endif
+  )
     : Site(x,y,z,m), m_eps(eps), m_sigma(sigma)
-    { m_r[0]=x; m_r[1]=y; m_r[2]=z; }
+    {
+      m_r[0]=x; m_r[1]=y; m_r[2]=z;
+#ifdef TRUNCATED_SHIFTED
+      this->uLJshift6 = shift;
+#endif
+    }
+#ifndef TRUNCATED_SHIFTED
   /// Constructor reading from stream
   LJcenter(std::istream& istrm) { istrm >> m_r[0] >> m_r[1] >> m_r[2] >> m_m >> m_eps >> m_sigma; }
+#endif
   /// write to stream
   void write(std::ostream& ostrm) const { ostrm << m_r[0] << " " << m_r[1] << " "  << m_r[2]<< "\t"  << m_m << "\t"  << m_eps << " "  << m_sigma; }
   /// get strength
   double eps() const { return m_eps; }
   /// get diameter
   double sigma() const { return m_sigma; }
+#ifdef TRUNCATED_SHIFTED
+  double shift6() const { return this->uLJshift6; }
+#endif
 
 private:
   double m_eps; // strength
   double m_sigma; // diameter
+#ifdef TRUNCATED_SHIFTED
+  double uLJshift6;  // absolute truncation offset of the LJ potential
+#endif
 };
 
 class Charge: public Site

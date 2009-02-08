@@ -137,6 +137,7 @@ class datastructures::ParticleContainer {
 #ifdef COMPLEX_POTENTIAL_SET
     virtual double getTersoffCutoff() = 0;
 #endif
+    virtual void countParticles(Domain* d) = 0;
     
   protected:
 

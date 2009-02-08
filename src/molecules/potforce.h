@@ -352,6 +352,12 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
         double sig2;
         params >> sig2;
         PotForceLJ(drs,dr2,eps24,sig2,f,u);
+#ifdef TRUNCATED_SHIFTED
+        double shift6;
+        params >> shift6;
+        u += shift6;
+#endif
+
 // even for interactions within the cell a neighbor might try to add/subtract
 // better use atomic...
 // and even better use a order where critical sections occure only at some boundary cells...
@@ -581,6 +587,181 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 }
 
 #ifdef COMPLEX_POTENTIAL_SET
+
+//!
+//! drij should contain the distance from j to i.
+//!
+inline double Tersoffbij( Molecule* mi, Molecule* mj,
+                          double params[15], double drij[3], double drij1 )
+{
+   double drik[3];
+   double zeta = 0.0;
+   unsigned i_curTN = mi->getCurTN();
+   Molecule* mk;
+   for(unsigned nmk = 0; nmk < i_curTN; nmk++)
+   {
+      mk = mi->getTersoffNeighbour(nmk);
+      if((mk->id() == mj->id()) || (mk->numTersoff() == 0)) continue;
+      double drik2 = mk->dist2(*mi, drik);  // distance k->i
+      if(params[12] > drik2)
+      {
+         double drik1 = sqrt(drik2);
+         double drdr = 0.0;
+         for(int d=0; d<3; d++) drdr += drij[d] * drik[d];
+         double h_min_costheta = params[2] - drdr/(drij1*drik1);
+         double g = params[11] - params[3]/(params[4] + h_min_costheta*h_min_costheta);
+         if(drik1 > params[0])
+         {
+            double kC = 0.5 + 0.5*cos((drik1 - params[0]) * params[10]);
+            zeta += kC * g;
+         }
+         else zeta += g;
+#ifndef NDEBUG
+         /*
+         cout << "\t\t\t\t\t\tI(" << mi->r(0) << " / " << mi->r(1) << " / " << mi->r(2) << ")\n";
+         cout << "\t\t\t\t\t\tJ(" << mj->r(0) << " / " << mj->r(1) << " / " << mj->r(2) << ")\n";
+         cout << "\t\t\t\t\t\tK(" << mk->r(0) << " / " << mk->r(1) << " / " << mk->r(2) << ")\n";
+         cout << "\t\t\t\t\t\ti-j = (" << drij[0] << "; " << drij[1] << "; " << drij[2] << ")\n";
+         cout << "\t\t\t\t\t\ti-k = (" << drik[0] << "; " << drik[1] << "; " << drik[2] << ")\n";
+         cout << "\t\t\t\t\tangle " << mi->id() << "-" << mj->id() << "-" << mk->id() << ": arccos " << drdr/(drij1*drik1) << "\n";
+         cout << "\t\t\t\t\tg = " << g << " = " << params[11] << " - " << params[3] << "/(" << params[4] << " + " << h_min_costheta << "^2)\n";
+         */
+#endif
+      }
+   }
+   double BZ = params[8]*zeta;
+   double BZtoN = pow(BZ, params[9]);
+   double b = pow(1.0 + BZtoN, params[14]);
+#ifndef NDEBUG
+   /*
+   cout << "\t\t\t\tpow(" << params[8] << "*zeta, " << params[9] << ") = " << BZtoN << "\n";
+   cout << "\t\t\t\tb(" << mi->id() << ", " << mj->id() << ") = " << b << " (zeta = " << zeta << ", -0.5/n = " << params[14] << ")\n";
+   */
+#endif
+   return b;
+}
+
+//! @brief returns the sum, whereas Uij is added to the double reference
+//!
+//! drij should contain the distance from j to i.
+//!
+inline double TersoffUIJplusUJI( Molecule* mi, Molecule* mj, double params[15],
+                                 double drij[3], double drij2, double& UpotTersoff )
+{
+   double Uij = 0.0;
+   double Uji = 0.0;
+   double drji[3];
+   double drij1 = sqrt(drij2);
+   for(int d=0; d<3; d++) drji[d] = -drij[d];  // drji: distance i->j
+
+   double UA = params[13] * exp(params[7] * drij1);
+   double UR = params[ 5] * exp(params[6] * drij1);
+   double bij = Tersoffbij(mi, mj, params, drij, drij1);
+   double bji = Tersoffbij(mj, mi, params, drji, drij1);
+   if(drij1 > params[0])
+   {
+      double kChalf = 0.25 + 0.25*cos((drij1 - params[0]) * params[10]);
+      Uij = kChalf * (UR + bij*UA);
+      Uji = kChalf * (UR + bji*UA);
+   }
+   else
+   {
+      Uij = 0.5*(UR + bij*UA);
+      Uji = 0.5*(UR + bji*UA);
+   }
+   UpotTersoff += Uij;
+   return Uij+Uji;
+}
+//!
+//! drij should contain the distance from j to i.
+//!
+inline double TersoffUIJattr( Molecule* mi, Molecule* mj,
+                              double params[15], double drij[3], double drij2 )
+{
+   double drij1 = sqrt(drij2);
+   double UA = params[13] * exp(params[7] * drij1);
+   double bij = Tersoffbij(mi, mj, params, drij, drij1);
+   if(drij1 > params[0])
+   {
+      double kChalf = 0.25 + 0.25*cos((drij1 - params[0]) * params[10]);
+      return kChalf*bij*UA;
+   }
+   else return 0.5*bij*UA;
+}
+
+//! @brief calculate Tersoff potential for a single atom
+//!
+//! parameters: R, S, h, c^2, d^2, A, -lambda, -mu, beta, n_i, pi/(S-R), 1+(c/d)^2, S^2, -B, -0.5/n_i
+//! A "Molecule" may have at most a single Tersoff centre.
+//!
+//! the function itself returns the sum of all Uij, Uji, and the attractive
+//! part of Ujk, i.e. all potential energy terms that are influenced by atom i. 
+//! However, only the sum over the Uij is added to UpotTersoff.
+//!
+//! used for computing the Tersoff potential based force on the atom
+//!
+inline double TersoffPotential(Molecule* mi, double params[15], double& UpotTersoff)
+{
+   double Ui = 0.0;
+
+   double distanceVector[3];
+   unsigned i_curTN = mi->getCurTN();
+   Molecule *mj, *mk;
+   for(unsigned nmj = 0; nmj < i_curTN; nmj++)
+   {
+      mj = mi->getTersoffNeighbour(nmj);
+      if(mj->numTersoff() == 0) continue;
+#ifndef NDEBUG
+      // cout << "\t\tconsidering " << mi->id() << "-" << mj->id() << " interaction.\n";
+#endif
+      double drij2 = mj->dist2(*mi, distanceVector);  // distance j->i
+      if(params[12] > drij2)
+         Ui += TersoffUIJplusUJI(mi, mj, params, distanceVector, drij2, UpotTersoff);
+
+      unsigned j_curTN = mj->getCurTN();
+      for(unsigned nmk = 0; nmk < j_curTN; nmk++)
+      {
+         mk = mj->getTersoffNeighbour(nmk);
+         if(mk->id() == mi->id() || (mk->numTersoff() == 0)) continue; 
+#ifndef NDEBUG
+      // cout << "\t\tconsidering " << mj->id() << "-" << mk->id() << " attraction.\n";
+#endif
+         double drjk2 = mk->dist2(*mj, distanceVector);  // distance k->j
+         if(params[12] > drjk2)
+            Ui += TersoffUIJattr(mj, mk, params, distanceVector, drjk2);
+      }
+   }
+
+   return Ui;
+}
+inline void TersoffPotForce(Molecule* mi, double params[15], double& UpotTersoff, double delta_r)
+{
+   double f[3];
+   if(mi->numTersoff() == 0) return;
+   double offsetU = TersoffPotential(mi, params, UpotTersoff);
+
+#ifndef NDEBUG
+   // cout << "atom " << mi->id() << " offset U = " << offsetU << "\n";
+#endif
+
+   for(int d=0; d<3; d++)
+   {
+      mi->move(d, delta_r);
+
+      double irrelevantU = 0.0;
+      double currentU = TersoffPotential(mi, params, irrelevantU);
+#ifndef NDEBUG
+      // cout << "\tdim. " << d << " current U = " << currentU << "\n";
+#endif
+      
+      f[d] = (offsetU - currentU) / delta_r;
+      mi->move(d, -delta_r);
+   }
+
+   mi->Ftersoffadd(0, f);
+}
+
+/*
 //! @brief calculate Tersoff Potential and Force
 //!
 //! this potential is not symmetric, it compares i-j and i-k bond angles.
@@ -602,7 +783,264 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
    const unsigned int nt2=mj.numTersoff();
 
    double R, S, h, cc, dd, A, minus_B, minus_lambda, minus_mu, beta, ni;
-   double cut_tmp, cut_tmp_j, cut_tmp_k, fcij, dfcij, fcik, dfcik, one_plus_ccinvdd;
+   double fcij, dfcij, fcik, dfcik, one_plus_ccinvdd;
+   double S_minus_R_inv, xi, xiik;
+
+   double drmik[3], drsik[3];
+   double drik2, rik, h_minus_costheta, zeta, g_theta, contribution, vpr, costheta;
+
+   double rij, uattr, urep, frep, norm, minus_two_phi_a;
+
+   double tmp_j2, tmp_k2, tmp_jk, tmp_2,
+          tmp_3, tmp_4, tmp_5, tmp_6, tmp_grad, b_ij;  // Bezeichnungen aus IMD uebernommen
+   double dzeta_i[3], dzeta_j[3], dcos_j[3], dcos_k[3], force_j[3], fk[3];
+   map<int, double*> dzeta_k[3];
+
+   double tmp_virial = 0.0;  // wie in IMD, hier also nur Attraktion
+
+   unsigned i_curTN = mi.getCurTN();
+   Molecule* mk_first;
+   // map<Molecule*, bool>* iTn = mi.getTersoffNeighbours();
+   // map<Molecule*, bool>::iterator mk;
+
+#ifndef NDEBUG
+   cout.precision(2);
+   cout << "Tersoff interaction between\n\t" << mi.id() << " (" << mi.r(0)
+        << " / " << mi.r(1) << " / " << mi.r(2) << ")\nand \t" << mj.id() << " (" << mj.r(0)
+        << " / " << mj.r(1) << " / " << mj.r(2) << ").\n";
+#endif
+
+   for(unsigned int si=0; si < nt1; si++)
+   {
+      const double* dii = mi.tersoff_d(si);
+      for(unsigned int sj=0; sj < nt2; sj++)
+      {
+         params >> R >> S >> h >> cc >> dd
+                >> A >> minus_B >> minus_lambda >> minus_mu >> beta >> ni;
+
+         S_minus_R_inv = 1.0 / (S - R);
+         one_plus_ccinvdd = 1.0 + cc/dd;
+
+         const double* djj=mj.tersoff_d(sj);
+         SiteSiteDistance(drm,dii,djj,drs,dr2);
+#ifndef NDEBUG
+         // cout << "Distance ij: (" << -drs[0] << " / " << -drs[1] << " / " << -drs[2] << ")\n";
+#endif
+         rij = sqrt(dr2);
+
+         // cutoff function: take out of loop for optimization
+         if (rij < R)
+         {
+            fcij  = 1.0; 
+            dfcij = 0.0;
+         }
+         else if (rij > S)
+         {
+            continue;
+         }
+         else
+         {
+            xi = (S - rij) * S_minus_R_inv;
+            fcij = xi*xi * (3.0 - xi - xi);
+            dfcij = 6.0*xi*(xi - 1.0) * S_minus_R_inv;
+
+#ifndef NDEBUG
+            cout << "fC  =  " << fcij << "\n";  //XIII//
+#endif
+         }
+
+         // In IMD, the corresponding section in imd_forces_covalent.c
+         // is only responsible for the attractive part of the interaction,
+         // hence we first calculate the repuslive part separately
+         //
+         urep = A*exp(minus_lambda*rij);  // 2U_rep (wird nur zur Haelfte angerechnet)
+
+         // je hoeher (positiv) dieser Wert ist, desto staerker die Abstossung:
+         frep = -0.5 * (dfcij*urep + fcij*minus_lambda*urep);  // -dU/dr
+
+         UpotTersoff += 0.5 * fcij * urep;
+         norm = 1.0 / rij;
+
+         // Achtung: drs ist in j-i-Richtung
+         for(unsigned short d = 0; d < 3; d++) f[d] = norm*frep*drs[d];
+         mi.Ftersoffadd(si,f);  // i in j-i-Richtung (Abstossung)
+         mj.Ftersoffsub(sj,f);  // deshalb bei j in j-i Richtung abziehen
+         for(unsigned short d = 0; d < 3; d++) Virial += drm[d]*f[d];
+
+         zeta = 0.0;
+         for(int d=0; d < 3; d++)
+         {
+            dzeta_i[d] = 0.0;
+            dzeta_j[d] = 0.0;
+            dzeta_k[d] = map<int, double*>();
+         }
+
+         // for(mk = iTn->begin(); mk != iTn->end(); mk++)
+         for(unsigned mk = 0; mk < i_curTN; mk++)
+         {
+            mk_first = mi.getTersoffNeighbour(mk);
+            if(mk_first->id() == mj.id()) continue;  // never evaluate i-j angle to i-j
+            // if(mk->first->id() == mj.id()) continue;  // never evaluate i-j angle to i-j etc.
+#ifndef NDEBUG
+            cout << "Evaluating " << mi.id() << "-" << mj.id()
+                 << "-" << mk_first->id() << " contribution. ";  //XIII//
+#endif
+            mk_first->dist2(mi, drmik);
+            const unsigned int nt3 = mk_first->numTersoff();
+            for(int d=0; d < 3; d++)
+               dzeta_k[d][mk_first->id()] = new double[nt3];
+            for(unsigned int sk=0; sk < nt3; sk++)
+            {
+               const double* dkk = mk_first->tersoff_d(sk);
+               SiteSiteDistance(drmik,dii,dkk,drsik,drik2);  // drsik: k->i
+               rik = sqrt(drik2);
+
+               // cutoff function: take out of loop for optimization
+               if (rik < R)
+               {
+	         fcik  = 1.0; 
+	         dfcik = 0.0;
+               }
+               else if (rik > S)
+               {
+                  continue;
+               }
+               else
+               {
+                  xiik = (S - rik) * S_minus_R_inv;
+                  fcik = xiik*xiik * (3.0 - xiik - xiik);
+                  dfcik = 6.0*xiik*(xiik - 1.0) * S_minus_R_inv;
+               }
+
+               // angular term
+               tmp_jk = 1.0 / (rij*rik);  
+               vpr = drs[0]*drsik[0] + drs[1]*drsik[1] + drs[2]*drsik[2];
+               costheta = vpr * tmp_jk;
+               h_minus_costheta = h - costheta;  // in IND: tmp_1
+               tmp_2 = 1.0 / (dd + h_minus_costheta*h_minus_costheta);
+               g_theta = one_plus_ccinvdd - cc*tmp_2;
+               contribution = fcik * g_theta;
+               zeta  += contribution; 
+#ifndef NDEBUG
+               cout << "fC = " << fcik  //XIII//
+                    << ", contrib = " << contribution << "\n";  //XIII//
+#endif
+
+               tmp_j2 = costheta / dr2;
+               tmp_k2 = costheta / drik2;
+
+               // derivatives of cos(theta), 
+               // note that dcos_i + dcos_j + dcos_k = 0 
+               for(int d=0; d < 3; d++)
+               {
+                  dcos_j[d] = tmp_j2*drs[d] - tmp_jk*drsik[d];
+                  dcos_k[d] = tmp_k2*drsik[d] - tmp_jk*drs[d];
+               }
+
+               tmp_3 = 2.0 * cc * h_minus_costheta * tmp_2 * tmp_2 * fcik;
+               tmp_grad = dfcik / rik * g_theta;
+
+               // derivatives of zeta; dzeta_i is not the full derivative 
+               for(int d=0; d < 3; d++)
+               {
+                  dzeta_k[d][mk_first->id()][sk] = - tmp_grad*drsik[d] - tmp_3*dcos_k[d];
+                  dzeta_i[d] += tmp_3*dcos_k[d] + tmp_grad*drsik[d];
+                  dzeta_j[d] -= tmp_3 * dcos_j[d];
+               }
+            }
+         }
+
+         minus_two_phi_a = minus_B * exp(minus_mu * rij);
+         tmp_4 = pow(beta*zeta, ni);
+         b_ij = pow(1.0+tmp_4, -0.5/ni);
+         uattr = b_ij * minus_two_phi_a;
+         UpotTersoff += 0.5 * fcij * uattr;
+#ifndef NDEBUG
+         cout << "zeta = " << zeta << ", bij = " << b_ij << ", fC = " << fcij  //XIII//
+              << ", Eij_attr = " << 0.5 * fcij * uattr << "\n";  //XIII//
+#endif
+
+         tmp_6 = 0.5 * (minus_two_phi_a*fcij*minus_mu*b_ij + dfcij*b_ij*minus_two_phi_a) / rij;
+         if ( zeta == 0.0 )   // only one neighbor of i
+            tmp_5 = 0.0;
+         else
+            tmp_5 = 0.25 * fcij * uattr * tmp_4 / (zeta * (1.0+tmp_4));
+
+         // tmp force on particle j
+         for(int d=0; d < 3; d++)
+         {
+            force_j[d] = tmp_5*dzeta_j[d] + tmp_6*drs[d];
+         }
+
+         // update force on particle k
+         // for(mk = iTn->begin(); mk != iTn->end(); mk++)
+         for(unsigned mk = 0; mk < i_curTN; mk++)
+         {
+            mk_first = mi.getTersoffNeighbour(mk);
+            if(mk_first->id() == mj.id()) continue;
+            // if(mk->first->id() == mj.id()) continue; etc.
+
+            const unsigned int nt3 = mk_first->numTersoff();
+            for(unsigned int sk=0; sk < nt3; sk++)
+            {
+               const double* dkk = mk_first->tersoff_d(sk);
+               SiteSiteDistance(drmik,dii,dkk,drsik,drik2);
+               rik = sqrt(drik2);
+               if(rik > S) continue;
+
+               for(int d=0; d<3; d++)
+               {
+                  fk[d] = tmp_5 * dzeta_k[d][mk_first->id()][sk];
+                  tmp_virial -= fk[d] * drsik[d];
+               }
+               mk_first->Ftersoffadd(sk, fk);
+            }
+
+            for(int d=0; d<3; d++) 
+            {
+               delete dzeta_k[d][mk_first->id()];
+               dzeta_k[d][mk_first->id()] = (double*)0;
+            }
+         }
+
+         // update force on particle j
+#ifndef NDEBUG
+         cout << "attractive force on " << mj.id() << ": (" << force_j[0] << " / "  //XIII
+              << force_j[1] << " / " << force_j[2] << ")\n";  //XIII
+#endif
+         mj.Ftersoffadd(sj, force_j);
+         for(int d=0; d<3; d++) tmp_virial -= drs[d]*force_j[d];
+
+         // update force on particle i 
+         for(int d=0; d<3; d++) f[d] = tmp_5*dzeta_i[d] - force_j[d];
+         mi.Ftersoffadd(si, f);
+
+#ifndef NDEBUG
+         cout << "\n";  //XIII//
+#endif
+      }
+   }
+
+   Virial += tmp_virial;
+
+   // check whether all parameters were accessed
+   assert(params.eos());
+}
+*/
+
+/*
+inline void TersoffPotForce_original_cutoff(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& UpotTersoff, double& Virial)
+{
+   double f[3];
+   double drs[3],dr2;  // site distance vector & length^2
+   // LJ centers
+   const unsigned int nt1=mi.numTersoff();
+   const unsigned int nt2=mj.numTersoff();
+
+   double R, S, h, cc, dd, A, minus_B, minus_lambda, minus_mu, beta, ni;
+   double fcij, dfcij, fcik, dfcik, one_plus_ccinvdd;
+   //APPROX double S_minus_R_inv, xi, xiik;
+   double cut_tmp, cut_tmp_j, cut_tmp_k;  
 
    double drmik[3], drsik[3];
    double drik2, rik, h_minus_costheta, zeta, g_theta, contribution, vpr, costheta;
@@ -620,7 +1058,10 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
    map<Molecule*, bool>::iterator mk;
 
 #ifndef NDEBUG
-   cout << "Tersoff interaction between " << mi.id() << " and " << mj.id() << ".\n";
+   cout.precision(2);
+   cout << "Tersoff interaction between\n\t" << mi.id() << " (" << mi.r(0)
+        << " / " << mi.r(1) << " / " << mi.r(2) << ")\nand \t" << mj.id() << " (" << mj.r(0)
+        << " / " << mj.r(1) << " / " << mj.r(2) << ").\n";
 #endif
 
    for(unsigned int si=0; si < nt1; si++)
@@ -637,13 +1078,11 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
          const double* djj=mj.tersoff_d(sj);
          SiteSiteDistance(drm,dii,djj,drs,dr2);
 #ifndef NDEBUG
-         cout.precision(5);
-         cout << "Distance ij: (" << -drs[0] << " / " << -drs[1] << " / " << -drs[2] << ")\n";
+         // cout << "Distance ij: (" << -drs[0] << " / " << -drs[1] << " / " << -drs[2] << ")\n";
 #endif
          rij = sqrt(dr2);
 
          // cutoff function: take out of loop for optimization
-         cut_tmp_j = cut_tmp * (rij - R);
          if (rij < R)
          {
             fcij  = 1.0; 
@@ -655,8 +1094,13 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
          }
          else
          {
+            cut_tmp_j = cut_tmp * (rij - R);
             fcij   = 0.5 * ( 1.0 + cos( cut_tmp_j ) );
             dfcij  = -0.5 * cut_tmp * sin( cut_tmp_j );
+
+#ifndef NDEBUG
+            cout << "fC  =  " << fcij << "\n";  //XIII//
+#endif
          }
 
          // In IMD, the corresponding section in imd_forces_covalent.c
@@ -689,7 +1133,7 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
             if(mk->first->id() == mj.id()) continue;  // never evaluate i-j angle to i-j
 #ifndef NDEBUG
             cout << "Evaluating " << mi.id() << "-" << mj.id()
-                 << "-" << mk->first->id() << " angular contribution.\n";  //XIII//
+                 << "-" << mk->first->id() << " contribution. ";  //XIII//
 #endif
             mk->first->dist2(mi, drmik);
             const unsigned int nt3 = mk->first->numTersoff();
@@ -702,7 +1146,6 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
                rik = sqrt(drik2);
 
                // cutoff function: take out of loop for optimization
-               cut_tmp_k = cut_tmp * (rik - R);
                if (rik < R)
                {
 	         fcik  = 1.0; 
@@ -714,6 +1157,7 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
                }
                else
                {
+                  cut_tmp_k = cut_tmp * (rik - R);
                   fcik   = 0.5 * ( 1.0 + cos( cut_tmp_k ) );
                   dfcik  = -0.5 * cut_tmp * sin( cut_tmp_k );
                }
@@ -728,8 +1172,8 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
                contribution = fcik * g_theta;
                zeta  += contribution; 
 #ifndef NDEBUG
-               cout << "fC = " << fcik << ", g = " << g_theta  //XIII//
-                    << ", contribution = " << contribution << "\n";  //XIII//
+               cout << "fC = " << fcik  //XIII//
+                    << ", contrib = " << contribution << "\n";  //XIII//
 #endif
 
                tmp_j2 = costheta / dr2;
@@ -753,17 +1197,8 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
                   dzeta_i[d] += tmp_3*dcos_k[d] + tmp_grad*drsik[d];
                   dzeta_j[d] -= tmp_3 * dcos_j[d];
                }
-#ifndef NDEBUG
-               cout << "\n";  //XIII//
-#endif
             }
          }
-
-#ifndef NDEBUG
-         cout << "dzeta_i = (" << dzeta_i[0] << " / " << dzeta_i[1] << " / "  //XIII//
-              << dzeta_i[2] << "), dzeta_j = (" << dzeta_j[0] << " / "  //XIII//
-              << dzeta_j[1] << " / " << dzeta_j[2] << ")\n";  //XIII//
-#endif
 
          minus_two_phi_a = minus_B * exp(minus_mu * rij);
          tmp_4 = pow(beta*zeta, ni);
@@ -838,8 +1273,10 @@ inline void TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double
    // check whether all parameters were accessed
    assert(params.eos());
 }
+*/
 
-inline void ancient_TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& UpotTersoff, double& Virial)
+/*
+inline void ancient_mh_implemented_TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& UpotTersoff, double& Virial)
 {
    double f[3];
    double u;
@@ -982,6 +1419,7 @@ inline void ancient_TersoffPotForce(Molecule& mi, Molecule& mj, ParaStrm& params
    // check whether all parameters were accessed
    assert(params.eos());
 }
+*/
 #endif
 
 #endif /*POTFORCE_H_*/

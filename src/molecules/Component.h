@@ -102,7 +102,12 @@ public:
   void incrnumMolecules() { ++m_numMolecules; }
   unsigned long numMolecules() const { return m_numMolecules; }
 
-  void addLJcenter(double x, double y, double z, double m, double eps, double sigma);
+  void addLJcenter(double x, double y, double z, double m, double eps, double sigma
+#ifdef TRUNCATED_SHIFTED
+     ,
+     double rc, int ownrank
+#endif
+  );
   void addCharge(double x, double y, double z, double m, double q);
 #ifdef COMPLEX_POTENTIAL_SET
   void addDipole( double x, double y, double z,

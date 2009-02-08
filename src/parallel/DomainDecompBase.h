@@ -66,7 +66,7 @@ class parallel::DomainDecompBase{
   //! moved to the right neighbour first and then from the right neighbour
   //! to the lower neighbour.
   virtual void exchangeMolecules(datastructures::ParticleContainer<Molecule>* moleculeContainer, 
-                                 const vector<Component>& components, Domain* domain) = 0;                                 
+                                 const vector<Component>& components, Domain* domain, double rc) = 0;                                 
   
   
   // gather all molecules on the root process
@@ -118,6 +118,9 @@ class parallel::DomainDecompBase{
   //! with the given number of processes, the dimensions of the grid are calculated
   //! grid_size: a array for the number of processes in each dimension
   virtual void setGridSize(int num_procs) = 0;
+#ifdef COMPLEX_POTENTIAL_SET
+  virtual void setY2GridSize(int num_procs) = 0;
+#endif
 
   //! Logging interface
   static utils::Log _log;

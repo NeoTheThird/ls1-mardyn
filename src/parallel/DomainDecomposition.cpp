@@ -23,10 +23,23 @@ parallel::DomainDecomposition::DomainDecomposition(int *argc, char ***argv){
   // Allow reordering of process ranks 
   reorder = 1;
   
-  MPI_Init(argc,argv);
+  MPI_Init(argc, argv);
   MPI_Get_processor_name(processorName, &procnamelen);
   MPI_Comm_size(world,&num_procs); // determine total number of procs 
-  setGridSize(num_procs); // determine number of procs in each dimension 
+#ifdef COMPLEX_POTENTIAL_SET
+  bool useY2 = false;
+  for(; i < *argc; i++) if(!strcmp((*argv)[i], "-Y2")) useY2 = true;
+  if(useY2)
+  {
+    this->setY2GridSize(num_procs);
+  }
+  else
+  {
+#endif
+    this->setGridSize(num_procs); // determine number of procs in each dimension 
+#ifdef COMPLEX_POTENTIAL_SET
+  }
+#endif
   MPI_Cart_create(world,DIM,gridSize,period,reorder,&comm_topology); // create torus topology 
   
   MPI_Comm_rank(comm_topology, &ownrank);
@@ -47,8 +60,11 @@ const char* parallel::DomainDecomposition::getProcessorName() const {
   return processorName; 
 }
 
-void parallel::DomainDecomposition::exchangeMolecules(datastructures::ParticleContainer<Molecule>* moleculeContainer, 
-                                 const vector<Component>& components, Domain* domain){
+void parallel::DomainDecomposition::exchangeMolecules(
+   datastructures::ParticleContainer<Molecule>* moleculeContainer,
+   const vector<Component>& components,
+   Domain* domain, double rc)
+{
 
   double rmin[3]; // lower corner of the process-specific domain //PARALLEL
   double rmax[3];
@@ -83,9 +99,15 @@ void parallel::DomainDecomposition::exchangeMolecules(datastructures::ParticleCo
 
   for(unsigned short d=0;d<3;++d)
   {
+    /*
     // set limits (outside "inner" region) 
     low_limit = rmin[d]+halo_L[d];
     high_limit = rmax[d]-halo_L[d];
+    */
+
+    // set limits (outside "inner" region) 
+    low_limit = rmin[d] + rc;
+    high_limit = rmax[d] - rc;
 
     // when moving a particle across a periodic boundary, the molecule position has to change
     // these offset specify for each dimension (x, y and z) and each direction ("left"/lower 
@@ -135,9 +157,9 @@ void parallel::DomainDecomposition::exchangeMolecules(datastructures::ParticleCo
         mol_id[0].push_back(moleculePtr->id());
         mol_cid[0].push_back(moleculePtr->componentid());
         
-        moleculePtr = moleculeContainer->next();
+        // moleculePtr = moleculeContainer->next();
       }
-      else if(rd>=high_limit){ 
+      if(rd>=high_limit){ 
         // store the position of the molecule in a buffer
         for(unsigned short d2=0; d2<3; d2++){
           // when moving parallel to the coordinate d2 to another process, the
@@ -162,9 +184,9 @@ void parallel::DomainDecomposition::exchangeMolecules(datastructures::ParticleCo
         mol_id[1].push_back(moleculePtr->id());
         mol_cid[1].push_back(moleculePtr->componentid());
 
-        moleculePtr = moleculeContainer->next();
+        // moleculePtr = moleculeContainer->next();
       }
-      else moleculePtr = moleculeContainer->next();
+      moleculePtr = moleculeContainer->next();
     }
 
 
@@ -278,6 +300,9 @@ void parallel::DomainDecomposition::reducevalues(double* d1, double* d2)
    this->reducevalues(d1, d2, (unsigned long*)0, (unsigned long*)0);
 }
 
+/*
+ * ACHTUNG: Version von Martin Buchholz mit unguenstiger Aufteilung der Primfaktoren
+ *
 void parallel::DomainDecomposition::setGridSize(int num_procs) {
   int remainder;      // remainder during the calculation of the prime factors 
   int i;              // counter                                               
@@ -318,7 +343,87 @@ void parallel::DomainDecomposition::setGridSize(int num_procs) {
     i++;
   }
 }
+*/
 
+void parallel::DomainDecomposition::setGridSize(int num_procs) {
+  int remainder;      // remainder during the calculation of the prime factors 
+  int i;              // counter                                               
+  int num_factors;    // number of prime factors                               
+  int *prime_factors; // array for the prime factors                           
+  
+  // Set the initial number of processes in each dimension to zero
+  for(i=0;i<DIM;i++){
+    gridSize[i] = 1;
+  }
+  
+  remainder = num_procs;
+  
+  // The maximal number of prime factors of a number n is log2(n)
+  prime_factors = new int[int(log2(num_procs))];
+  
+  num_factors = 0;
+  // calculate prime numbers 
+  for(i=2; i<=remainder;i++){
+    while(remainder%i == 0){ // -> i is prime factor
+      remainder = remainder/i;
+      prime_factors[num_factors] = i;
+      num_factors++;
+    }
+  }
+  
+  i = 0;
+  while(i<num_factors){
+    if((i%6 == 0) || (i%6 == 5)) gridSize[0] *= prime_factors[num_factors-1-i];
+    else if ((i%6 == 1) || (i%6 == 4)) gridSize[1] *= prime_factors[num_factors-1-i];
+    else gridSize[2] *= prime_factors[num_factors-1-i];
+    i++;
+  }
+}
+
+#ifdef COMPLEX_POTENTIAL_SET
+void parallel::DomainDecomposition::setY2GridSize(int num_procs) {
+  int remainder;      // remainder during the calculation of the prime factors 
+  int i;              // counter                                               
+  int num_factors;    // number of prime factors                               
+  int *prime_factors; // array for the prime factors                           
+  
+  // Set the initial number of processes in each dimension to zero
+  for(i=0;i<DIM;i++){
+    gridSize[i] = 1;
+  }
+  
+  if(num_procs%2)
+  {
+    gridSize[1] = 1;
+    remainder = num_procs;
+  }
+  else
+  {
+    gridSize[1] = 2;
+    remainder = num_procs/2;
+  }
+
+  // The maximal number of prime factors of a number n is log2(n)
+  prime_factors = new int[int(log2(num_procs))];
+  
+  num_factors = 0;
+  // calculate prime numbers 
+  for(i=2; i<=remainder;i++){
+    while(remainder%i == 0){ // -> i is prime factor
+      remainder = remainder/i;
+      prime_factors[num_factors] = i;
+      num_factors++;
+    }
+  }
+  
+  i = 0;
+  while(i<num_factors){
+    if((i%4 == 0) || (i%4 == 3)) gridSize[0] *= prime_factors[num_factors-1-i];
+    else gridSize[2] *= prime_factors[num_factors-1-i];
+    i++;
+  }
+}
+#endif
 
 inline int parallel::DomainDecomposition::getRank(int x, int y, int z){
   int neigh_coords[DIM]; // Array for the coordinates 

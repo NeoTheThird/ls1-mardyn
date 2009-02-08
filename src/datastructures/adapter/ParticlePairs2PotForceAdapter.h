@@ -17,6 +17,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
   public:
     //! Constructor
     ParticlePairs2PotForceAdapter(Domain& domain): _domain(domain){
+       this->_doRecordRDF = false;
     }
     
     //! Destructor
@@ -56,15 +57,18 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     //! For all pairs, the force between the two Molecules has to be calculated
     //! and stored in the molecules. For original pairs(pairType 0), the contributions
     //! to the macroscopic values have to be collected
-    void processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType){
+    void processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType, double dd){
       ParaStrm& params=_domain.getComp2Params()(particle1.componentid(),particle2.componentid());
       params.reset_read();
       if(pairType == 0){
+        if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
+
         PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial);
       }
       else if(pairType == 1){
         PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4);
       }
+      else exit(666);
     }
     
 #ifdef COMPLEX_POTENTIAL_SET
@@ -72,8 +76,12 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     //! to the macroscopic values have to be collected
     //!
     //! @brief register Tersoff neighbours
-    void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, int pairType)
+    void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType)
     {
+#ifndef NDEBUG
+      // cout << "pre" << particle1.id() << "[" << ((unsigned long)&particle1 % 1000) << "]/" << particle2.id() << "[" << ((unsigned long)&particle2 % 1000) << "] ";
+      // cout.flush();
+#endif
       particle1.addTersoffNeighbour(&particle2, pairType);
       particle2.addTersoffNeighbour(&particle1, pairType);
 
@@ -94,6 +102,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
 #endif
     }
 
+    /*
     //! @brief process Tersoff interaction
     //!
     //! Calculate force and (for pair type 0) potential energy of the interaction
@@ -119,8 +128,20 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
         TersoffPotForce(particle1, particle2, params, distanceVector, _dummy1, _dummy4);
       }
     }
+    */
 #endif
-    
+
+#ifdef COMPLEX_POTENTIAL_SET
+    //! @brief process Tersoff interaction
+    //!
+    void processTersoffAtom(Molecule& particle1, double params[15], double delta_r)
+    {
+      TersoffPotForce(&particle1, params, _upotTersoff, delta_r);
+    }
+#endif
+
+    void recordRDF() { this->_doRecordRDF = true; }
+
   private:
     //! @brief reference to the domain is needed to store the calculated macroscopic values
     Domain& _domain;
@@ -146,6 +167,8 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     double _dummy3;
     //! @brief dummy variable used for pairs which don't contribute to the macroscopic values
     double _dummy4;
+
+    bool _doRecordRDF;
 };
 
 #endif /*PARTICLEPAIRS2POTFORCEADAPTER_H_*/

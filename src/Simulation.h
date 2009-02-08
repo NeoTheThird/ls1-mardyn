@@ -70,9 +70,9 @@ class Simulation{
     //! - cutoffRadius
     //! - phaseSpace
     //! - moleculeContainer
-    //! @param argc Pointer to the number of arguments passed to the programm. Needed for MPI
+    //! @param argc number of arguments passed to the programm. Needed for MPI
     //! @param argv the arguments, also needed for MPI
-    Simulation(int *argc, char ***argv);
+    Simulation(int argc, char **argv);
 
     //! @brief calculate all values for the starting timepoint
     //! 
@@ -135,15 +135,23 @@ class Simulation{
     unsigned _profileOutputTimesteps;
     string _profileOutputPrefix;
 #endif
+    bool _doRecordRDF;
+    unsigned _RDFOutputTimesteps;
+    string _RDFOutputPrefix;
     unsigned _resultOutputTimesteps;
 
 #ifdef COMPLEX_POTENTIAL_SET
     unsigned _collectThermostatDirectedVelocity;
+
+    bool _zoscillation;
+    unsigned _zoscillator;
 #endif
 
     //! Number of discrete time steps for the simulation        
     unsigned long _numberOfTimesteps;
     
+    unsigned long _numberOfComponents;
+
     //! Datastructure for finding neighbours efficiently
     datastructures::ParticleContainer<Molecule>* _moleculeContainer;
     

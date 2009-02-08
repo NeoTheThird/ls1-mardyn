@@ -20,6 +20,10 @@
 #ifndef MOLECULE_H_
 #define MOLECULE_H_
 
+#ifdef COMPLEX_POTENTIAL_SET
+#define MAXTN 9
+#endif
+
 /**
 Molecule modeled as LJ and/or Tersoff centre with point polarities
 
@@ -60,6 +64,23 @@ public:
 
   ~Molecule()
   {
+     /*
+#ifdef COMPLEX_POTENTIAL_SET
+     if(m_tersoff->size() > 0)
+     {
+        map<Molecule*, bool>::iterator itn;
+        for(itn=m_Tersoff_neighbours.begin(); itn!=m_Tersoff_neighbours.end(); itn++)
+        {
+           itn->first->m_Tersoff_neighbours.erase(this);
+#ifndef NDEBUG
+           // cout << "deleting Tersoff connection " << itn->first->m_id << "->" << m_id << ".\n";
+	   // cout.flush();
+#endif
+        }
+     }
+#endif  
+     */
+
      assert(m_sites_d); delete[] m_sites_d; assert(m_osites_e); delete[] m_osites_e; assert(m_sites_F); delete[] m_sites_F;
   }
   /** get the ID */
@@ -72,6 +93,10 @@ public:
   double v(unsigned short d) const { return m_v[d]; }
   /** get the Orientation */
   const Quaternion& q() const { return m_q; }
+
+#ifdef COMPLEX_POTENTIAL_SET
+  inline void move(int d, double dr) { m_r[d] += dr; }
+#endif
 
   /** get the rotatational speed */
   double D(unsigned short d) const { return m_D[d]; }
@@ -149,6 +174,18 @@ public:
   {
      m_v[0] -= ax; m_v[1] -= ay; m_v[2] -= az;
   }
+
+  void setXY() { fixedx = m_r[0]; fixedy = m_r[1]; }
+
+  void resetXY()
+  {
+     m_v[0] = 0.0;
+     m_v[1] = 0.0;
+     m_F[1] = 0.0;
+     m_F[0] = 0.0; 
+     m_r[0] = fixedx;
+     m_r[1] = fixedy;
+  }
 #endif
 
   void Fsiteadd(unsigned int i, double a[])
@@ -203,12 +240,14 @@ public:
   static void setblubb(double a);
 
 #ifdef COMPLEX_POTENTIAL_SET
-  map<Molecule*, bool>* getTersoffNeighbours() { return &(this->m_Tersoff_neighbours); }
-  void clearTersoffNeighbourList() { this->m_Tersoff_neighbours.clear(); }
-  void addTersoffNeighbour(Molecule* m, int pairType)
-  {
-     this->m_Tersoff_neighbours.insert(pair<Molecule*, bool>(m, (pairType > 0)));
-  }
+  inline unsigned getCurTN() { return this->m_curTN; }
+  inline Molecule* getTersoffNeighbour(unsigned i) { return this->m_Tersoff_neighbours_first[i]; }
+  inline bool getPairCode(unsigned i) { return this->m_Tersoff_neighbours_second[i]; }
+  // map<Molecule*, bool>* getTersoffNeighbours() { return &(this->m_Tersoff_neighbours); }
+  inline void clearTersoffNeighbourList() { this->m_curTN = 0; }
+  // void clearTersoffNeighbourList() { this->m_Tersoff_neighbours.clear(); }
+  void addTersoffNeighbour(Molecule* m, bool pairType);
+  double tersoffParameters(double params[15]); //returns delta_r
 #endif
 
 private:
@@ -268,7 +307,11 @@ private:
 #ifdef COMPLEX_POTENTIAL_SET
   //! near molecules with Tersoff centres
   //! key: pointer to a molecule, value: whether interaction counts for U_pot
-  map<Molecule*, bool> m_Tersoff_neighbours;
+  Molecule* m_Tersoff_neighbours_first[MAXTN];
+  bool m_Tersoff_neighbours_second[MAXTN];
+  int m_curTN;
+  // map<Molecule*, bool> m_Tersoff_neighbours;
+  double fixedx, fixedy;
 #endif
 
   // setup cache values/properties

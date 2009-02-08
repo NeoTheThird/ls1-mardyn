@@ -64,6 +64,14 @@ class integrators::Leapfrog: public integrators::Integrator{
       datastructures::ParticleContainer<Molecule>* molCont,
       Domain* domain
     );
+    virtual void init1D(
+       unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* molCont
+    );
+    virtual void zOscillation(
+       unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* molCont
+    );
 #endif
 
   private:

@@ -63,6 +63,8 @@ Domain::Domain(int rank){
   this->_local2KETrans[0] = 0.0;
   this->_local2KERot[0] = 0.0; 
   this->_currentTime = 0.0;
+  this->_doCollectRDF = false;
+  this->_universalNVE = false;
 #ifdef COMPLEX_POTENTIAL_SET
   this->_universalConstantAccelerationTimesteps = 30;
   if(!rank)
@@ -224,11 +226,11 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
       else
          _globalTemperatureMap[thermit->first] = _universalTargetTemperature[thermit->first];
       double Ti = this->_universalTargetTemperature[thermit->first];
-      if(Ti > 0.0)
+      if((Ti > 0.0) && !this->_universalNVE)
       {
-         this->_universalBTrans[thermit->first] = sqrt( sqrt(3.0*numMolecules*Ti / summv2) );
+         this->_universalBTrans[thermit->first] = pow(3.0*numMolecules*Ti / summv2, 0.4);
          if(sumIw2 == 0.0) this->_universalBRot[thermit->first] = 1.0;
-         else this->_universalBRot[thermit->first] = sqrt( sqrt(rotDOF*Ti / sumIw2) );
+         else this->_universalBRot[thermit->first] = pow(rotDOF*Ti / sumIw2, 0.4);
       }
       else
       {
@@ -379,11 +381,17 @@ void Domain::setPhaseSpaceFile(string filename){
   _phaseSpaceFileStream.open(filename.c_str());
 }  
 
-#ifdef COMPLEX_POTENTIAL_SET
-void Domain::readPhaseSpaceHeader(double timestep, double cutoffTersoff)
-#else
-void Domain::readPhaseSpaceHeader(double timestep)
+void Domain::readPhaseSpaceHeader(
+   double timestep
+#ifdef TRUNCATED_SHIFTED
+      ,
+   double cutoff
 #endif
+#ifdef COMPLEX_POTENTIAL_SET
+      ,
+   double cutoffTersoff
+#endif
+)
 {
   string token;
   _phaseSpaceFileStream >> token;
@@ -398,9 +406,9 @@ void Domain::readPhaseSpaceHeader(double timestep)
     if((token != "mardyn") && (_localRank == 0))
        cerr << "Warning: phase space file should begin with 'mardyn' instead of '" << token << "'.\n";
 
-    unsigned REQUIRED_INPUT_VERSION = 20070702;
+    unsigned REQUIRED_INPUT_VERSION = 20080101;
 #ifdef COMPLEX_POTENTIAL_SET
-    REQUIRED_INPUT_VERSION = 20070702;
+    REQUIRED_INPUT_VERSION = 20080701;
 #endif
 
     _phaseSpaceFileStream >> _inpversion;
@@ -425,7 +433,7 @@ void Domain::readPhaseSpaceHeader(double timestep)
   while(header) {
     _phaseSpaceFileStream >> c;
     if(c=='#') {
-      _phaseSpaceFileStream.ignore(INT_MAX,'\n');
+      _phaseSpaceFileStream.ignore(1024,'\n');
       continue;
     }
     else {
@@ -451,8 +459,10 @@ void Domain::readPhaseSpaceHeader(double timestep)
        _phaseSpaceFileStream >> i;
        _phaseSpaceFileStream >> _universalTargetTemperature[i];
 #ifdef COMPLEX_POTENTIAL_SET
-       this->_universalUndirectedThermostat[i] = false;
+       if(!(this->_universalUndirectedThermostat[i] == true))
+          this->_universalUndirectedThermostat[i] = false;
 #endif
+       if(i < 0) continue;
        if(i == 0)
        {
           this->_universalComponentwiseThermostat = false;
@@ -487,11 +497,12 @@ void Domain::readPhaseSpaceHeader(double timestep)
              if(!(this->_universalThermostatID[ tc->ID() ] > 0))
                 this->_universalThermostatID[ tc->ID() ] = -1;
        }
-       unsigned cid;
+       int cid;
        _phaseSpaceFileStream >> cid;
        cid--;
-       unsigned th;
+       int th;
        _phaseSpaceFileStream >> th;
+       if(0 >= th) continue;
        this->_universalThermostatID[cid] = th;
        this->_universalThermostatN[th] = 0;
     }
@@ -539,7 +550,11 @@ void Domain::readPhaseSpaceHeader(double timestep)
           if(!_localRank) cout << "reading LJ data\n";
 #endif
           _phaseSpaceFileStream >> x >> y >> z >> m >> eps >> sigma;
-          _components[i].addLJcenter(x,y,z,m,eps,sigma);
+#ifdef TRUNCATED_SHIFTED
+          _components[i].addLJcenter(x, y, z, m, eps, sigma, cutoff, this->_localRank);
+#else
+          _components[i].addLJcenter(x, y, z, m, eps, sigma);
+#endif
         }
         for(j = 0; j < numcharges; j++)
         {
@@ -659,7 +674,11 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
   if(!this->_localRank)
   {
     ofstream checkpointfilestream(filename.c_str());
-    checkpointfilestream << "mardyn\t20070717"<< endl;
+    checkpointfilestream << "mardyn 20090208";
+#ifdef COMPLEX_POTENTIAL_SET
+    checkpointfilestream << " tersoff";
+#endif
+    checkpointfilestream << "\n";
     //! @todo use real current time
     checkpointfilestream << " t\t"  << this->_currentTime << "\n";
     checkpointfilestream << " dt\t" << dt << "\n";
@@ -669,7 +688,7 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
 #ifdef COMPLEX_POTENTIAL_SET
     checkpointfilestream << "# rcT\t" << particleContainer->getTersoffCutoff() << "\n";
 #endif
-    checkpointfilestream << "C\t" << _components.size() << endl;
+    checkpointfilestream << " C\t" << _components.size() << endl;
     for(vector<Component>::const_iterator pos=_components.begin();pos!=_components.end();++pos){
       pos->write(checkpointfilestream);
     }
@@ -693,12 +712,6 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
     }
     checkpointfilestream << _epsilonRF << endl;
 #ifdef COMPLEX_POTENTIAL_SET
-    for( map<int, bool>::iterator uutit = this->_universalUndirectedThermostat.begin();
-         uutit != this->_universalUndirectedThermostat.end();
-         uutit++ )
-    {
-      if(uutit->second) checkpointfilestream << " U\t" << uutit->first << "\n";
-    }
     for( map<unsigned, unsigned>::const_iterator uCSIDit = this->_universalComponentSetID.begin();
          uCSIDit != this->_universalComponentSetID.end();
          uCSIDit++ )
@@ -727,6 +740,7 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
             thermit != this->_universalThermostatID.end();
             thermit++ )
        {
+          if(0 >= thermit->second) continue;
           checkpointfilestream << " CT\t" << 1+thermit->first
                                << "\t" << thermit->second << "\n";
        }
@@ -734,7 +748,7 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
             Tit != this->_universalTargetTemperature.end();
             Tit++ )
        {
-          if((0 >= Tit->first) || (0.0 >= Tit->second)) continue;
+          if((0 >= Tit->first) || (0 >= Tit->second)) continue;
           checkpointfilestream << " ThT " << Tit->first << "\t" << Tit->second << "\n";
        }
     }
@@ -742,17 +756,31 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
     {
        checkpointfilestream << " T\t" << _universalTargetTemperature[0] << endl;
     }
+#ifdef COMPLEX_POTENTIAL_SET
+    for( map<int, bool>::iterator uutit = this->_universalUndirectedThermostat.begin();
+         uutit != this->_universalUndirectedThermostat.end();
+         uutit++ )
+    {
+       if(0 > uutit->first) continue;
+       if(uutit->second) checkpointfilestream << " U\t" << uutit->first << "\n";
+    }
+#endif
     checkpointfilestream << " N\t" << _globalNumMolecules << endl;
 
     checkpointfilestream << " M\t" << "ICRVQD" << endl;
     checkpointfilestream.close();
-  }
+    }
   
-  domainDecomp->writeMoleculesToFile(filename, particleContainer); 
+    domainDecomp->writeMoleculesToFile(filename, particleContainer); 
 }
  
-void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer) {
-  
+void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
+#ifdef TRUNCATED_SHIFTED
+  ,
+  double cutoffRadius
+#endif
+)
+{  
   string token;
 
   double x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz;
@@ -786,7 +814,12 @@ void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* par
       numcomponents=1;
       _components.resize(numcomponents);
       _components[0].setID(0);
-      _components[0].addLJcenter(0.,0.,0.,1.,1.,1.);
+      _components[0].addLJcenter(0.,0.,0.,1.,1.,1.
+#ifdef TRUNCATED_SHIFTED
+        ,
+        cutoffRadius, this->_localRank
+#endif
+      );
     }
     //m_molecules.clear();
     for(i=0;i<_globalNumMolecules;++i)
@@ -913,6 +946,8 @@ void Domain::initFarFieldCorr(double cutoffRadius) {
           params >> eps24;
           double sig2;
           params >> sig2;
+
+#ifndef TRUNCATED_SHIFTED
           double fac=double(ci.numMolecules())*double(cj.numMolecules())*eps24;
           if(tau1==0. && tau2==0.){
             UpotCorrLJ+=fac*(TICCu(-6,cutoffRadius,sig2)-TICCu(-3,cutoffRadius,sig2));
@@ -929,6 +964,8 @@ void Domain::initFarFieldCorr(double cutoffRadius) {
             UpotCorrLJ+=fac*(TICSu(-6,cutoffRadius,sig2,tau2)-TICSu(-3,cutoffRadius,sig2,tau2));
             VirialCorrLJ+=fac*(TICSv(-6,cutoffRadius,sig2,tau2)-TICSv(-3,cutoffRadius,sig2,tau2));
           }
+#endif
+
         }
       }
     }
@@ -976,6 +1013,9 @@ void Domain::specifyComponentSet(unsigned cosetid, double v[3], double tau, doub
    }
 }
 
+/*
+ * diese Version beschleunigt nur in z-Richtung
+ *
 void Domain::determineAdditionalAcceleration
 (
    parallel::DomainDecompBase* domainDecomp,
@@ -1000,9 +1040,14 @@ void Domain::determineAdditionalAcceleration
          this->_localVelocitySum[d][cosetid] += thismol->v(d);
    }
 
+   // cout << "local rank " << _localRank << " starting domainDecomp->collectCosetVelocity.\n";
+   domainDecomp->collectCosetVelocity(&_localN, _localVelocitySum, &_globalN, _globalVelocitySum);
+   // cout << "local rank " << _localRank << " returning from domainDecomp->collectCosetVelocity.\n";
+
    map<unsigned, long double>::iterator gVSit;
    //--- map<unsigned, long double> priorVelocitySum[3];
    if(!this->_localRank)
+   {
       for(gVSit = _globalVelocitySum[0].begin(); gVSit != _globalVelocitySum[0].end(); gVSit++)
       {
 #ifndef NDEBUG
@@ -1016,10 +1061,88 @@ void Domain::determineAdditionalAcceleration
             //--- priorVelocitySum[d][gVSit->first] = _globalVelocitySum[d][gVSit->first];
          }
       }
+   }
+
+   if(!this->_localRank)
+   {
+      for(gVSit = _globalVelocitySum[2].begin(); gVSit != _globalVelocitySum[2].end(); gVSit++)
+      {
+         double invgN = 1.0 / this->_globalN[gVSit->first];
+         double invgtau = 1.0 / this->_universalTau[gVSit->first];
+         double invgtau2 = invgtau * invgtau;
+         double velocityDifferencePerUCAT;
+         velocityDifferencePerUCAT = invgN * ( _globalPriorVelocitySums[2][gVSit->first].front()
+                                         - _globalVelocitySum[2][gVSit->first] )
+                                            / (double)(_globalVelocityQueuelength[gVSit->first]);
+         for(unsigned d = 0; d < 3; d++) _globalPriorVelocitySums[d][gVSit->first].pop_front();
+         this->_universalAdditionalAcceleration[0][gVSit->first] = 0.0;
+         this->_universalAdditionalAcceleration[1][gVSit->first] = 0.0;
+         this->_universalAdditionalAcceleration[2][gVSit->first]
+            += dtConstantAcc * invgtau2
+               * (_globalTargetVelocity[2][gVSit->first] - _globalVelocitySum[2][gVSit->first]*invgN)
+                  + invgtau * velocityDifferencePerUCAT;
+#ifndef NDEBUG
+         cout << "z-velocity difference per UCAT: " << velocityDifferencePerUCAT << "\n";
+#endif
+      }
+   }
+
+   domainDecomp->broadcastCosetAcceleration(_universalAdditionalAcceleration);
+   domainDecomp->broadcastVelocitySum(_globalVelocitySum);
+}
+ *
+ *
+ */
+
+/*
+ * diese Version beschleunigt in x- und in z-Richtung
+ */
+void Domain::determineAdditionalAcceleration
+(
+   parallel::DomainDecompBase* domainDecomp,
+   datastructures::ParticleContainer<Molecule>* molCont, double dtConstantAcc )
+{
+   for( map<unsigned, double>::iterator uAAit = _universalAdditionalAcceleration[0].begin();
+        uAAit != _universalAdditionalAcceleration[0].end();
+        uAAit++ )
+   {
+      this->_localN[uAAit->first] = 0;
+      for(unsigned d = 0; d < 3; d++)
+         this->_localVelocitySum[d][uAAit->first] = 0.0;
+   }
+   for(Molecule* thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+   {
+      unsigned cid = thismol->componentid();
+      map<unsigned, unsigned>::iterator uCSIDit = this->_universalComponentSetID.find(cid);
+      if(uCSIDit == _universalComponentSetID.end()) continue;
+      unsigned cosetid = uCSIDit->second;
+      this->_localN[cosetid]++;
+      for(unsigned d = 0; d < 3; d++)
+         this->_localVelocitySum[d][cosetid] += thismol->v(d);
+   }
 
    // cout << "local rank " << _localRank << " starting domainDecomp->collectCosetVelocity.\n";
    domainDecomp->collectCosetVelocity(&_localN, _localVelocitySum, &_globalN, _globalVelocitySum);
    // cout << "local rank " << _localRank << " returning from domainDecomp->collectCosetVelocity.\n";
+
+   map<unsigned, long double>::iterator gVSit;
+   //--- map<unsigned, long double> priorVelocitySum[3];
+   if(!this->_localRank)
+   {
+      for(gVSit = _globalVelocitySum[0].begin(); gVSit != _globalVelocitySum[0].end(); gVSit++)
+      {
+#ifndef NDEBUG
+         cout << "required entries in velocity queue: " << _globalVelocityQueuelength[gVSit->first] << "\n";
+         cout << "entries in velocity queue: " << _globalPriorVelocitySums[0][gVSit->first].size() << "\n";
+#endif
+         for(unsigned d = 0; d < 3; d++)
+         {
+            while(_globalPriorVelocitySums[d][gVSit->first].size() < _globalVelocityQueuelength[gVSit->first])
+               _globalPriorVelocitySums[d][gVSit->first].push_back(_globalVelocitySum[d][gVSit->first]);
+            //--- priorVelocitySum[d][gVSit->first] = _globalVelocitySum[d][gVSit->first];
+         }
+      }
+   }
 
    if(!this->_localRank)
    {
@@ -1028,20 +1151,31 @@ void Domain::determineAdditionalAcceleration
          double invgN = 1.0 / this->_globalN[gVSit->first];
          double invgtau = 1.0 / this->_universalTau[gVSit->first];
          double invgtau2 = invgtau * invgtau;
-         double velocityDifferencePerUCAT[3];
+         // double velocityDifferencePerUCAT[3];
+         double previousVelocity[3];
          for(unsigned d = 0; d < 3; d++)
          {
-            velocityDifferencePerUCAT[d] = invgN * ( _globalPriorVelocitySums[d][gVSit->first].front()
-                                              - _globalVelocitySum[d][gVSit->first] )
-                                                 / (double)(_globalVelocityQueuelength[gVSit->first]);
-            _globalPriorVelocitySums[d][gVSit->first].pop_front();
-            this->_universalAdditionalAcceleration[d][gVSit->first]
-               += dtConstantAcc * invgtau2
-                  * (_globalTargetVelocity[d][gVSit->first] - _globalVelocitySum[d][gVSit->first]*invgN)
-                     + invgtau * velocityDifferencePerUCAT[d];
+            previousVelocity[d] = invgN * _globalPriorVelocitySums[d][gVSit->first].front();
+            // velocityDifferencePerUCAT[d] = invgN * ( _globalPriorVelocitySums[d][gVSit->first].front()
+            //                                   - _globalVelocitySum[d][gVSit->first] )
+            //                                      / (double)(_globalVelocityQueuelength[gVSit->first]);
+            this->_globalPriorVelocitySums[d][gVSit->first].pop_front();
          }
+         this->_universalAdditionalAcceleration[0][gVSit->first]
+            += dtConstantAcc * invgtau2 *
+               ( this->_globalTargetVelocity[0][gVSit->first]
+                  - 2.0*this->_globalVelocitySum[0][gVSit->first]*invgN
+                     + previousVelocity[0] );
+         this->_universalAdditionalAcceleration[1][gVSit->first] = 0.0;
+         this->_universalAdditionalAcceleration[2][gVSit->first]
+            += dtConstantAcc * invgtau2 *
+               ( this->_globalTargetVelocity[2][gVSit->first]
+                  - 2.0*this->_globalVelocitySum[2][gVSit->first]*invgN
+                     + previousVelocity[2] );
 #ifndef NDEBUG
-         cout << "z-velocity difference per UCAT: " << velocityDifferencePerUCAT[2] << "\n";
+         cout << "accelerator no. " << gVSit->first << "\t--\t";
+         cout << "previous vz: " << previousVelocity[2] << "\t";
+         cout << "current vz: " << this->_globalVelocitySum[2][gVSit->first]*invgN << "\n";
 #endif
       }
    }
@@ -1245,6 +1379,167 @@ void Domain::resetProfile()
    this->_globalAccumulatedDatasets = 0;
 }
 #endif
+
+void Domain::setupRDF(double interval, unsigned bins)
+{
+   unsigned numc = this->_components.size();
+
+   this->_doCollectRDF = true;
+   this->_universalInterval = interval;
+   this->_universalBins = bins;
+   this->_universalTimesteps = 0;
+   this->_universalAccumulatedTimesteps = 0;
+   this->ddmax = interval*interval*bins*bins;
+
+   this->_localCtr = new unsigned long[numc];
+   this->_globalCtr = new unsigned long[numc];
+   this->_globalAccumulatedCtr = new unsigned long[numc];
+   this->_localDistribution = new unsigned long**[numc];
+   this->_globalDistribution = new unsigned long**[numc];
+   this->_globalAccumulatedDistribution = new unsigned long**[numc];
+   for(unsigned i = 0; i < numc; i++)
+   {
+      this->_localCtr[i] = 0;
+      this->_globalCtr[i] = 0;
+      this->_globalAccumulatedCtr[i] = 0;
+
+      this->_localDistribution[i] = new unsigned long*[numc-i];
+      this->_globalDistribution[i] = new unsigned long*[numc-i];
+      this->_globalAccumulatedDistribution[i] = new unsigned long*[numc-i];
+
+      for(unsigned k=0; i+k < numc; k++)
+      {
+         this->_localDistribution[i][k] = new unsigned long[bins];
+         this->_globalDistribution[i][k] = new unsigned long[bins];
+         this->_globalAccumulatedDistribution[i][k] = new unsigned long[bins];
+
+         for(unsigned l=0; l < bins; l++)
+         {
+            this->_localDistribution[i][k][l] = 0;
+            this->_globalDistribution[i][k][l] = 0;
+            this->_globalAccumulatedDistribution[i][k][l] = 0;
+         }
+      }
+   }
+}
+
+void Domain::resetRDF()
+{
+   this->_universalTimesteps = 0;
+   for(unsigned i=0; i < this->_components.size(); i++)
+   {
+      this->_localCtr[i] = 0;
+      this->_globalCtr[i] = 0;
+      for(unsigned k=0; i+k < this->_components.size(); k++)
+      {
+         for(unsigned l=0; l < this->_universalBins; l++)
+         {
+            this->_localDistribution[i][k][l] = 0;
+            this->_globalDistribution[i][k][l] = 0;
+         }
+      }
+   }
+}
+
+void Domain::accumulateRDF()
+{
+   this->_universalAccumulatedTimesteps += this->_universalTimesteps;
+   if(!this->_localRank)
+   {
+      for(unsigned i=0; i < this->_components.size(); i++)
+      {
+         this->_globalAccumulatedCtr[i] += this->_globalCtr[i];
+         for(unsigned k=0; i+k < this->_components.size(); k++)
+            for(unsigned l=0; l < this->_universalBins; l++)
+               this->_globalAccumulatedDistribution[i][k][l]
+                  += this->_globalDistribution[i][k][l];
+      }
+   }
+}
+
+void Domain::collectRDF(parallel::DomainDecompBase* domainDecomp)
+{
+   unsigned long d1, d2;
+   double dZ, d0;
+   dZ = 0.0; d0 = 0.0; d2 = 0;
+   for(unsigned i=0; i < this->_components.size(); i++)
+   {
+      d1 = this->_localCtr[i];
+      domainDecomp->reducevalues(&dZ, &d0, &d1, &d2);
+      if(!this->_localRank) this->_globalCtr[i] = d1;
+      
+      for(unsigned k=0; i+k < this->_components.size(); k++)
+      {
+         for(unsigned l=0; l < this->_universalBins; l++)
+         {
+            d1 = this->_localDistribution[i][k][l];
+            domainDecomp->reducevalues(&dZ, &d0, &d1, &d2);
+            if(!this->_localRank) this->_globalDistribution[i][k][l] = d1;
+         }
+      }
+   }
+}
+
+void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
+{
+   if(this->_localRank) return;
+   string rdfname(prefix);
+   rdfname += ".rdf";
+   ofstream rdfout(rdfname.c_str());
+   if (!rdfout) return;
+
+   double V = _globalLength[0] * _globalLength[1] * _globalLength[2];
+   double N_i = _globalCtr[i] / _universalTimesteps;
+   double N_Ai = _globalAccumulatedCtr[i] / _universalAccumulatedTimesteps;
+   double N_j = _globalCtr[j] / _universalTimesteps;
+   double N_Aj = _globalAccumulatedCtr[j] / _universalAccumulatedTimesteps;
+   double rho_i = N_i / V;
+   double rho_Ai = N_Ai / V;
+   double rho_j = N_j / V;
+   double rho_Aj = N_Aj / V;
+
+   rdfout.precision(5);
+   rdfout << "# r\tcurr.\taccu.\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)\n";
+   rdfout << "# \n# ctr_i: " << _globalCtr[i] << "\n# ctr_j: " << _globalCtr[j]
+          << "\n# V: " << V << "\n# _universalTimesteps: " << _universalTimesteps
+          << "\n# _universalAccumulatedTimesteps: " << _universalAccumulatedTimesteps
+          << "\n# rho_i: " << rho_i << " (acc. " << rho_Ai << ")"
+          << "\n# rho_j: " << rho_j << " (acc. " << rho_Aj << ")"
+          << "\n# \n";
+
+   for(unsigned l=0; l < this->_universalBins; l++)
+   {
+      double rmin = l * _universalInterval;
+      double rmid = (l+0.5) * _universalInterval;
+      double rmax = (l+1.0) * _universalInterval;
+      double r3min = rmin*rmin*rmin;
+      double r3max = rmax*rmax*rmax;
+      double dV = 4.1887902 * (r3max - r3min);
+
+      unsigned long N_pair = _globalDistribution[i][j-i][l] / _universalTimesteps;
+      unsigned long N_Apair = _globalAccumulatedDistribution[i][j-i][l]
+                                 / _universalAccumulatedTimesteps;
+      double N_pair_norm;
+      double N_Apair_norm;
+      if(i == j)
+      {
+         N_pair_norm = 0.5*N_i*rho_i*dV;
+         N_Apair_norm = 0.5*N_Ai*rho_Ai*dV;
+      }
+      else
+      {
+         N_pair_norm = N_i*rho_j*dV;
+         N_Apair_norm = N_Ai*rho_Aj*dV;
+      }
+
+      rdfout << rmid << "\t" << N_pair/N_pair_norm
+                     << "\t" << N_Apair/N_Apair_norm
+                     << "\t\t" << dV << "\t" << N_pair << "\t" << N_Apair
+                     << "\t\t" << N_pair_norm << "\t" << N_Apair_norm << "\n";
+   }
+   rdfout.close();
+}
+
 
 // Helper functions ================================================================================
 // used by Domain::init_Corr()

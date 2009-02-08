@@ -37,6 +37,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
     ParaStrm& pstrmii=m_ssparatbl(compi,compi);
     unsigned int nci=components[compi].numLJcenters();
     double epsi,sigi,epsj,sigj,epsilon24,sigma2;
+#ifdef TRUNCATED_SHIFTED
+    double shift6i;
+#endif
 #ifdef COMPLEX_POTENTIAL_SET
     unsigned nti = components[compi].numTersoff();
     // no LJ interaction between solid components
@@ -49,6 +52,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
         const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
         epsi=ljcenteri.eps();
         sigi=ljcenteri.sigma();
+#ifdef TRUNCATED_SHIFTED
+        shift6i = ljcenteri.shift6();
+#endif
         for(unsigned int centerj=0;centerj<nci;++centerj)
         {
           const LJcenter& ljcenterj=static_cast<const LJcenter&>(components[compi].ljcenter(centerj));
@@ -58,6 +64,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           sigma2=.5*(sigi+sigj); sigma2*=sigma2;
           pstrmii << epsilon24;
           pstrmii << sigma2;
+#ifdef TRUNCATED_SHIFTED
+          pstrmii << shift6i;
+#endif
         }
       }
 #ifdef COMPLEX_POTENTIAL_SET
@@ -76,6 +85,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
         unsigned int ncj=components[compj].numLJcenters();
         double xi=*mixpos; ++mixpos;
         double eta=*mixpos; ++mixpos;
+#ifdef TRUNCATED_SHIFTED
+        double shift6combined, sigperrc2, sigperrc6;
+#endif
         for(unsigned int centeri=0;centeri<nci;++centeri)
         {
           const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
@@ -88,8 +100,16 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
             sigj=ljcenterj.sigma();
             epsilon24=24.*xi*sqrt(epsi*epsj);
             sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
+#ifdef TRUNCATED_SHIFTED
+            sigperrc2 = sigma2/(rc*rc);
+            sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
+            shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
+#endif
             pstrmij << epsilon24;
             pstrmij << sigma2;
+#ifdef TRUNCATED_SHIFTED
+            pstrmij << shift6combined;  
+#endif
           }
         }
         ParaStrm& pstrmji=m_ssparatbl(compj,compi);
@@ -230,6 +250,7 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
   }
 
 #ifdef COMPLEX_POTENTIAL_SET
+  /*
   // Tersoff interaction parameters
   //
   m_tersofftbl.redim(m_numcomp, m_numcomp);
@@ -280,26 +301,10 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
                   << 0.5 * (minus_mui + minus_muj)          // -mu
                   << betai             // beta
                   << ni;               // n_i
-
-          /*
-          pstrmij << sqrt(Ai*Aj);  // A
-          pstrmij << -1.0*sqrt(Bi*Bj);  // -B
-          pstrmij << 0.5 * (minus_lambdai + minus_lambdaj);  // -lambda
-          pstrmij << 0.5 * (minus_mui + minus_muj);  // -mu;
-          pstrmij << Ri*Rj;  // R^2
-          pstrmij << S;  // S;
-          pstrmij << 1.0 / (S - sqrt(Ri*Rj));  // 1/(S-R)
-          pstrmij << cci;  // c^2;
-          pstrmij << ddi;  // d^2;
-          pstrmij << 1.0 + cci/ddi;  // 1 + (c/d)^2;
-          pstrmij << hi;  // h;
-          pstrmij << ni;  // n_i;
-          pstrmij << -0.5 / ni;  // -1 / (2 n_i);
-          pstrmij << betai;  // beta;
-          */
         }
       }
     }
   }
+  */
 #endif
 }

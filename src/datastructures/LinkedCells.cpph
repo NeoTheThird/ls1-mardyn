@@ -37,7 +37,7 @@ datastructures::LinkedCells<ParticleType>::LinkedCells(double bBoxMin[3], double
        _cellsPerDimension[dim]++;
     }
     numberOfCells *= _cellsPerDimension[dim];
-    _cellLength[dim]=(this->_boundingBoxMax[dim]-this->_boundingBoxMin[dim])/(_cellsPerDimension[dim]-2*_haloWidthInNumCells[dim]);
+    _cellLength[dim]=(this->_boundingBoxMax[dim]-this->_boundingBoxMin[dim])/((double)_cellsPerDimension[dim]-2.0*_haloWidthInNumCells[dim]);
     _haloBoundingBoxMin[dim] = this->_boundingBoxMin[dim]-_haloWidthInNumCells[dim]*_cellLength[dim];
     _haloBoundingBoxMax[dim] = this->_boundingBoxMax[dim]+_haloWidthInNumCells[dim]*_cellLength[dim];
     _haloLength[dim] = _haloWidthInNumCells[dim]*_cellLength[dim];
@@ -58,10 +58,19 @@ datastructures::LinkedCells<ParticleType>::LinkedCells(double bBoxMin[3], double
     cout << "cellsPerDimension" << _cellsPerDimension[0] << " / " << _cellsPerDimension[1] << " / " << _cellsPerDimension[2] << endl;
     cout << "_haloWidthInNumCells" << _haloWidthInNumCells[0] << " / " << _haloWidthInNumCells[1] << " / " << _haloWidthInNumCells[2] << endl;
   }
- 
+
+#ifndef NDEBUG
+  cout << "+++\nLINKED CELL PARALLELIZATION\n+++\n"
+       << "_cellsPerDimension: (" << _cellsPerDimension[0] << " " << _cellsPerDimension[1]
+       << " " << _cellsPerDimension[2] << ")\n_haloWidthInNumCells: ("
+       << _haloWidthInNumCells[0] << " " << _haloWidthInNumCells[1]
+       << " " << _haloWidthInNumCells[2] << ")\n_cellLength: (" << _cellLength[0]
+       << " " << _cellLength[1] << " " << _cellLength[2]
+       << ")\n_cellsInCutoffRadius: " << _cellsInCutoffRadius << "\n+++\n\n";
+#endif
+
   initializeCells();
   calculateNeighbourIndices();
-  
 }
 
 template<class ParticleType>
@@ -97,7 +106,7 @@ void datastructures::LinkedCells<ParticleType>::update(){
       _log.error("update()", "SEVERE INDEX ERROR in LinkedCells.cpph method update:\nA molecule left the bounding box and will be deleted.\n");
       cout << "\n\n";
       this->_particles.erase(pos);
-      // exit(1);
+      exit(1);
     }
     else
     { 
@@ -136,11 +145,25 @@ void datastructures::LinkedCells<ParticleType>::addParticle(ParticleType& partic
 }
 
 template<class ParticleType>
-void datastructures::LinkedCells<ParticleType>::traversePairs(){
-#ifndef NDEBUG  
-  cout << "processing pairs and preprocessing Tersoff pairs.\n"; //X
-#endif
+void datastructures::LinkedCells<ParticleType>::countParticles(Domain* d)
+{
+  typename vector<Cell<ParticleType> >::iterator cellIter;
+  typename std::list<ParticleType*>::iterator molIter1;
+  for(unsigned i=0; i < _cells.size(); i++)
+  {
+    Cell<ParticleType>& currentCell = _cells[i];
+    if(currentCell.isHaloCell()) continue;
+    for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++)
+    {
+      ParticleType& molecule1 = **molIter1;
+      d->observeRDF(molecule1.componentid());
+    }
+  }
+}
 
+template<class ParticleType>
+void datastructures::LinkedCells<ParticleType>::traversePairs()
+{
   this->_particlePairsHandler.init();
   
   // XXX comment
@@ -155,7 +178,6 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
     }
   } 
 
-
   vector<unsigned long>::iterator cellIndexIter;
   vector<unsigned long>::iterator neighbourOffsetsIter;
   
@@ -165,9 +187,66 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
   double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * this->_tersoffCutoffRadius;
 #endif
   double dd;
+
+  /*
+#ifndef NDEBUG
+  for(int i=0; i < _cells.size(); i++)
+  {
+    Cell<ParticleType>& currentCell = _cells[i];
+    cout.precision(3);
+    cout << "cell /" << i << "/ (" << currentCell.getParticlePointers().size() << " molecules).\n";
+    if(currentCell.getParticlePointers().size() == 0) continue;
+    for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++)
+    {
+      ParticleType& molecule1 = **molIter1;
+      cout << "molecule " << molecule1.id() << "[" << ((unsigned long)&molecule1) % 1000 << "] at ("
+           << molecule1.r(0) << " / " << molecule1.r(1) << " / " << molecule1.r(2) << ")\n";
+    }
+    cout << "backward neigbours of cell /" << i << "/:  ";
+    for(neighbourOffsetsIter=_backwardNeighbourOffsets.begin(); neighbourOffsetsIter!=_backwardNeighbourOffsets.end(); neighbourOffsetsIter++)
+    {
+      cout << "/" << (int)(i+*neighbourOffsetsIter) << "/  ";
+    }
+    cout << "\nforward neigbours of cell /" << i << "/:  ";
+    for(neighbourOffsetsIter=_forwardNeighbourOffsets.begin(); neighbourOffsetsIter!=_forwardNeighbourOffsets.end(); neighbourOffsetsIter++)
+    {
+      cout << "/" << (int)(i+*neighbourOffsetsIter) << "/  ";
+    }
+    cout << "\n\n";
+  }
+  exit(1);
+#endif
+  */
+
+#ifdef COMPLEX_POTENTIAL_SET
+#ifndef NDEBUG
+  cout << "disconnecting Tersoff pairs.\n";
+#endif
+  for(unsigned i=0; i < _cells.size(); i++)
+  {
+    Cell<ParticleType>& currentCell = _cells[i];
+    for( molIter1=currentCell.getParticlePointers().begin();
+         molIter1!=currentCell.getParticlePointers().end();
+         molIter1++ )
+    {
+      ParticleType& molecule1 = **molIter1;
+      molecule1.clearTersoffNeighbourList();
+    }
+  }
+#endif
+
+#ifndef NDEBUG  
+#ifdef COMPLEX_POTENTIAL_SET
+  cout << "processing pairs and preprocessing Tersoff pairs.\n"; //X
+#else
+  cout << "processing pairs.\n"; //X
+#endif
+#endif
+
   // loop over all inner cells and calculate forces to forward neighbours
   for(cellIndexIter=_innerCellIndices.begin(); cellIndexIter!=_innerCellIndices.end(); cellIndexIter++){
     Cell<ParticleType>& currentCell = _cells[*cellIndexIter];
+
     // forces between molecules in the cell
     for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++)
     {
@@ -184,7 +263,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
             }
           }
         }
@@ -200,10 +279,10 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
               if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
               {
-                 this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,0);
+                 this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
               }
             }
           }
@@ -211,49 +290,148 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
       }
 #endif
     }
+
     // loop over all neighbours
     for(neighbourOffsetsIter=_forwardNeighbourOffsets.begin(); neighbourOffsetsIter!=_forwardNeighbourOffsets.end(); neighbourOffsetsIter++){
       Cell<ParticleType>& neighbourCell = _cells[*cellIndexIter+*neighbourOffsetsIter];
       // loop over all particles in the cell
       for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++){
         ParticleType& molecule1 = **molIter1;
-        for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++){
-          ParticleType& molecule2 = **molIter2;
-          dd = molecule2.dist2(molecule1,distanceVector);
-          if(dd < cutoffRadiusSquare)
-          {
-            this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0);
+
 #ifdef COMPLEX_POTENTIAL_SET
-            if(dd < tersoffCutoffRadiusSquare)
-              this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,0);
+        if(molecule1.numTersoff() == 0)
+        {
 #endif
+          for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+          {
+            ParticleType& molecule2 = **molIter2;
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+            }
+          }
+#ifdef COMPLEX_POTENTIAL_SET
+        }
+        else
+        {
+          for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+          {
+            ParticleType& molecule2 = **molIter2;
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
+                this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
+            }
           }
         }
+#endif
+
       }
     }
   }
 
+#ifdef COMPLEX_POTENTIAL_SET
+  // loop over halo cells and detect Tersoff neighbours within the halo
+  // this is relevant for the angle summation
+  for(unsigned i=0; i < _cells.size(); i++)
+  {
+    Cell<ParticleType>& currentCell = _cells[i];
+    if(!currentCell.isHaloCell()) continue;
+
+    for( molIter1=currentCell.getParticlePointers().begin();
+         molIter1!=currentCell.getParticlePointers().end();
+         molIter1++ )
+    {
+      ParticleType& molecule1 = **molIter1;
+      if(molecule1.numTersoff() == 0) continue;
+#ifndef NDEBUG
+      cout << "\tatom " << molecule1.id() << " (halo cell " << i << ") <-> halo cell " << i << ".\n";
+#endif
+      for(molIter2=molIter1; molIter2!=currentCell.getParticlePointers().end(); molIter2++)
+      {
+        ParticleType& molecule2 = **molIter2;
+        if((&molecule1 != &molecule2) && (molecule2.numTersoff() > 0))
+        { 
+          dd = molecule2.dist2(molecule1, distanceVector);
+          if(dd < tersoffCutoffRadiusSquare)
+            this->_particlePairsHandler.preprocessTersoffPair(molecule1, molecule2, true);
+        }
+      }
+
+      for( neighbourOffsetsIter=_forwardNeighbourOffsets.begin();
+           neighbourOffsetsIter!=_forwardNeighbourOffsets.end();
+           neighbourOffsetsIter++ )
+      {
+        int j = i + *neighbourOffsetsIter;
+        if((j < 0) || (j >= (int)(this->_cells.size()))) continue;
+        Cell<ParticleType>& neighbourCell = _cells[j];
+        if(!neighbourCell.isHaloCell()) continue;
+#ifndef NDEBUG
+        cout << "\tatom " << molecule1.id() << " (halo cell " << i << ") <-> halo cell " << j << ".\n";
+#endif
+        for( molIter2=neighbourCell.getParticlePointers().begin();
+             molIter2!=neighbourCell.getParticlePointers().end();
+             molIter2++ )
+        {
+          ParticleType& molecule2 = **molIter2;
+          if(molecule2.numTersoff() == 0) continue;
+          dd = molecule2.dist2(molecule1, distanceVector);
+          if(dd < tersoffCutoffRadiusSquare)
+            this->_particlePairsHandler.preprocessTersoffPair(molecule1, molecule2, true);
+        }
+      }
+    }
+  }
+#endif
+
   // loop over all boundary cells and calculate forces to forward and backward neighbours
   for(cellIndexIter=_boundaryCellIndices.begin(); cellIndexIter!=_boundaryCellIndices.end(); cellIndexIter++){
     Cell<ParticleType>& currentCell = _cells[*cellIndexIter];
+
     // forces between molecules in the cell
     for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++){
       ParticleType& molecule1 = **molIter1;
-      for(molIter2=molIter1; molIter2!=currentCell.getParticlePointers().end(); molIter2++){
-        ParticleType& molecule2 = **molIter2;
-        if(&molecule1 != &molecule2)
-        { 
-          dd = molecule2.dist2(molecule1,distanceVector);
-          if(dd < cutoffRadiusSquare)
-          {
-             this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0);
+
 #ifdef COMPLEX_POTENTIAL_SET
-            if(dd < tersoffCutoffRadiusSquare)
-              this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,0);
+      if(molecule1.numTersoff() == 0)
+      {
 #endif
+        for(molIter2=molIter1; molIter2!=currentCell.getParticlePointers().end(); molIter2++)
+        {
+          ParticleType& molecule2 = **molIter2;
+          if(&molecule1 != &molecule2)
+          { 
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+               this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+            }
+          }
+        }
+#ifdef COMPLEX_POTENTIAL_SET
+      }
+      else
+      {
+        for(molIter2=molIter1; molIter2!=currentCell.getParticlePointers().end(); molIter2++)
+        {
+          ParticleType& molecule2 = **molIter2;
+          if(&molecule1 != &molecule2)
+          { 
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
+                this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
+            }
           }
         }
       }
+#endif
+
     }
 
     // loop over all forward neighbours
@@ -262,22 +440,41 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
       // loop over all particles in the cell
       for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++){
         ParticleType& molecule1 = **molIter1;
-        for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++){
-          ParticleType& molecule2 = **molIter2;
-          dd = molecule2.dist2(molecule1,distanceVector);
-          if(dd < cutoffRadiusSquare)
-          {
-            this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0);
+
 #ifdef COMPLEX_POTENTIAL_SET
-            if(dd < tersoffCutoffRadiusSquare)
-              this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,0);
+	if(molecule1.numTersoff() == 0)
+        {
 #endif
+          for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+          {
+            ParticleType& molecule2 = **molIter2;
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+            }
+          }
+#ifdef COMPLEX_POTENTIAL_SET
+        }
+        else
+        {
+          for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+          {
+            ParticleType& molecule2 = **molIter2;
+            dd = molecule2.dist2(molecule1,distanceVector);
+            if(dd < cutoffRadiusSquare)
+            {
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
+                this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
+            }
           }
         }
+#endif
+
       }
     }
 
-   
     // loop over all backward neighbours. calculate only forces
     // to neighbour cells in the halo region, all others already have been calculated
     // Upot6LJ,... must not be changed, as this force-pair is also calculated in one of the other loops
@@ -287,18 +484,38 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
         // loop over all particles in the cell
         for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++){
           ParticleType& molecule1 = **molIter1;
-          for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++){
-            ParticleType& molecule2 = **molIter2;
-            dd = molecule2.dist2(molecule1,distanceVector);
-            if(dd < cutoffRadiusSquare)
-            {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1);
+
 #ifdef COMPLEX_POTENTIAL_SET
-              if(dd < tersoffCutoffRadiusSquare)
-                this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,1);
+          if(molecule1.numTersoff() == 0)
+          {
 #endif
+            for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+            {
+              ParticleType& molecule2 = **molIter2;
+              dd = molecule2.dist2(molecule1,distanceVector);
+              if(dd < cutoffRadiusSquare)
+              {
+                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd);
+              }
+            }
+#ifdef COMPLEX_POTENTIAL_SET
+          }
+          else
+          {
+            for(molIter2=neighbourCell.getParticlePointers().begin(); molIter2!=neighbourCell.getParticlePointers().end(); molIter2++)
+            {
+              ParticleType& molecule2 = **molIter2;
+              dd = molecule2.dist2(molecule1,distanceVector);
+              if(dd < cutoffRadiusSquare)
+              {
+                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd);
+                if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
+                  this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,true);
+              }
             }
           }
+#endif
+
         }
       }
     }
@@ -306,8 +523,12 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
   
 #ifdef COMPLEX_POTENTIAL_SET
 #ifndef NDEBUG
-  cout << "processing Tersoff pairs.\n";  //X
+  cout << "processing Tersoff potential.\n";  //X
 #endif
+  double params[15];
+  double delta_r;
+  bool knowparams = false;
+
   for(cellIndexIter=_innerCellIndices.begin(); cellIndexIter!=_boundaryCellIndices.end(); cellIndexIter++)
   {
     if(cellIndexIter == this->_innerCellIndices.end())
@@ -317,37 +538,48 @@ void datastructures::LinkedCells<ParticleType>::traversePairs(){
          molIter1!=currentCell.getParticlePointers().end();
          molIter1++ )
     {
-      int pairCode = 0;
-      map<ParticleType*, bool>* tn;
       ParticleType& molecule1 = **molIter1;
-      tn = molecule1.getTersoffNeighbours();
-      typename std::map<ParticleType*, bool>::iterator itn;
-      for(itn = tn->begin(); itn != tn->end(); itn++)
+      if(molecule1.numTersoff() == 0) continue;
+      if(!knowparams)
       {
-        ParticleType& molecule2 = *(itn->first);
+         delta_r = molecule1.tersoffParameters(params);
+         knowparams = true;
+      }
+      this->_particlePairsHandler.processTersoffAtom(molecule1, params, delta_r);
+    }
+  }
+
+  /*
+  for(cellIndexIter=_innerCellIndices.begin(); cellIndexIter!=_boundaryCellIndices.end(); cellIndexIter++)
+  {
+    if(cellIndexIter == this->_innerCellIndices.end())
+      cellIndexIter = this->_boundaryCellIndices.begin();
+    Cell<ParticleType>& currentCell = _cells[*cellIndexIter];
+    for( molIter1=currentCell.getParticlePointers().begin();
+         molIter1!=currentCell.getParticlePointers().end();
+         molIter1++ )
+    {
+      ParticleType& molecule1 = **molIter1;
+      if(molecule1.numTersoff() == 0) continue;
+      int pairCode = 0;
+      unsigned curTN = molecule1.getCurTN();
+#ifndef NDEBUG
+      if(curTN != 3)
+      {
+         cerr << "graphite structure error!\nID " << molecule1.id() << " (" << molecule1.r(0) << " / " << molecule1.r(1) << " / " << molecule1.r(2) << ") has " << curTN << " neighbours.\n";
+         cerr.flush();
+      }
+#endif
+      for(unsigned i = 0; i < curTN; i++)
+      {
+        ParticleType& molecule2 = *(molecule1.getTersoffNeighbour(i));
         molecule2.dist2(molecule1,distanceVector);
-        pairCode = itn->second? 1: 0;
+        pairCode = molecule1.getPairCode(i)? 1: 0;
         this->_particlePairsHandler.processTersoffPair(molecule1, molecule2, distanceVector, pairCode);
       }
     }
   }
-
-#ifndef NDEBUG
-  cout << "disconnecting Tersoff pairs.\n";
-#endif
-  for(cellIndexIter=_innerCellIndices.begin(); cellIndexIter!=_boundaryCellIndices.end(); cellIndexIter++)
-  {
-    if(cellIndexIter == this->_innerCellIndices.end())
-      cellIndexIter = this->_boundaryCellIndices.begin();
-    Cell<ParticleType>& currentCell = _cells[*cellIndexIter];
-    for( molIter1=currentCell.getParticlePointers().begin();
-         molIter1!=currentCell.getParticlePointers().end();
-         molIter1++ )
-    {
-      ParticleType& molecule1 = **molIter1;
-      molecule1.clearTersoffNeighbourList();
-    }
-  }
+  */
 #endif
 
   this->_particlePairsHandler.finish();
@@ -366,22 +598,45 @@ void datastructures::LinkedCells<ParticleType>::initializeCells(){
     for(int iy=0; iy<_cellsPerDimension[1]; ++iy) {
       for(int ix=0; ix<_cellsPerDimension[0]; ++ix) {
         cellIndex = cellIndexOf3DIndex(ix,iy,iz);
+        /*
+#ifndef NDEBUG
+        cout << "create cell /" << cellIndex << "/ at <ix=" << ix << ", iy=" << iy << ", iz=" << iz << "> ";
+#endif
+        */
         if(ix < _haloWidthInNumCells[0] || iy < _haloWidthInNumCells[1] || iz < _haloWidthInNumCells[2] ||
            ix >= _cellsPerDimension[0]-_haloWidthInNumCells[0] ||
            iy >= _cellsPerDimension[1]-_haloWidthInNumCells[1] ||
-           iz >= _cellsPerDimension[2]-_haloWidthInNumCells[2]){
+           iz >= _cellsPerDimension[2]-_haloWidthInNumCells[2])
+        {
           _cells[cellIndex].assingCellToHaloRegion();
+          /*
+#ifndef NDEBUG
+          cout << " in the halo.\n";
+#endif
+          */
         }
         else if (ix < 2*_haloWidthInNumCells[0] || iy < 2*_haloWidthInNumCells[1] || iz < 2*_haloWidthInNumCells[2] ||
            ix >= _cellsPerDimension[0]-2*_haloWidthInNumCells[0] ||
            iy >= _cellsPerDimension[1]-2*_haloWidthInNumCells[1] ||
-           iz >= _cellsPerDimension[2]-2*_haloWidthInNumCells[2]){
+           iz >= _cellsPerDimension[2]-2*_haloWidthInNumCells[2])
+        {
           _cells[cellIndex].assignCellToBoundaryRegion();
           _boundaryCellIndices.push_back(cellIndex);
+          /*
+#ifndef NDEBUG
+          cout << " as part of the boundary.\n";
+#endif
+          */
         }
-        else {
+        else
+        {
           _cells[cellIndex].assignCellToInnerRegion();
           _innerCellIndices.push_back(cellIndex);
+          /*
+#ifndef NDEBUG
+          cout << " as an inner cell.\n";
+#endif
+          */
         }
       }
     }

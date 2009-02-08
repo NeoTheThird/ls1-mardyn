@@ -68,11 +68,29 @@ void Component::addI(double Ixx,double Iyy,double Izz
   m_I[5]+=Iyz;
 }
 
-void Component::addLJcenter(double x, double y, double z
-                           ,double m, double eps, double sigma)
+void Component::addLJcenter(double x, double y, double z, double m, double eps, double sigma
+#ifdef TRUNCATED_SHIFTED
+   ,
+   double rc, int ownrank
+#endif
+)
 {
-  m_ljcenters.push_back(LJcenter(x,y,z,m,eps,sigma));
-  m_m+=m;
+#ifdef TRUNCATED_SHIFTED
+  double sigperrc2 = sigma*sigma/(rc*rc);
+  double sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
+  double shift6 = 24.0*eps * (sigperrc6 - sigperrc6*sigperrc6);
+  if(ownrank == 0)
+  {
+    cout << "\nsigma\t" << sigma << "\neps\t" << eps << "\nrc\t" << rc
+         << "\nsigperrc6\t" << sigperrc6 << "\n\n";
+    cout << "component " << this->m_id
+         << " obtained LJ centre with shift u_corr = " << shift6 << " / 6.\n\n";
+  }
+  m_ljcenters.push_back(LJcenter(x, y, z, m, eps, sigma, shift6));
+#else
+  m_ljcenters.push_back(LJcenter(x, y, z, m, eps, sigma));
+#endif
+  m_m += m;
   // assume the input is already transformed to the principal axes system
   // (and therefore the origin is the center of mass)
   m_I[0]+=m*(y*y+z*z);

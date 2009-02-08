@@ -55,11 +55,13 @@ class datastructures::ParticlePairsHandler{
     //! @param distanceVector[3] distance between the two particles
     //! @param pairType describes whether the pair is a original pair(0) or a duplicated pair(1)
     //!                 for details about pair types see comments on traversePairs() in ParticleContainer
-    virtual void processPair(ParticleType& particle1, ParticleType& particle2, double distanceVector[3], int pairType) = 0;
+    virtual void processPair(ParticleType& particle1, ParticleType& particle2, double distanceVector[3], int pairType, double dd) = 0;
 #ifdef COMPLEX_POTENTIAL_SET
-    virtual void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, int pairType) = 0;
-    virtual void processTersoffPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType) = 0;
+    virtual void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType) = 0;
+    // virtual void processTersoffPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType) = 0;
+    virtual void processTersoffAtom(Molecule& particle1, double params[15], double delta_r) = 0;
 #endif
+    virtual void recordRDF() = 0;
 };
 
 #endif /*PARTICLEPAIRSHANDLER_H_*/
