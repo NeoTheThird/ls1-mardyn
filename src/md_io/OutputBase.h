@@ -1,10 +1,21 @@
 #ifndef OUTPUTBASE_H_
 #define OUTPUTBASE_H_
 
+#include <list>
+
+using namespace std;
+
 namespace datastructures{
   template<class ParticleType>
   class ParticleContainer;
 }
+
+#ifdef GRANDCANONICAL
+namespace ensemble
+{
+   class ChemicalPotential;
+}
+#endif
 
 namespace parallel{
   class DomainDecompBase; 
@@ -36,8 +47,15 @@ class md_io::OutputBase{
   //! @brief to be called in each time step
   //!
   //! @todo comment
-  virtual void doOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep) = 0;
+  virtual void doOutput
+  (
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+     ,
+     list<ensemble::ChemicalPotential>* lmu
+#endif
+  ) = 0;
   
   //! @brief to be called at the end of the simulation
   //!

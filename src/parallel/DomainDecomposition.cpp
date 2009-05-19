@@ -267,6 +267,12 @@ void parallel::DomainDecomposition::writeMoleculesToFile(string filename, datast
   }
 }
 
+void parallel::DomainDecomposition::reducevalues(int* i1)
+{
+   int iglob = 0;
+   MPI_Allreduce(i1, &iglob, 1, MPI_INT, MPI_SUM, comm_topology);
+   *i1 = iglob;
+}
 void parallel::DomainDecomposition::reducevalues( double* d1, double* d2,
                                                   unsigned long* N1, unsigned long* N2 )
 {
@@ -493,5 +499,102 @@ void parallel::DomainDecomposition::broadcastVelocitySum(
          MPI_Bcast(&val, 1, MPI_LONG_DOUBLE, 0, comm_topology);
          velocitySum[d][vSit->first] = val;
       }
+}
+#endif
+
+#ifdef GRANDCANONICAL
+unsigned parallel::DomainDecomposition::Ndistribution(unsigned localN, float* minrnd, float* maxrnd)
+{
+   int num_procs;
+   MPI_Comm_size(comm_topology, &num_procs);
+   unsigned* moldistribution = new unsigned[num_procs];
+   MPI_Allgather(&localN, 1, MPI_UNSIGNED, moldistribution, 1, MPI_UNSIGNED, this->comm_topology);
+   unsigned globalN = 0;
+   for(int r=0; r < ownrank; r++) globalN += moldistribution[r];
+   unsigned localNbottom = globalN;
+   globalN += moldistribution[ownrank];
+   unsigned localNtop = globalN;
+   for(int r = ownrank+1; r < num_procs; r++) globalN += moldistribution[r];
+   delete []moldistribution;
+   *minrnd = (float)localNbottom / globalN;
+   *maxrnd = (float)localNtop / globalN;
+   return globalN;
+}
+
+void parallel::DomainDecomposition::assertIntIdentity(int IX)
+{
+   if(ownrank)
+   {
+      MPI_Send(&IX, 1, MPI_INT, 0, 2*ownrank+17, this->comm_topology);
+   }
+   else
+   {
+      int recv;
+      int num_procs;
+      MPI_Comm_size(comm_topology, &num_procs);
+      MPI_Status s;
+      for(int i=1; i<num_procs; i++)
+      {
+         MPI_Recv(&recv, 1, MPI_INT, i, 2*i+17, this->comm_topology, &s);
+         if(recv != IX)
+         {
+            cout << "SEVERE ERROR: IX is " << IX << " for rank 0, but " << recv << " for rank " << i << ".\n";
+            MPI_Finalize();
+            exit(911);
+         }
+      }
+      cout << "IX = " << recv << " for all " << num_procs << " ranks.\n";
+   }
+}
+
+void parallel::DomainDecomposition::assertDisjunctivity(TMoleculeContainer* mm)
+{
+   Molecule* m;
+   if(ownrank)
+   {
+      int tid;
+      for(m = mm->begin(); m != mm->end(); m = mm->next())
+      {
+         tid = m->id();
+         MPI_Send(&tid, 1, MPI_INT, 0, 2674+ownrank, this->comm_topology);
+      }
+      tid = -1;
+      MPI_Send(&tid, 1, MPI_INT, 0, 2674+ownrank, this->comm_topology);
+   }
+   else
+   {
+      int recv;
+      map<int, int> check;
+      for(m = mm->begin(); m != mm->end(); m = mm->next())
+      {
+         check[m->id()] = 0;
+      }
+
+      int num_procs;
+      MPI_Comm_size(comm_topology, &num_procs);
+      MPI_Status s;
+      for(int i=1; i < num_procs; i++)
+      {
+         bool cc = true;
+         while(cc)
+         {
+            MPI_Recv(&recv, 1, MPI_INT, i, 2674+i, this->comm_topology, &s);
+            if(recv == -1) cc = false;
+            else
+            {
+               if(check.find(recv) != check.end())
+               {
+                  cout << "\nSEVERE ERROR. Ranks " << check[recv] << " and "
+                       << i << " both propagate ID " << recv << ". Aborting.\n";
+                  MPI_Finalize();
+                  exit(2674);
+               }
+               else check[recv] = i;
+            }
+         }
+      }
+      cout << "\nData consistency checked. No duplicate IDs detected among " << check.size()
+           << " entries.\n";
+   }
 }
 #endif

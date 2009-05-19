@@ -32,9 +32,9 @@ namespace datastructures {
 //! picture illustrates this
 //! \image particles_with_lc.jpg
 //!
-//! The spacial domain covered by the linked cells is larger then
-//! the bounding box of the domain. This halo region surrounding
-//! the phasespace is used for (periodic) boundary conditions
+//! The spatial domain covered by the linked cells is larger than
+//! the bounding box of the (sub)domain. This halo region surrounding
+//! the control volume is used for (periodic) boundary conditions
 //! and has to be at least as wide as the cutoff radius. \n
 //! In total, there are three different cell types:
 //! - halo 
@@ -105,8 +105,8 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     //!
     //! Therefore, first the cell (the index) for the molecule has to be determined,
     //! then the molecule is inserted into that cell.
-    //void addMolecule(ParticleType* molecule_ptr);
-    void addParticle(ParticleType* particle);
+    // void addMolecule(ParticleType* molecule_ptr);
+    // void addParticle(ParticleType* particle);
     void addParticle(ParticleType& particle);
     
     //! @brief calculate the forces between the molecules.
@@ -173,7 +173,6 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     unsigned long cellIndexOf3DIndex(int xIndex, int yIndex, int zIndex);
 
     //! @brief gets the width of the halo region in dimension index
-    //! @todo remove this method    
     double get_halo_L(int index);
 
     //! @return the number of particles stored in the Linked Cells
@@ -205,7 +204,19 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
 #ifdef COMPLEX_POTENTIAL_SET
     double getTersoffCutoff() { return this->_tersoffCutoffRadius; }
 #endif
-    virtual void countParticles(Domain* d);
+    void countParticles(Domain* d);
+    //! @brief counts all particles inside the bounding box
+    unsigned countParticles(int cid);
+    //! @brief counts particles in the intersection of bounding box and control volume
+    unsigned countParticles(int cid, double* cbottom, double* ctop);
+
+#ifdef GRANDCANONICAL
+    void deleteMolecule(unsigned long molid, double x, double y, double z);
+    double getEnergy(ParticleType* m1);
+    int localGrandcanonicalBalance() { return this->_localInsertionsMinusDeletions; }
+    int grandcanonicalBalance(parallel::DomainDecompBase* comm);
+    void grandcanonicalStep(ensemble::ChemicalPotential* mu, double T);
+#endif
     
   private:
     //! Logging interface
@@ -213,7 +224,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
 
     // datastructures::ParticlePairsHandler<ParticleType>& _particlePairsHandler;
 
-    //! the list contains all molecules from the phasespace
+    //! the list contains all molecules from the system
     list<ParticleType> _particles; // CHECKED
     
     //! Iterator to traverse the list of particles (_particles)
@@ -244,7 +255,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     int _cellsPerDimension[3];
     //! Halo width (in cells) in each dimension
     int _haloWidthInNumCells[3];
-    //! width of the halo strip (in lenght-unit)
+    //! width of the halo strip (in size units)
     double _haloLength[3];
     //! length of the cell (for each dimension)
     double _cellLength[3];
@@ -257,7 +268,10 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     
     //! Number of neighbour cells in one direction.
     double _cellsInCutoffRadius;
-  
+
+#ifdef GRANDCANONICAL
+    int _localInsertionsMinusDeletions;
+#endif
 };
 
 #include "datastructures/LinkedCells.cpph"

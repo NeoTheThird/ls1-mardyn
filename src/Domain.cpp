@@ -5,6 +5,10 @@
 #include "molecules/Molecule.h"
 #include <cmath>
 
+#ifdef GRANDCANONICAL
+#include "ensemble/GrandCanonical.h"
+#endif
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -13,21 +17,45 @@ using namespace std;
 
 utils::Log Domain::_log("Domain");
 
-// used by Domain::init_Corr() -----------
-//! @todo WHAT DOES THIS METHOD DO?
+#ifndef TRUNCATED_SHIFTED
 double TICCu(int n,double rc,double sigma2);
-//! @todo WHAT DOES THIS METHOD DO?
 double TICSu(int n,double rc,double sigma2,double tau);
-//! @todo WHAT DOES THIS METHOD DO?
 double TISSu(int n,double rc,double sigma2,double tau1,double tau2);
-//! @todo WHAT DOES THIS METHOD DO?
 double TICCv(int n,double rc,double sigma2);
-//! @todo WHAT DOES THIS METHOD DO?
 double TICSv(int n,double rc,double sigma2,double tau);
-//! @todo WHAT DOES THIS METHOD DO?
 double TISSv(int n,double rc,double sigma2,double tau1,double tau2);
-//----------------------------------------
 
+double TICCu(int n,double rc,double sigma2)
+{
+   return -pow(rc,2*n+3) / (pow(sigma2,n)*(2*n+3));
+}
+double TICSu(int n,double rc,double sigma2,double tau)
+{
+   return -( pow(rc+tau,2*n+3) - pow(rc-tau,2*n+3) ) * rc / ( 4*pow(sigma2,n)*tau*(n+1)*(2*n+3) ) +  ( pow(rc+tau,2*n+4) - pow(rc-tau,2*n+4) ) / ( 4*pow(sigma2,n)*tau*(n+1)*(2*n+3)*(2*n+4) );
+}
+double TISSu(int n,double rc,double sigma2,double tau1,double tau2)
+{
+   double tauMinus,tauPlus;
+   tauPlus = tau1+tau2;
+   tauMinus = tau1-tau2;
+   return -(   pow(rc+tauPlus,2*n+4) - pow(rc+tauMinus,2*n+4) - pow(rc-tauMinus,2*n+4) + pow(rc-tauPlus,2*n+4) ) * rc / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3)*(2*n+4) ) +  (   pow(rc+tauPlus,2*n+5) - pow(rc+tauMinus,2*n+5) - pow(rc-tauMinus,2*n+5) + pow(rc-tauPlus,2*n+5) ) / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3)*(2*n+4)*(2*n+5) );
+}
+double TICCv(int n,double rc,double sigma2)
+{
+   return 2*n * TICCu(n,rc,sigma2);
+}
+double TICSv(int n,double rc,double sigma2,double tau)
+{
+   return -( pow(rc+tau,2*n+2) - pow(rc-tau,2*n+2) ) * rc*rc / ( 4*pow(sigma2,n)*tau*(n+1) ) - 3*TICSu(n,rc,sigma2,tau);
+}
+double TISSv(int n,double rc,double sigma2,double tau1,double tau2)
+{
+   double tauMinus,tauPlus;
+   tauPlus = tau1+tau2;
+   tauMinus = tau1-tau2;
+   return -(   pow(rc+tauPlus,2*n+3) - pow(rc+tauMinus,2*n+3) - pow(rc-tauMinus,2*n+3) + pow(rc-tauPlus,2*n+3) ) * rc*rc / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3) ) - 3*TISSu(n,rc,sigma2,tau1,tau2);
+}
+#endif
 
 Domain::Domain(int rank){
   this->_localRank = rank;
@@ -80,6 +108,9 @@ Domain::Domain(int rank){
     this->_localThermostatDirectedVelocity[d] = map<int, double>();
   }
 #endif
+   this->_universalSelectiveThermostatCounter = 0;
+   this->_universalSelectiveThermostatWarning = 0;
+   this->_universalSelectiveThermostatError = 0;
 }
 
 void Domain::setLocalUpot(double Upot) {_localUpot = Upot;}
@@ -167,11 +198,11 @@ double Domain::getGlobalLength(int index) const {
 void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
                                     datastructures::ParticleContainer<Molecule>*
                                        particleContainer,
-                                    bool collectThermostatVelocities )
+                                    bool collectThermostatVelocities, double Tfactor )
 #else
 void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
-                                    datastructures::ParticleContainer<Molecule>*
-                                       particleContainer )
+                                    datastructures::ParticleContainer<Molecule>* particleContainer,
+                                    double Tfactor )
 #endif
 {
    double Upot = _localUpot;
@@ -215,8 +246,9 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
       cout << "    [[[ " << thermit->first << " ] N=" << numMolecules << " ] localRank=" << _localRank << " ]   ";
 #endif
       double summv2 = this->_local2KETrans[thermit->first];
-      double sumIw2 = this->_local2KERot[thermit->first];
+      assert(summv2 >= 0.0);
       unsigned long rotDOF = this->_localRotationalDOF[thermit->first];
+      double sumIw2 = (rotDOF > 0)? this->_local2KERot[thermit->first]: 0.0;
       domainDecomp->reducevalues(&summv2, &sumIw2, &numMolecules, &rotDOF);
       this->_universalThermostatN[thermit->first] = numMolecules;
       this->_universalRotationalDOF[thermit->first] = rotDOF;
@@ -225,7 +257,7 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
             (summv2+sumIw2) / (3.0*numMolecules + rotDOF);
       else
          _globalTemperatureMap[thermit->first] = _universalTargetTemperature[thermit->first];
-      double Ti = this->_universalTargetTemperature[thermit->first];
+      double Ti = Tfactor * this->_universalTargetTemperature[thermit->first];
       if((Ti > 0.0) && !this->_universalNVE)
       {
          this->_universalBTrans[thermit->first] = pow(3.0*numMolecules*Ti / summv2, 0.4);
@@ -237,6 +269,88 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
          this->_universalBTrans[thermit->first] = 1.0;
          this->_universalBRot[thermit->first] = 1.0;
       }
+
+      // Sometimes an "explosion" occurs, for instance, by inserting a particle
+      // at an unfavorable position, or due to imprecise integration of the
+      // equations of motion. The thermostat then removes the kinetic energy from
+      // the rest of the system, effectively destroying a simulation run that could
+      // be saved by a more intelligent version. It is essential that such an intervention
+      // does not occur regularly, therefore it is limited to three times every 3000 time
+      // steps and it is also indicated in the output.
+      //
+      if( ( (this->_universalBTrans[thermit->first] < 0.95)
+            || (this->_universalBRot[thermit->first] < 0.90) )
+	  && (this->_currentTime > 0.05)
+          && (0 >= this->_universalSelectiveThermostatError) )
+      {
+         if(!this->_localRank) 
+         {
+            cerr << "Explosion warning (time t=" << this->_currentTime << ").\n";
+            cerr.flush();
+            cout << "Selective thermostat will be applied to set " << thermit->first
+                 << " (beta_trans = " << this->_universalBTrans[thermit->first]
+                 << ", beta_rot = " << this->_universalBRot[thermit->first] << "!)\n";
+         }
+         Molecule* tM;
+	 int rot_dof;
+         double Utrans, Urot;
+         // double target_energy = 1.5*Ti;
+         double limit_energy =  9.0*Ti;
+	 double limit_rot_energy;
+         double vcorr, Dcorr;
+         for( tM = particleContainer->begin();
+              tM != particleContainer->end();
+              tM = particleContainer->next() )
+         {
+            Utrans = tM->Utrans();
+            if(Utrans > limit_energy)
+            {
+               vcorr = sqrt(limit_energy / Utrans);
+               cout << "Rank " << this->_localRank << ": v(m" << tM->id() << ") *= " << vcorr << "\n";
+               cout << "v(m" << tM->id() << ")\t=\t(" << tM->v(0) << "/" << tM->v(1)
+                    << "/" << tM->v(2) << "),\tU_trans = " << Utrans << "\n";
+               tM->scale_v(vcorr);
+               tM->scale_F(vcorr);
+               cout << "v(m" << tM->id() << ")\t<-\t(" << tM->v(0) << "/" << tM->v(1)
+                    << "/" << tM->v(2) << "),\tU_trans <- " << tM->Utrans() << "\n";
+            }
+	    
+	    rot_dof = this->_components[tM->componentid()].rot_dof();
+	    if(rot_dof > 0)
+	    {
+	       limit_rot_energy = 3.0*rot_dof * Ti;
+	       Urot = tM->Urot();
+	       if(Urot > limit_rot_energy)
+	       {
+	          Dcorr = sqrt(limit_rot_energy / Urot);
+                  cout << "Rank " << this->_localRank << ": D(m" << tM->id() << ") *= " << Dcorr << "\n";
+                  cout << "U_rot = " << Urot << "\n";
+		  tM->scale_D(Dcorr);
+		  tM->scale_F(Dcorr);
+		  cout << "U_rot <- " << tM->Urot() << "\n";
+	       }
+	    }
+         }
+         cout.flush();
+
+         if(3960 >= this->_universalSelectiveThermostatCounter)
+         {
+            if(this->_universalSelectiveThermostatWarning > 0)
+               _universalSelectiveThermostatError = _universalSelectiveThermostatWarning;
+            if(this->_universalSelectiveThermostatCounter > 0)
+               _universalSelectiveThermostatWarning = _universalSelectiveThermostatCounter;
+            this->_universalSelectiveThermostatCounter = 4000;
+         }
+         this->_universalBTrans[thermit->first] = 1.0;
+         this->_universalBRot[thermit->first] = pow(this->_universalBRot[thermit->first], 0.0091);
+      }
+#ifndef NDEBUG
+      if((this->_universalSelectiveThermostatCounter > 0) &&
+	 ((this->_universalSelectiveThermostatCounter % 20) == 10))
+#endif
+         cout << "\n\t\t\t\tcounter " << this->_universalSelectiveThermostatCounter
+              << ",\t warning " << this->_universalSelectiveThermostatWarning
+              << ",\t error " << this->_universalSelectiveThermostatError << "\n";
 
 #ifdef COMPLEX_POTENTIAL_SET
       if(collectThermostatVelocities && this->_universalUndirectedThermostat[thermit->first])
@@ -271,11 +385,19 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
               << " DOF=" << rotDOF + 3.0*numMolecules << "\n"
               << "        Tcur=" << _globalTemperatureMap[thermit->first]
               << " Ttar=" << _universalTargetTemperature[thermit->first]
+              << " Tfactor=" << Tfactor
               << " bt=" << _universalBTrans[thermit->first]
               << " br=" << _universalBRot[thermit->first] << "\n";
       }
 #endif
    }
+
+   if(this->_universalSelectiveThermostatCounter > 0)
+      this->_universalSelectiveThermostatCounter--;
+   if(this->_universalSelectiveThermostatWarning > 0)
+      this->_universalSelectiveThermostatWarning--;
+   if(this->_universalSelectiveThermostatError > 0)
+      this->_universalSelectiveThermostatError--;
 }
 
 #ifdef COMPLEX_POTENTIAL_SET
@@ -614,7 +736,7 @@ void Domain::readPhaseSpaceHeader(
             c, d, h, n, beta
           );
 #ifndef NDEBUG
-          if(!_localRank) cout << x << " " << y << " " << z << " " << m << " " << A << " " << B << " " << lambda << " " << mu << " " << R << " " << S << " " << c << " " << d << " " << h << " " << n << " " << beta << "\n";
+          if(!_localRank) cout << x << " " << y << " " << z << " " << m << " " << A << " " << B << " " << lambda << " " << mu << " R=" << R << " S=" << S << " " << c << " " << d << " " << h << " " << n << " " << beta << "\n";
 #endif
         }
 #endif
@@ -668,13 +790,18 @@ void Domain::readPhaseSpaceHeader(
   }
 }
 
-void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<Molecule>* particleContainer,
-                             parallel::DomainDecompBase* domainDecomp, double dt)
+void Domain::writeCheckpoint( string filename, 
+                              datastructures::ParticleContainer<Molecule>* particleContainer,
+                              parallel::DomainDecompBase* domainDecomp, double dt )
 {
+#ifdef GRANDCANONICAL
+  domainDecomp->assertDisjunctivity(particleContainer);
+#endif
+
   if(!this->_localRank)
   {
     ofstream checkpointfilestream(filename.c_str());
-    checkpointfilestream << "mardyn 20090208";
+    checkpointfilestream << "mardyn 20090219";
 #ifdef COMPLEX_POTENTIAL_SET
     checkpointfilestream << " tersoff";
 #endif
@@ -774,10 +901,14 @@ void Domain::writeCheckpoint(string filename, datastructures::ParticleContainer<
     domainDecomp->writeMoleculesToFile(filename, particleContainer); 
 }
  
-void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
+unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
 #ifdef TRUNCATED_SHIFTED
   ,
   double cutoffRadius
+#endif
+#ifdef GRANDCANONICAL
+  ,
+  list< ensemble::ChemicalPotential >* lmu
 #endif
 )
 {  
@@ -789,6 +920,8 @@ void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* par
   unsigned long i,id;
   int componentid;
   
+  unsigned long maxid = 0;
+
   x=y=z=vx=vy=vz=q1=q2=q3=Dx=Dy=Dz=0.;
   q0=1.;
   Fx=Fy=Fz=Mx=My=Mz=0.;
@@ -846,10 +979,9 @@ void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* par
                                   << componentid << ">" << numcomponents << endl;
         exit(1);
       }
-      // @todo why do componetids start with 0?
       --componentid;
         
-      //  store only those molecules within the domain of this process
+      //  store only those molecules within the domain of this process (handled by "LinkedCells")
       
       // @todo Pointer!!! new!!!  
       Molecule m1 = Molecule(id,componentid,x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz,&_components);
@@ -857,8 +989,20 @@ void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* par
       //(_molecules.back()).setFM(Fx,Fy,Fz,Mx,My,Mz);
       _components[componentid].incrnumMolecules();
       // _globalRotDOF+=_components[componentid].rot_dof();
+      if(id > maxid) maxid = id;
+#ifdef GRANDCANONICAL
+      std::list< ensemble::ChemicalPotential >::iterator cpit;
+      for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)
+      {
+         if( !cpit->hasSample() &&
+	     (componentid == cpit->getComponentID()) )
+	 {
+	    cpit->storeMolecule(m1);
+	 }
+      }
+#endif
       
-      if(!(i%2048)) if(_localRank==0) cout << '.' << flush;
+      if(!(i%4096)) if(_localRank==0) cout << '.' << flush;
     }
     if(_localRank==0) cout << " done" << endl;
       
@@ -873,6 +1017,8 @@ void Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* par
     _log.error("read input file", "Error in the PhaseSpace File"); 
     exit(1);
   }
+
+  return maxid;
 }      
       
 void Domain::initParameterStreams(double cutoffRadius){
@@ -914,7 +1060,7 @@ void Domain::initFarFieldCorr(double cutoffRadius) {
       for(unsigned d = 0; d < 3; d++) chargeBalance[d] += tmy * ci.dipole(si).e()[d] * norm;
     }
 #endif
-    double my2 = 0;
+    double my2 = 0.0;
     for(unsigned d = 0; d < 3; d++) my2 += chargeBalance[d] * chargeBalance[d];
     MySelbstTerm += my2 * ci.numMolecules();
 
@@ -1387,7 +1533,7 @@ void Domain::setupRDF(double interval, unsigned bins)
    this->_doCollectRDF = true;
    this->_universalInterval = interval;
    this->_universalBins = bins;
-   this->_universalTimesteps = 0;
+   this->_universalRDFTimesteps = 0;
    this->_universalAccumulatedTimesteps = 0;
    this->ddmax = interval*interval*bins*bins;
 
@@ -1425,7 +1571,7 @@ void Domain::setupRDF(double interval, unsigned bins)
 
 void Domain::resetRDF()
 {
-   this->_universalTimesteps = 0;
+   this->_universalRDFTimesteps = 0;
    for(unsigned i=0; i < this->_components.size(); i++)
    {
       this->_localCtr[i] = 0;
@@ -1443,7 +1589,7 @@ void Domain::resetRDF()
 
 void Domain::accumulateRDF()
 {
-   this->_universalAccumulatedTimesteps += this->_universalTimesteps;
+   this->_universalAccumulatedTimesteps += this->_universalRDFTimesteps;
    if(!this->_localRank)
    {
       for(unsigned i=0; i < this->_components.size(); i++)
@@ -1489,9 +1635,9 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
    if (!rdfout) return;
 
    double V = _globalLength[0] * _globalLength[1] * _globalLength[2];
-   double N_i = _globalCtr[i] / _universalTimesteps;
+   double N_i = _globalCtr[i] / _universalRDFTimesteps;
    double N_Ai = _globalAccumulatedCtr[i] / _universalAccumulatedTimesteps;
-   double N_j = _globalCtr[j] / _universalTimesteps;
+   double N_j = _globalCtr[j] / _universalRDFTimesteps;
    double N_Aj = _globalAccumulatedCtr[j] / _universalAccumulatedTimesteps;
    double rho_i = N_i / V;
    double rho_Ai = N_Ai / V;
@@ -1501,7 +1647,7 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
    rdfout.precision(5);
    rdfout << "# r\tcurr.\taccu.\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)\n";
    rdfout << "# \n# ctr_i: " << _globalCtr[i] << "\n# ctr_j: " << _globalCtr[j]
-          << "\n# V: " << V << "\n# _universalTimesteps: " << _universalTimesteps
+          << "\n# V: " << V << "\n# _universalRDFTimesteps: " << _universalRDFTimesteps
           << "\n# _universalAccumulatedTimesteps: " << _universalAccumulatedTimesteps
           << "\n# rho_i: " << rho_i << " (acc. " << rho_Ai << ")"
           << "\n# rho_j: " << rho_j << " (acc. " << rho_Aj << ")"
@@ -1516,7 +1662,7 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
       double r3max = rmax*rmax*rmax;
       double dV = 4.1887902 * (r3max - r3min);
 
-      unsigned long N_pair = _globalDistribution[i][j-i][l] / _universalTimesteps;
+      unsigned long N_pair = _globalDistribution[i][j-i][l] / _universalRDFTimesteps;
       unsigned long N_Apair = _globalAccumulatedDistribution[i][j-i][l]
                                  / _universalAccumulatedTimesteps;
       double N_pair_norm;
@@ -1540,36 +1686,34 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
    rdfout.close();
 }
 
-
-// Helper functions ================================================================================
-// used by Domain::init_Corr()
-
-double TICCu(int n,double rc,double sigma2) {
-  return -pow(rc,2*n+3) / (pow(sigma2,n)*(2*n+3));
+#ifdef GRANDCANONICAL
+void Domain::Nadd(unsigned cid, int N, int localN)
+{
+   this->_components[cid].Nadd(N);
+   this->_globalNumMolecules += N;
+   this->_localRotationalDOF[0] += localN * this->_components[cid].rot_dof();
+   this->_universalRotationalDOF[0] += N * this->_components[cid].rot_dof();
+   if( (this->_universalComponentwiseThermostat)
+        && (this->_universalThermostatID[cid] > 0) )
+   {
+      int thid = this->_universalThermostatID[cid];
+      this->_localThermostatN[thid] += localN;
+      this->_universalThermostatN[thid] += N;
+      this->_localRotationalDOF[thid] += localN * this->_components[cid].rot_dof();
+      this->_universalRotationalDOF[thid] += N * this->_components[cid].rot_dof();
+   }
+   this->_localThermostatN[0] += localN;
+   this->_universalThermostatN[0] += N;
+   this->_localRotationalDOF[0] += localN * this->_components[cid].rot_dof();
+   this->_universalRotationalDOF[0] += N * this->_components[cid].rot_dof();
 }
 
-double TICSu(int n,double rc,double sigma2,double tau){
-  return -( pow(rc+tau,2*n+3) - pow(rc-tau,2*n+3) ) * rc / ( 4*pow(sigma2,n)*tau*(n+1)*(2*n+3) ) +  ( pow(rc+tau,2*n+4) - pow(rc-tau,2*n+4) ) / ( 4*pow(sigma2,n)*tau*(n+1)*(2*n+3)*(2*n+4) );
+void Domain::evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm)
+{
+   this->_globalNumMolecules = localN;
+   comm->reducevalues( (double*)0, (double*)0,
+                       &(this->_globalNumMolecules), (unsigned long*)0 );
+   this->_globalRho = this->_globalNumMolecules /
+      (this->_globalLength[0] * this->_globalLength[1] * this->_globalLength[2]);
 }
-    
-double TISSu(int n,double rc,double sigma2,double tau1,double tau2){
-  double tauMinus,tauPlus;
-  tauPlus = tau1+tau2;
-  tauMinus = tau1-tau2;
-  return -(   pow(rc+tauPlus,2*n+4) - pow(rc+tauMinus,2*n+4) - pow(rc-tauMinus,2*n+4) + pow(rc-tauPlus,2*n+4) ) * rc / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3)*(2*n+4) ) +  (   pow(rc+tauPlus,2*n+5) - pow(rc+tauMinus,2*n+5) - pow(rc-tauMinus,2*n+5) + pow(rc-tauPlus,2*n+5) ) / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3)*(2*n+4)*(2*n+5) );
-}
-
-double TICCv(int n,double rc,double sigma2){
-  return 2*n * TICCu(n,rc,sigma2);
-}
-
-double TICSv(int n,double rc,double sigma2,double tau){
-  return -( pow(rc+tau,2*n+2) - pow(rc-tau,2*n+2) ) * rc*rc / ( 4*pow(sigma2,n)*tau*(n+1) ) - 3*TICSu(n,rc,sigma2,tau);
-}
-
-double TISSv(int n,double rc,double sigma2,double tau1,double tau2){
-  double tauMinus,tauPlus;
-  tauPlus = tau1+tau2;
-  tauMinus = tau1-tau2;
-  return -(   pow(rc+tauPlus,2*n+3) - pow(rc+tauMinus,2*n+3) - pow(rc-tauMinus,2*n+3) + pow(rc-tauPlus,2*n+3) ) * rc*rc / ( 8*pow(sigma2,n)*tau1*tau2*(n+1)*(2*n+3) ) - 3*TISSu(n,rc,sigma2,tau1,tau2);
-}
+#endif

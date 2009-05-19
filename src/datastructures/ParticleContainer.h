@@ -16,6 +16,12 @@ namespace datastructures {
 
 }
 
+#ifdef GRANDCANONICAL
+namespace ensemble {
+ class ChemicalPotential;
+}
+#endif
+
 namespace parallel {
   class DomainDecompBase;
 }
@@ -130,7 +136,6 @@ class datastructures::ParticleContainer {
     virtual void deleteOuterParticles() = 0;
     
     //! @brief returns the width of the halo strip (for the given dimension index)
-    //! @todo remove this method, because a halo_L shouldn't be necessary for every ParticleContainer
     virtual double get_halo_L(int index);
 
     virtual double getCutoff() = 0;
@@ -138,7 +143,24 @@ class datastructures::ParticleContainer {
     virtual double getTersoffCutoff() = 0;
 #endif
     virtual void countParticles(Domain* d) = 0;
-    
+    //! @brief counts all particles inside the bounding box
+    virtual unsigned countParticles(int cid) = 0;
+    //! @brief counts particles in the intersection of bounding box and control volume
+    virtual unsigned countParticles(
+       int cid, double* cbottom, double* ctop
+    ) = 0;
+
+#ifdef GRANDCANONICAL
+    virtual void deleteMolecule(unsigned long molid, double x, double y, double z) = 0;
+    virtual double getEnergy(ParticleType* m1) = 0;
+    virtual int localGrandcanonicalBalance() = 0;
+    virtual int grandcanonicalBalance(parallel::DomainDecompBase* comm) = 0;
+    virtual void grandcanonicalStep
+    (
+       ensemble::ChemicalPotential* mu, double T
+    ) = 0;
+#endif
+
   protected:
 
     //! A ParticlePairsHandler is used to process pairs of particles
@@ -152,9 +174,6 @@ class datastructures::ParticleContainer {
   private:
     //! Logging interface
     static utils::Log _log;
-    
-
-    
 };
 
 #include "datastructures/ParticleContainer.cpph"

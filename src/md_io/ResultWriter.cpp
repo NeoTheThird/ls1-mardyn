@@ -3,6 +3,10 @@
 #include "parallel/DomainDecompBase.h"
 #include "Domain.h"
 
+#ifdef GRANDCANONICAL
+#include "ensemble/GrandCanonical.h"
+#endif
+
 md_io::ResultWriter::ResultWriter(unsigned wF, string outputPrefix)
 {
    this->_writeFrequency = wF;
@@ -20,8 +24,11 @@ void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>
   time(&now);
   if(domainDecomp->getRank()==0){
     _resultStream.open(resultfile.c_str());
-    _resultStream << "# _M_olekul_ARDYN_amik: simulation starting at " << ctime(&now) << endl;
+    _resultStream << "# LS1 _M_olekul_ARDYN_amik: simulation starting at " << ctime(&now) << endl;
     _resultStream << "#\tt\tU_pot\tp\t\t";
+#ifdef GRANDCANONICAL
+    _resultStream << "N(uVT)[1..i]\trho(uVT)[1..i]\t\t";
+#endif
     for(unsigned i=0; domain->maxThermostat() >= i; i++)
       _resultStream << "T(" << i << ")\tbetaTrans(" << i << ")\tbetaRot(" << i << ")\t";
 #ifdef COMPLEX_POTENTIAL_SET
@@ -33,15 +40,36 @@ void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>
   }
 }
 
-void md_io::ResultWriter::doOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
+void md_io::ResultWriter::doOutput
+(
+   datastructures::ParticleContainer<Molecule>* particleContainer,
+   parallel::DomainDecompBase* domainDecomp,
+   Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+   ,
+   list<ensemble::ChemicalPotential>* lmu
+#endif
+)
 {
-  if(simstep%_writeFrequency) return;
+  if((simstep%_writeFrequency) || (domain->thermostatWarning())) return;
 
   if(domainDecomp->getRank()==0)
   {
     _resultStream << simstep << "\t" << domain->getCurrentTime()
-                  << "\t" << domain->getAverageGlobalUpot() << "\t" << domain->getGlobalPressure() << "\t\t";
+                  << "\t" << domain->getAverageGlobalUpot() << "\t"
+                  << domain->getGlobalPressure() << "\t\t";
+#ifdef GRANDCANONICAL
+    std::list< ensemble::ChemicalPotential >::iterator cpit;
+    for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)
+    {
+       _resultStream << cpit->getGlobalN() << "\t";
+    }
+    for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)
+    {
+       _resultStream << cpit->getGlobalRho() << "\t";
+    }
+    _resultStream << "\t";
+#endif
     for(unsigned i=0; domain->maxThermostat() >= i; i++)
       _resultStream << domain->T(i) << "\t" << domain->getGlobalBetaTrans(i)
                     << "\t" << domain->getGlobalBetaRot(i) << "\t";

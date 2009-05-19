@@ -8,7 +8,7 @@ parallel/DomainDecomposition.o: parallel/DomainDecomposition.cpp
 	$(CXX_PAR) $(CXXFLAGS) -c $< -o $@
 
 tar: clean
-	tar -cvjf mardyn.tar.bz2 *.h *.cpp DoxySfile units mkmardyn Makefil* datastructures integrators md_io molecules parallel plugin tests utils 
+	tar -cvjf mardyn.tar.bz2 *.h *.cpp DoxySfile units mkmardyn Makefil* datastructures ensemble integrators md_io molecules parallel plugin tests utils 
 
 clean:
 	find -name '*.o' -exec rm -r {} \;

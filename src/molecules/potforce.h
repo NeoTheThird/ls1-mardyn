@@ -351,6 +351,7 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
         params >> eps24;
         double sig2;
         params >> sig2;
+	cout.flush();
         PotForceLJ(drs,dr2,eps24,sig2,f,u);
 #ifdef TRUNCATED_SHIFTED
         double shift6;
@@ -585,6 +586,190 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
   // check whether all parameters were used
   assert(params.eos());
 }
+
+#ifdef GRANDCANONICAL
+/*
+ * calculates the potential energy of the mi-mj interaction,
+ * if and only if both of them are fluid (no interaction between Tersoff sites is considered)
+ */
+inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF)
+{
+  double f[3];
+  double u;
+  double drs[3], dr2;  // site distance vector & length^2
+  // LJ centers
+#ifdef COMPLEX_POTENTIAL_SET
+  // no LJ interaction between molecules with Tersoff centres
+  const unsigned int nt1 = mi.numTersoff();
+  const unsigned int nt2 = mj.numTersoff();
+  if(!nt1 || !nt2)
+  {
+#endif
+    const unsigned int nc1 = mi.numLJcenters();
+    const unsigned int nc2 = mj.numLJcenters();
+    for(unsigned int si=0;si<nc1;++si)
+    {
+      const double* dii=mi.ljcenter_d(si);
+      for(unsigned int sj=0;sj<nc2;++sj)
+      {
+        const double* djj=mj.ljcenter_d(sj);
+        SiteSiteDistance(drm,dii,djj,drs,dr2);
+        double eps24;
+        params >> eps24;
+        double sig2;
+        params >> sig2;
+        PotForceLJ(drs,dr2,eps24,sig2,f,u);
+#ifdef TRUNCATED_SHIFTED
+        double shift6;
+        params >> shift6;
+        u += shift6;
+#endif
+        Upot6LJ+=u;
+      }
+    }
+#ifdef COMPLEX_POTENTIAL_SET
+  }
+#endif
+
+  double m1[3], m2[3];  // angular momenta
+
+  const unsigned ne1 = mi.numCharges();
+  const unsigned ne2 = mj.numCharges();
+  const unsigned int nq1=mi.numQuadrupoles();
+  const unsigned int nq2=mj.numQuadrupoles();
+#ifdef COMPLEX_POTENTIAL_SET
+  const unsigned int nd1=mi.numDipoles();
+  const unsigned int nd2=mj.numDipoles();
+#endif
+  for(unsigned si = 0; si < ne1; si++)
+  {
+    const double* dii = mi.charge_d(si);
+    // Charge-Charge
+    for(unsigned sj = 0; sj < ne2; sj++)
+    {
+      const double* djj = mj.charge_d(sj);
+      double q1q2per4pie0;  // 4pie0 = 1 in reduced units
+      params >> q1q2per4pie0;
+      SiteSiteDistance(drm, dii, djj, drs, dr2);
+      PotForce2Charge(drs, dr2, q1q2per4pie0, f, u);
+      UpotXpoles += u;
+    }
+    // Charge-Quadrupole
+    for(unsigned sj = 0; sj < nq2; sj++)
+    {
+      const double* djj = mj.quadrupole_d(sj);
+      double qQ025per4pie0;  // 4pie0 = 1 in reduced units
+      params >> qQ025per4pie0;
+      SiteSiteDistance(drm, dii, djj, drs, dr2);
+      const double* ejj = mj.quadrupole_e(sj);
+      PotForceChargeQuadrupole(drs, dr2, ejj, qQ025per4pie0, f, m2, u);
+      UpotXpoles += u;
+    }
+#ifdef COMPLEX_POTENTIAL_SET
+    // Charge-Dipole
+    for(unsigned sj = 0; sj < nd2; sj++)
+    {
+      const double* djj = mj.dipole_d(sj);
+      double minusqmyper4pie0;
+      params >> minusqmyper4pie0;
+      SiteSiteDistance(drm, dii, djj, drs, dr2);
+      const double* ejj = mj.dipole_e(sj);
+      PotForceChargeDipole(drs, dr2, ejj, minusqmyper4pie0, f, m2, u);
+      UpotXpoles += u;
+    }
+#endif
+  }
+  for(unsigned int si=0;si<nq1;++si)
+  {
+    const double* dii = mi.quadrupole_d(si);
+    const double* eii = mi.quadrupole_e(si);
+
+    // Quadrupole-Charge
+    for(unsigned sj = 0; sj < ne2; sj++)
+    {
+      const double* djj = mj.charge_d(sj);
+      double qQ025per4pie0;  // 4pie0 = 1 in reduced units
+      params >> qQ025per4pie0;
+      minusSiteSiteDistance(drm, dii, djj, drs, dr2);
+      PotForceChargeQuadrupole(drs, dr2, eii, qQ025per4pie0, f, m1, u);
+      UpotXpoles += u;
+    }
+    // Quadrupole-Quadrupole -------------------
+    for(unsigned int sj=0;sj<nq2;++sj)
+    {
+      //double drs[3];
+      const double* djj=mj.quadrupole_d(sj);
+      double q2075;
+      params >> q2075;
+      SiteSiteDistance(drm,dii,djj,drs,dr2);
+      const double* ejj=mj.quadrupole_e(sj);
+      PotForce2Quadrupole(drs,dr2,eii,ejj,q2075,f,m1,m2,u);
+      UpotXpoles+=u;
+    }
+#ifdef COMPLEX_POTENTIAL_SET
+    // Quadrupole-Dipole -----------------------
+    for(unsigned int sj=0;sj<nd2;++sj)
+    {
+      //double drs[3];
+      const double* djj=mj.dipole_d(sj);
+      double qmy15;
+      params >> qmy15;
+      minusSiteSiteDistance(drm, dii, djj, drs, dr2);
+      const double* ejj=mj.dipole_e(sj);
+      //for(unsigned short d=0;d<3;++d) drs[d]=-drs[d]; // avoid that and toggle add/sub below
+      PotForceDiQuadrupole(drs,dr2,ejj,eii,qmy15,f,m2,m1,u);
+      UpotXpoles += u;
+    }
+#endif
+  }
+#ifdef COMPLEX_POTENTIAL_SET
+  for(unsigned int si=0;si<nd1;++si)
+  {
+    const double* dii=mi.dipole_d(si);
+    const double* eii=mi.dipole_e(si);
+    // Dipole-Charge
+    for(unsigned sj = 0; sj < ne2; sj++)
+    {
+      const double* djj = mj.charge_d(sj);
+      double minusqmyper4pie0;
+      params >> minusqmyper4pie0;
+      minusSiteSiteDistance(drm, dii, djj, drs, dr2);
+      PotForceChargeDipole(drs, dr2, eii, minusqmyper4pie0, f, m1, u);
+      UpotXpoles += u;
+    }
+    // Dipole-Quadrupole -----------------------
+    for(unsigned int sj=0;sj<nq2;++sj)
+    {
+      //double drs[3];
+      const double* djj=mj.quadrupole_d(sj);
+      double myq15;
+      params >> myq15;
+      SiteSiteDistance(drm,dii,djj,drs,dr2);
+      const double* ejj=mj.quadrupole_e(sj);
+      PotForceDiQuadrupole(drs,dr2,eii,ejj,myq15,f,m1,m2,u);
+      UpotXpoles+=u;
+    }
+    // Dipole-Dipole ---------------------------
+    for(unsigned int sj=0;sj<nd2;++sj)
+    {
+      //double drs[3];
+      const double* djj=mj.dipole_d(sj);
+      double my2;
+      params >> my2;
+      double rffac;
+      params >> rffac;
+      SiteSiteDistance(drm,dii,djj,drs,dr2);
+      const double* ejj=mj.dipole_e(sj);
+      PotForce2Dipole(drs,dr2,eii,ejj,my2,rffac,f,m1,m2,u,MyRF);
+      UpotXpoles+=u;
+    }
+  }
+#endif
+
+  // check whether all parameters were used
+  assert(params.eos());
+}
+#endif
 
 #ifdef COMPLEX_POTENTIAL_SET
 

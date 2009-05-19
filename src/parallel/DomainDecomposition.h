@@ -82,7 +82,7 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   DomainDecomposition(int* argc, char ***argv);
 
   //! The Destructor finalizes MPI
-  ~DomainDecomposition();
+  virtual ~DomainDecomposition();
 
   //! Processor name
   const char* getProcessorName() const;
@@ -109,6 +109,7 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   //! This method takes the local sums of all processes and calculates the
   //! global sum. For some values, the global sum needs to be transferred to
   //! all processes, for others only to the root process
+  void reducevalues(int* i1);
   void reducevalues(double* d1, double* d2);
   void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2);
 
@@ -140,6 +141,14 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   virtual void broadcastVelocitySum(
      map<unsigned, long double>* velocitySum
   );
+#endif
+
+#ifdef GRANDCANONICAL
+  //! returns total number of molecules
+  virtual unsigned Ndistribution(unsigned localN, float* minrnd, float* maxrnd);
+  //! checks identity of random number generators
+  virtual void assertIntIdentity(int IX);
+  virtual void assertDisjunctivity(TMoleculeContainer* mm);
 #endif
 
  private:

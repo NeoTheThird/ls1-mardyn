@@ -11,7 +11,6 @@ namespace datastructures {
   class Cell; 
 }
 
-
 //! @brief Cell data structure.
 //!
 //! A Cell stores a list of pointers to the molecules in that cell. \n
@@ -57,9 +56,13 @@ class datastructures::Cell{
       
     //! return a reference to the list of molecules (molecule pointers) in this cell
     list<ParticleType*>& getParticlePointers();
+
+#ifdef GRANDCANONICAL
+    bool deleteMolecule(unsigned long molid);
+#endif
     
     //! Set the flag for a Halo Cell
-    void assingCellToHaloRegion();
+    void assignCellToHaloRegion();
     
     //! Set the flag for a Boundary Cell
     void assignCellToBoundaryRegion();

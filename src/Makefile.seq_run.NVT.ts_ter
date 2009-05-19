@@ -2,7 +2,7 @@
 SEQPAR = SEQ
 # choose target: DEB (=>DEBUG) | RUN (=>NDEBUG)
 DEBRUN = RUN
-# choose ensemble: NVT (=>CANONICAL)
+# choose ensemble: NVT (=>CANONICAL) | uVT (=>GRAND_CANONICAL)
 NVTuVT = NVT
 # choose cutoff method: FL (=>FULL_POTENTIAL) | TS (=>TRUNCATED_SHIFTED)
 FLTS = TS
@@ -14,6 +14,7 @@ DPAR = PARALLEL
 DDEB = DEBUG
 DRUN = NDEBUG
 DNVT = CANONICAL
+DuVT = GRANDCANONICAL
 DFL  = FULL_POTENTIAL
 DTS  = TRUNCATED_SHIFTED
 DLCQ = REDUCED_POTENTIAL_SET
@@ -52,7 +53,7 @@ parallel/DomainDecomposition.o: parallel/DomainDecomposition.cpp
 	$(CXX_$(SEQPAR)) $(CXXOPT) -c $< -o $@
 
 tar: clean
-	tar -cvjf mardyn.tar.bz2 *.h *.cpp DoxySfile units mkmardyn Makefil* datastructures integrators md_io molecules parallel plugin tests utils 
+	tar -cvjf mardyn.tar.bz2 *.h *.cpp DoxySfile units mkmardyn Makefil* datastructures ensemble integrators md_io molecules parallel plugin tests utils 
 
 clean:
 	find -name '*.o' -exec rm -r {} \;

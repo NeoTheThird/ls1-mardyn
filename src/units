@@ -1,23 +1,20 @@
-Basic units
+Atomic system of units for mkcp (without -L flag):
 
-1	=	kB		=	1.38065E-23 J/K		=	8.61735E-05 eV/K
-1	=	Coulomb const.	=	8.98755E+09 J*m/C^2	=	1.44003E-09 eV*m/e^2
-1	=	315774 K
-1	=	a_0 (Bohr)	=	5.29177E-11 m
-1	=	1 kg/mol	=	1.66054E-24 kg		=	1000 u
+Unit length		1 = 1 a0 = 0.0529177 nm 
+Elementary charge	1 = 1 e = 96485.3 C/mol
+Coulomb constant	1 = 1/(4 pi eps_0) = 1.43996e-09 eV m/e^2
+Boltzmann constant	1 = 1.38065e-23 J/K
+Unit mass		1 = 1 kg/mol = 1000 u
 
-Derived units
+Derived units:
 
-1	=	e		=	1.60218E-19 C
-1	=	R		=	8.31447 J/(K*mol)	=	8.61735E-05 eV/K
-1	=	4\pi\epsilon_0	=	1.11265E-10 C^2/(J*m)	=	6.94431E+08 e^2/(eV*m)
-1	=	e*a_0		=	8.47835E-30 C*m		=	2.54175 Debye
-1	=	e * a_0^2	=	4.48655E-40 C*m^2	=	1.34504 Buckingham
+Unit temperature	1 = 315774.5 K
+Unit density		1 = 11205.9 mol/l
+Unit velocity		1 = 1620.34 m/s
+Unit time		1 = 32.6584 fs
+Unit energy		1 = 27.2126 eV
+Unit acceleration	1 = 49614800 nm/ns^2
+Unit pressure		1 = 2.94210e+10 kPa
 
-Further derived units
-
-1	=	32.6584 fs
-1	=	2625.50 kJ/mol	=	27.2126 eV	=	4.35974E-18 J
-1	=	2.94210 TPa
-1	=	1.48185E-31 m^3
-1	=	11205900 mol/l
+Unit dipole moment	1 = 2.54175 Debye
+Unit quadrupole moment	1 = 1.34504 Buckingham (i.e. Debye Ang) 

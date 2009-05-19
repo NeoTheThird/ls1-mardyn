@@ -27,7 +27,7 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
   DomainDecompDummy();
   
   //! The destructor has nothing to do
-  ~DomainDecompDummy();
+  virtual ~DomainDecompDummy();
 
   //! for the sequential version, the processor name is not that important
   //! @todo implement this
@@ -47,6 +47,7 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
   //!
   //! In the sequential version there is only one process, so the local values are
   //! equal to the global values. So there's nothing to be done here.
+  void reducevalues(int* i1);
   void reducevalues(double* d1, double* d2);
   void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2);
 
@@ -78,6 +79,14 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
   virtual void broadcastVelocitySum(
      map<unsigned, long double>* velocitySum
   );
+#endif
+
+#ifdef GRANDCANONICAL
+  //! returns total number of molecules
+  virtual unsigned Ndistribution(unsigned localN, float* minrnd, float* maxrnd);
+  //! checks identity of random number generators
+  virtual void assertIntIdentity(int IX);
+  virtual void assertDisjunctivity(TMoleculeContainer* mm);
 #endif
 
  private:

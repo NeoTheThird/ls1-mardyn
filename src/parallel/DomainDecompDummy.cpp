@@ -125,6 +125,9 @@ void parallel::DomainDecompDummy::writeMoleculesToFile(string filename, datastru
   checkpointfilestream.close();
 }
 
+void parallel::DomainDecompDummy::reducevalues(int* i1)
+{
+}
 void parallel::DomainDecompDummy::reducevalues(double* d1, double* d2)
 {
 }
@@ -187,5 +190,20 @@ void parallel::DomainDecompDummy::broadcastVelocitySum(
    map<unsigned, long double>* velocitySum )
 {
    // NIL
+}
+#endif
+
+#ifdef GRANDCANONICAL
+unsigned parallel::DomainDecompDummy::Ndistribution(unsigned localN, float* minrnd, float* maxrnd)
+{
+   return localN;
+}
+
+void parallel::DomainDecompDummy::assertIntIdentity(int IX)
+{
+}
+
+void parallel::DomainDecompDummy::assertDisjunctivity(TMoleculeContainer* mm)
+{
 }
 #endif

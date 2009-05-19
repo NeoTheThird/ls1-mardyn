@@ -26,6 +26,7 @@ using namespace std;
 
 #include "molecules/Site.h"
 
+
 /**
 Komponente (Molekltyp)
 
@@ -101,6 +102,9 @@ public:
 #endif
   void incrnumMolecules() { ++m_numMolecules; }
   unsigned long numMolecules() const { return m_numMolecules; }
+#ifdef GRANDCANONICAL
+  void Nadd(int N) { this->m_numMolecules += N; }
+#endif
 
   void addLJcenter(double x, double y, double z, double m, double eps, double sigma
 #ifdef TRUNCATED_SHIFTED

@@ -28,8 +28,15 @@ class md_io::VimWriter : public md_io::OutputBase{
   ~VimWriter();
   void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
                          parallel::DomainDecompBase* domainDecomp, Domain* domain);
-  void doOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
+  void doOutput
+  (
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+     ,
+     list<ensemble::ChemicalPotential>* lmu
+#endif
+  );
   void finishOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
                          parallel::DomainDecompBase* domainDecomp, Domain* domain);
  private:

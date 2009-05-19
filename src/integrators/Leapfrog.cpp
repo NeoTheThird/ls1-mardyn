@@ -115,6 +115,7 @@ void integrators::Leapfrog::transition2to3(datastructures::ParticleContainer<Mol
          int cid = tM->componentid();
 #endif
          tM->upd_postF(dt_half, summv2gt, sumIw2gt); 
+         assert(summv2gt >= 0.0);
 #ifdef COMPLEX_POTENTIAL_SET
          Ngt++;
          rotDOFgt += domain->getComponentRotDOF(cid);
@@ -129,6 +130,7 @@ void integrators::Leapfrog::transition2to3(datastructures::ParticleContainer<Mol
     }
     for(map<int, double>::iterator thermit = summv2.begin(); thermit != summv2.end(); thermit++)
     {
+       assert(thermit->second > 0);
        domain->setLocalSummv2(thermit->second, thermit->first);
        domain->setLocalSumIw2(sumIw2[thermit->first], thermit->first);
 #ifdef COMPLEX_POTENTIAL_SET

@@ -20,6 +20,8 @@ namespace parallel{
 }
 using namespace std;
 
+typedef datastructures::ParticleContainer<Molecule> TMoleculeContainer;
+
 //! @brief handle boundary region and multiple processes
 //!
 //! This program is designed to run on a HPC (High Performance Computer).
@@ -80,6 +82,7 @@ class parallel::DomainDecompBase{
   //! This method takes the local sums of all processes and calculates the
   //! global sum. For some values, the global sum needs to be transferred to
   //! all processes, for others only to the root process
+  virtual void reducevalues(int* i1) = 0;
   virtual void reducevalues(double* d1, double* d2) = 0;
   virtual void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2) = 0;
 
@@ -112,6 +115,14 @@ class parallel::DomainDecompBase{
   virtual void broadcastVelocitySum(
      map<unsigned, long double>* velocitySum
   ) = 0;
+#endif
+
+#ifdef GRANDCANONICAL
+   //! returns total number of molecules
+   virtual unsigned Ndistribution(unsigned localN, float* minrnd, float* maxrnd) = 0;
+   //! checks identity of random number generators
+   virtual void assertIntIdentity(int IX) = 0;
+   virtual void assertDisjunctivity(TMoleculeContainer* mm) = 0;
 #endif
 
  private:

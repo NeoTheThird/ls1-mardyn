@@ -16,8 +16,14 @@ void md_io::XyzWriter::initOutput(datastructures::ParticleContainer<Molecule>* p
                          parallel::DomainDecompBase* domainDecomp, Domain* domain){
 }
 
-void md_io::XyzWriter::doOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep){
+void md_io::XyzWriter::doOutput(
+   datastructures::ParticleContainer<Molecule>* particleContainer,
+   parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+     ,
+     list<ensemble::ChemicalPotential>* lmu
+#endif
+) {
   if(simstep%_writeFrequency == 0) {
     stringstream filenamestream;
     filenamestream << _outputPathAndPrefix;

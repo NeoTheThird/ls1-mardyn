@@ -1,3 +1,5 @@
+#include "molecules/Molecule.h"
+
 template<class ParticleType>
 datastructures::Cell<ParticleType>::Cell(){
   this->_haloCellState = false;
@@ -21,7 +23,7 @@ list<ParticleType*>& datastructures::Cell<ParticleType>::getParticlePointers(){
 }
 
 template<class ParticleType>
-void datastructures::Cell<ParticleType>::assingCellToHaloRegion(){
+void datastructures::Cell<ParticleType>::assignCellToHaloRegion(){
   this->_haloCellState = true;
 }
 
@@ -49,3 +51,23 @@ template<class ParticleType>
 bool datastructures::Cell<ParticleType>::isInnerCell() {
   return _innerCellState;
 }    
+
+#ifdef GRANDCANONICAL
+template<class ParticleType>
+bool datastructures::Cell<ParticleType>::deleteMolecule(unsigned long molid)
+{
+   bool found = false;
+   list<Molecule*> l = (list<Molecule*>)(this->_particlePointers);
+   list<Molecule*>::iterator cellit;
+
+   for(cellit = l.begin(); cellit != l.end(); cellit++)
+      if((*cellit)->id() == molid)
+      {
+         found = true;
+         this->_particlePointers.remove(*cellit);
+         break;   
+      }
+
+   return found;
+}
+#endif

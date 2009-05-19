@@ -26,7 +26,12 @@ void md_io::VimWriter::initOutput( datastructures::ParticleContainer<Molecule>* 
 
 void md_io::VimWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC,
                                     parallel::DomainDecompBase* domainDecomp,
-                                    Domain* domain, unsigned long simstep )
+                                    Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+                                    ,
+                                    list<ensemble::ChemicalPotential>* lmu
+#endif
+)
 {
   if(simstep%_writeFrequency == 0)
   {

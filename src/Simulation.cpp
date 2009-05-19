@@ -25,8 +25,6 @@
 
 utils::Log Simulation::_log("Simulation");
 
-
-
 Simulation::Simulation(int argc, char **argv){
 #ifdef PARALLEL
     _domainDecomposition = (parallel::DomainDecompBase*) new parallel::DomainDecomposition(&argc, &argv);
@@ -77,6 +75,13 @@ Simulation::Simulation(int argc, char **argv){
   this->_doRecordRDF = false;
   this->_RDFOutputTimesteps = 25000;
   this->_RDFOutputPrefix = "out";
+
+  this->_initCanonical = 5000;
+#ifdef GRANDCANONICAL
+  this->_initGrandCanonical = 10000;
+  this->h = 0;
+#endif
+  this->_initStatistics = 20000;
   
 #ifndef NDEBUG
   if(!ownrank) cout << "constructing domain:";
@@ -90,7 +95,7 @@ Simulation::Simulation(int argc, char **argv){
   // The first line of the config file has to contain the token "MDProjectConfig"
   inputfilestream >> token;
   if((token != "MDProjectConfig") && (token != "mardynconfig")) {
-    if(ownrank == 0) cerr << "Not a MDProject config file! " << token << endl;
+    if(ownrank == 0) cerr << "Not a mardynconfig file! " << token << endl;
     exit(1);
   } 
   if((ownrank == 0) && (token != "mardynconfig"))
@@ -344,26 +349,205 @@ Simulation::Simulation(int argc, char **argv){
        inputfilestream >> this->_zoscillator;
     }
 #endif
+#ifdef GRANDCANONICAL
+    // chemicalPotential <mu> component <cid> [control <x0> <y0> <z0>
+    // to <x1> <y1> <z1>] conduct <ntest> tests every <nstep> steps
+    else if(token == "chemicalPotential")
+    {
+       double imu;
+       inputfilestream >> imu;
+       inputfilestream >> token;
+       if(token != "component")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'component' instead of '" << token << "'.\n\n";
+             cout << "Syntax: chemicalPotential <mu> component <cid> "
+	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		  << "conduct <ntest> tests every <nstep> steps\n";
+          }
+          exit(1);
+       }
+       unsigned icid;
+       inputfilestream >> icid;
+       icid--;
+       inputfilestream >> token;
+       double x0, y0, z0, x1, y1, z1;
+       bool controlVolume = false;
+       if(token == "control")
+       {
+	  controlVolume = true;
+          inputfilestream >> x0 >> y0 >> z0;
+          inputfilestream >> token;
+          if(token != "to")
+          {
+             if(ownrank == 0)
+             {
+                cout << "Input failure.\n";
+                cout << "Expected 'to' instead of '" << token << "'.\n\n";
+                cout << "Syntax: chemicalPotential <mu> component <cid> "
+	             << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		     << "conduct <ntest> tests every <nstep> steps\n";
+             }
+             exit(1);
+          }
+          inputfilestream >> x1 >> y1 >> z1;
+          inputfilestream >> token;
+       }
+       if(token != "conduct")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'conduct' instead of '" << token << "'.\n\n";
+             cout << "Syntax: chemicalPotential <mu> component <cid> "
+	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		  << "conduct <ntest> tests every <nstep> steps\n";
+          }
+          exit(1);
+       }
+       unsigned intest;
+       inputfilestream >> intest;
+       inputfilestream >> token;
+       if(token != "tests")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'tests' instead of '" << token << "'.\n\n";
+             cout << "Syntax: chemicalPotential <mu> component <cid> "
+	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		  << "conduct <ntest> tests every <nstep> steps\n";
+          }
+          exit(1);
+       }
+       inputfilestream >> token;
+       if(token != "every")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'every' instead of '" << token << "'.\n\n";
+             cout << "Syntax: chemicalPotential <mu> component <cid> "
+	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		  << "conduct <ntest> tests every <nstep> steps\n";
+          }
+          exit(1);
+       }
+       unsigned instep;
+       inputfilestream >> instep;
+       inputfilestream >> token;
+       if(token != "steps")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'steps' instead of '" << token << "'.\n\n";
+             cout << "Syntax: chemicalPotential <mu> component <cid> "
+	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
+		  << "conduct <ntest> tests every <nstep> steps\n";
+          }
+          exit(1);
+       }
+       ensemble::ChemicalPotential tmu = ensemble::ChemicalPotential();
+       tmu.setMu(icid, imu);
+       tmu.setInterval(instep); 
+       tmu.setInstances(intest);
+       if(controlVolume) tmu.setControlVolume(x0, y0, z0, x1, y1, z1);
+       cout.precision(6);
+       if(!ownrank)
+       {
+	  cout << "chemical Potential " << imu << " component "
+	       << icid+1 << " (internally " << icid << ") conduct "
+	       << intest << " tests every " << instep << " steps: ";
+       }
+       this->_lmu.push_back(tmu);
+       if(!ownrank)
+       {
+	  cout << " pushed back.\n";
+       }
+    }
+    else if(token == "planckConstant")
+    {
+       inputfilestream >> this->h;
+    }
+#else
     else if(token == "NVE")
     {
        this->_domain->thermostatOff();
     }
+#endif
+    else if(token == "initCanonical")
+    {
+       inputfilestream >> this->_initCanonical;
+    }
+#ifdef GRANDCANONICAL
+    else if(token == "initGrandCanonical")
+    {
+       inputfilestream >> this->_initGrandCanonical;
+    }
+#endif
+    else if(token == "initStatistics")
+    {
+       inputfilestream >> this->_initStatistics;
+    }
   }
   
-  
-  _domain->readPhaseSpaceData(
+  unsigned long maxid = _domain->readPhaseSpaceData(
     _moleculeContainer
 #ifdef TRUNCATED_SHIFTED
     ,
     this->_cutoffRadius
 #endif
+#ifdef GRANDCANONICAL
+    ,
+    &(this->_lmu)
+#endif
   );
+  if(!ownrank) cout << "Maximal molecule ID: " << maxid << ".\n";
   _domain->initFarFieldCorr(_cutoffRadius);
   
+#ifdef GRANDCANONICAL
+  unsigned idi = this->_lmu.size();
+  unsigned j = 0;
+  std::list< ensemble::ChemicalPotential >::iterator cpit;
+  for(cpit = this->_lmu.begin(); cpit != this->_lmu.end(); cpit++)
+  {
+     cpit->setIncrement(idi);
+     double tmp_molecularMass = _domain->getComponents()[
+        cpit->getComponentID()
+     ].m();
+     cpit->setSystem(
+        _domain->getGlobalLength(0), _domain->getGlobalLength(1),
+        _domain->getGlobalLength(2), tmp_molecularMass
+     );
+     cpit->setGlobalN(
+        this->_domain->N(cpit->getComponentID())
+     );
+     cpit->setNextID(j + (int)(1.001 * (256 + maxid)));
+
+     cpit->setSubdomain(
+        ownrank, _moleculeContainer->getBoundingBoxMin(0),
+        _moleculeContainer->getBoundingBoxMax(0),
+        _moleculeContainer->getBoundingBoxMin(1),
+        _moleculeContainer->getBoundingBoxMax(1),
+        _moleculeContainer->getBoundingBoxMin(2),
+        _moleculeContainer->getBoundingBoxMax(2)
+     );
+     double Tcur = this->_domain->T(0);
+     double Ttar = _domain->severalThermostats()? _domain->targetT(1)
+                                                : _domain->targetT(0);
+     if((Tcur < 0.85*Ttar) || (Tcur > 1.15*Ttar)) Tcur = Ttar;
+     cpit->submitTemperature(Tcur);
+     if(this->h != 0.0) cpit->setPlanckConstant(this->h);
+     
+     j++;
+  }
+#endif
+
   // @todo comment
   _integrator = new integrators::Leapfrog(timestepLength);
-  
-
 }
 
 
@@ -424,9 +608,24 @@ void Simulation::initialize(){
   
   if(!this->_domain->ownrank()) cout << "   * calculating global values\n";
 #ifdef COMPLEX_POTENTIAL_SET
-  _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer, true);
+  _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer, true, 1.0);
 #else
-  _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer);
+  _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer, 1.0);
+#endif
+
+#ifdef GRANDCANONICAL
+  double Tcur = this->_domain->T(0);
+  double Ttar = this->_domain->severalThermostats()? this->_domain->targetT(1)
+                                                   : this->_domain->targetT(0);
+  if((Tcur < 0.85*Ttar) || (Tcur > 1.15*Ttar)) Tcur = Ttar;
+  
+  std::list< ensemble::ChemicalPotential >::iterator cpit;
+  if(this->h == 0.0) this->h = sqrt(6.2831853 * Ttar);
+  for(cpit = this->_lmu.begin(); cpit != this->_lmu.end(); cpit++)
+  {
+     cpit->submitTemperature(Tcur);
+     cpit->setPlanckConstant(this->h);
+  }
 #endif
 
 #ifdef COMPLEX_POTENTIAL_SET
@@ -449,9 +648,11 @@ void Simulation::initialize(){
 }
 
 
-void Simulation::simulate(){
-
+void Simulation::simulate()
+{
   Molecule* tM;
+  cout.precision(3);
+  cout.width(7);
   cout << "Now ";
   int ownrank = _domainDecomposition->getRank();
   cout << "simulating rank " << ownrank << ".\n";
@@ -465,13 +666,36 @@ void Simulation::simulate(){
   unsigned uCAT = this->_domain->getUCAT();
 #endif
 
-  for( unsigned long simstep = (unsigned long)(this->_domain->getCurrentTime() / _integrator->getTimestepLength());
+  this->_initSimulation = (unsigned long)(this->_domain->getCurrentTime()
+                             / _integrator->getTimestepLength());
+
+  for( unsigned long simstep = this->_initSimulation;
        simstep <= this->_numberOfTimesteps;
        simstep++ )
   {
-    
+#ifdef GRANDCANONICAL
+    if(simstep >= this->_initGrandCanonical)
+    {
+       unsigned j = 0;
+       std::list< ensemble::ChemicalPotential >::iterator cpit;
+       for( cpit = this->_lmu.begin();
+	    cpit != this->_lmu.end();
+	    cpit++ )
+       {
+	  if(!((simstep + 2*j + 3) % cpit->getInterval()))
+	  {
+	     cpit->prepareTimestep(
+	        this->_moleculeContainer, this->_domainDecomposition
+             );
+	  }
+	  j++;
+       }
+    }
+#endif
+
 #ifndef NDEBUG
-    cout << "\ntimestep " << simstep << " [rank " << this->_domain->ownrank() << "]:\n";
+    if(this->_domain->ownrank() < 3)
+       cout << "\ntimestep " << simstep << " [rank " << this->_domain->ownrank() << "]:\n";
 #endif
 
     _integrator->eventNewTimestep(_moleculeContainer, _domain);
@@ -479,7 +703,7 @@ void Simulation::simulate(){
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * container and decomposition\n";
 #endif
-    
+
     updateParticleContainerAndDecomposition();
 
 #ifndef NDEBUG
@@ -489,6 +713,55 @@ void Simulation::simulate(){
     // Force calculation
     _moleculeContainer->traversePairs();
 
+#ifdef GRANDCANONICAL
+    if(simstep >= _initGrandCanonical)
+    {
+       unsigned j = 0;
+       std::list< ensemble::ChemicalPotential >::iterator cpit;
+       for( cpit = this->_lmu.begin();
+	    cpit != this->_lmu.end();
+	    cpit++ )
+       {
+	  if(!((simstep + 2*j + 3) % cpit->getInterval()))
+	  {     
+             if(!this->_domain->ownrank()) 
+             {
+#ifndef NDEBUG
+                cout << "   * grand canonical ensemble(" << j
+		     << "): test deletions and insertions\n";
+#else
+                cout << " uVT[" << j << "] ";
+#endif
+             }
+             this->_moleculeContainer->grandcanonicalStep(
+	        &(*cpit), this->_domain->T(0)
+             );
+	     cpit->assertSynchronization(this->_domainDecomposition);
+	     
+	     int localBalance = _moleculeContainer->localGrandcanonicalBalance();
+	     int balance = _moleculeContainer->grandcanonicalBalance(
+	        this->_domainDecomposition
+	     );
+#ifndef NDEBUG
+             if(!this->_domain->ownrank()) 
+             {
+                cout << "   b[" << ((balance > 0)? "+": "") << balance
+                     << "(" << ((localBalance > 0)? "+": "")
+		     << localBalance << ")" << " / c = "
+		     << cpit->getComponentID() << "]   ";
+                cout.flush();
+             }
+#endif	     
+             this->_domain->Nadd(
+	        cpit->getComponentID(), balance, localBalance
+	     );
+	  }
+	  
+	  j++;
+       }
+    }
+#endif
+    
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * delete outer particles\n";
 #endif
@@ -496,12 +769,23 @@ void Simulation::simulate(){
     // clear halo
     _moleculeContainer->deleteOuterParticles();
 
-   if(this->_doRecordRDF)
+   if((simstep >= this->_initStatistics) && (this->_doRecordRDF))
    {
       this->_particlePairsHandler->recordRDF();
       this->_moleculeContainer->countParticles(this->_domain);
       this->_domain->tickRDF();
    }
+
+#ifdef GRANDCANONICAL
+    if(simstep >= _initGrandCanonical)
+    {
+       this->_domain->evaluateRho
+       (
+          this->_moleculeContainer->getNumberOfParticles(),
+          this->_domainDecomposition
+       );
+    }
+#endif
 
 #ifdef COMPLEX_POTENTIAL_SET
     if(!(simstep % _collectThermostatDirectedVelocity))
@@ -532,6 +816,11 @@ void Simulation::simulate(){
       if(!this->_domain->ownrank()) cout << "   * alert z-oscillators\n";
 #endif
       this->_integrator->zOscillation(this->_zoscillator, this->_moleculeContainer);
+
+      if(simstep >= (0.5*(this->_initCanonical + this->_initStatistics)))
+      {
+         this->_zoscillation = false;
+      }
     }
 #endif
 
@@ -549,9 +838,10 @@ void Simulation::simulate(){
     // calculate the global macroscopic values from the local values
 #ifdef COMPLEX_POTENTIAL_SET
     _domain->calculateGlobalValues( _domainDecomposition, _moleculeContainer,
-                                    (!(simstep % _collectThermostatDirectedVelocity)) );
+                                    (!(simstep % _collectThermostatDirectedVelocity)),
+                                    Tfactor(simstep) );
 #else
-    _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer);
+    _domain->calculateGlobalValues(_domainDecomposition, _moleculeContainer, Tfactor(simstep));
 #endif
 
 #ifndef NDEBUG
@@ -632,13 +922,19 @@ void Simulation::simulate(){
   //_DomainDecomposition->barrier();
 }
 
-void Simulation::output(int simstep){
+void Simulation::output(unsigned long simstep){
   int ownrank = _domainDecomposition->getRank();
   
   std::list<md_io::OutputBase*>::iterator outputIter;
   for(outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++)
   {
-    (*outputIter)->doOutput(_moleculeContainer, _domainDecomposition, _domain, simstep); 
+     (*outputIter)->doOutput(
+        _moleculeContainer, _domainDecomposition, _domain, simstep
+#ifdef GRANDCANONICAL
+        ,
+        &(this->_lmu)
+#endif
+     ); 
   }
 
   if(this->_doRecordRDF && !(simstep % this->_RDFOutputTimesteps))
@@ -664,11 +960,13 @@ void Simulation::output(int simstep){
     this->_domain->resetRDF();
   }
 #ifdef COMPLEX_POTENTIAL_SET
-  if(this->_doRecordProfile && !(simstep % this->_profileRecordingTimesteps))
+  if((simstep >= this->_initStatistics) && this->_doRecordProfile
+                                        && !(simstep % this->_profileRecordingTimesteps))
   {
     this->_domain->recordProfile(this->_moleculeContainer);
   }
-  if(this->_doRecordProfile && !(simstep % this->_profileOutputTimesteps))
+  if((simstep >= this->_initStatistics) && this->_doRecordProfile 
+                                        && !(simstep % this->_profileOutputTimesteps))
   {
     this->_domain->collectProfile(this->_domainDecomposition);
     if(!ownrank)
@@ -700,7 +998,9 @@ void Simulation::output(int simstep){
 
   if(ownrank==0)
   {
-    cout << simstep << "\t" << _domain->getAverageGlobalUpot() << "\t"
+    cout << (_domain->thermostatWarning()? "*": "")
+         << simstep << "\t" << _domain->T(0)
+                    << "\t" << _domain->getAverageGlobalUpot() << "\t"
                     << _domain->getGlobalPressure();
 #ifdef COMPLEX_POTENTIAL_SET
     double a = _domain->getDirectedVelocity(1);
@@ -708,11 +1008,21 @@ void Simulation::output(int simstep){
     {
        cout.precision(4);
        cout << "\t\t" << _domain->getDirectedVelocity(1, 2)
-            << "\t" << _domain->getDirectedVelocity(1)
-            << "\t\t" << _domain->getUniformAcceleration(1, 2)
+            << "\t" << _domain->getUniformAcceleration(1, 2)
             << "\t" << _domain->getUniformAcceleration(1)
-            << "\t\t" << _domain->getCosetN(1);
+            << "\t" << _domain->getCosetN(1);
     }
+#endif
+#ifdef GRANDCANONICAL
+    cout << "\t";
+    std::list< ensemble::ChemicalPotential >::iterator cpit;
+    for(cpit = _lmu.begin(); cpit != _lmu.end(); cpit++)
+    {
+       cout << (this->_domain->thermostatWarning()? "*": "")
+            << cpit->getGlobalN() << "  ";
+    }
+#else
+    cout << (this->_domain->thermostatWarning()? "  *": "");
 #endif
     cout << "\n";
   }
@@ -724,7 +1034,7 @@ void Simulation::updateParticleContainerAndDecomposition(){
     _moleculeContainer, _domain->getComponents(), _domain, _cutoffRadius
   );
 
-  // The cache of the molecules must be updated/build after the exchange process,
+  // The cache of the molecules must be updated/rebuilt after the exchange process,
   // as the cache itself isn't transferred
   Molecule* tempMolecule;
   for(tempMolecule = _moleculeContainer->begin(); tempMolecule != _moleculeContainer->end(); tempMolecule = _moleculeContainer->next()){
@@ -735,4 +1045,14 @@ void Simulation::updateParticleContainerAndDecomposition(){
   // changed and have to be adjusted
   _moleculeContainer->update();
   
+}
+
+double Simulation::Tfactor(unsigned long simstep)
+{
+   double xi = (double)(simstep - this->_initSimulation) / (double)(this->_initCanonical - this->_initSimulation);
+   if((xi < 0.1) || (xi > 0.9)) return 1.0;
+   else if(xi < 0.3) return 15.0*xi - 0.5;
+   else if(xi < 0.4) return 10.0 - 20.0*xi;
+   else if(xi < 0.6) return 2.0;
+   else return 4 - 10.0*xi/3.0;
 }

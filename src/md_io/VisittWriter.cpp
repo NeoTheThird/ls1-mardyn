@@ -8,6 +8,10 @@
 #include <iomanip>
 #include <sstream>
 
+#ifdef GRANDCANONICAL
+#include "ensemble/GrandCanonical.h"
+#endif
+
 md_io::VisittWriter::VisittWriter( unsigned long numberOfTimesteps,
                                    unsigned long writeFrequency, string outputPathAndPrefix )
 {
@@ -26,7 +30,12 @@ void md_io::VisittWriter::initOutput( datastructures::ParticleContainer<Molecule
 
 void md_io::VisittWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC,
                                     parallel::DomainDecompBase* domainDecomp,
-                                    Domain* domain, unsigned long simstep )
+                                    Domain* domain, unsigned long simstep
+#ifdef GRANDCANONICAL
+                                    ,
+                                    list<ensemble::ChemicalPotential>* lmu
+#endif
+)
 {
   if(simstep%_writeFrequency == 0)
   {

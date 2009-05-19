@@ -75,6 +75,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
     // interaction between different components
     for(unsigned int compj=compi+1;compj<m_numcomp;++compj)
     {
+#ifndef NDEBUG
+      cout << "parameters for " << compi << " and " << compj << ": ";
+#endif
 #ifdef COMPLEX_POTENTIAL_SET
       unsigned ntj = components[compj].numTersoff();
       // no LJ interaction between solid components
@@ -106,9 +109,18 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
             shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
 #endif
             pstrmij << epsilon24;
+#ifndef NDEBUG
+            cout << "eps24=" << epsilon24 << " ";
+#endif
             pstrmij << sigma2;
+#ifndef NDEBUG
+            cout << "sig2=" << sigma2 << " ";
+#endif
 #ifdef TRUNCATED_SHIFTED
             pstrmij << shift6combined;  
+#ifndef NDEBUG
+            cout << "shift6=" << shift6combined << " ";
+#endif
 #endif
           }
         }
@@ -125,8 +137,16 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
             sigi=ljcenteri.sigma();
             epsilon24=24.*xi*sqrt(epsi*epsj);
             sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
+#ifdef TRUNCATED_SHIFTED
+            sigperrc2 = sigma2/(rc*rc);
+            sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
+            shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
+#endif
             pstrmji << epsilon24;
             pstrmji << sigma2;
+#ifdef TRUNCATED_SHIFTED
+            pstrmji << shift6combined;  
+#endif
           }
         }
 #ifdef COMPLEX_POTENTIAL_SET

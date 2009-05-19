@@ -88,15 +88,12 @@ Molecule::Molecule(const Molecule& m)
   m_charges = m.m_charges;
   m_quadrupoles = m.m_quadrupoles;
 #ifdef COMPLEX_POTENTIAL_SET
-  m_dipoles = m.m_dipoles;
-  m_tersoff = m.m_tersoff;
 #ifndef NDEBUG
-  if(!m_tersoff)
+  if(!m.m_tersoff)
   {
      cout << "\nmolecule " << m_id << " (" << m_r[0] << " / "
           << m_r[1] << " / "<< m_r[2]
-          << ") \nSEVERE TERSOFF VECTOR NULL POINTER ERROR (cf. Molecule.cpp).\n";
-     exit(1);
+          << ") \nTERSOFF VECTOR NULL POINTER WARNING (cf. Molecule.cpp).\n";
   }
   // if(m_tersoff->size() > 0)
   // {
@@ -104,6 +101,8 @@ Molecule::Molecule(const Molecule& m)
   //    cout.flush();
   // }
 #endif
+  m_dipoles = m.m_dipoles;
+  m_tersoff = m.m_tersoff;
 #endif
   m_m=m.m_m;
   m_I[0]=m.m_I[0];
@@ -186,11 +185,13 @@ Molecule::Molecule(istream& istrm, streamtype type, const vector<Component>* com
   if(components) setupCache(components);
   
 #ifndef NDEBUG
+#ifdef COMPLEX_POTENTIAL_SET
   if(m_tersoff->size() > 0)
   {
      cout << "creating Tersoff centre " << m_id << "(beta).\n";
      cout.flush();
   }
+#endif
 #endif
 }
 
@@ -286,7 +287,6 @@ void Molecule::upd_cache(){
 void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
 {
   //m_Upot*=.5;
-  
 
   calcFM();
   
@@ -300,6 +300,16 @@ void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
     v2+=m_v[d]*m_v[d];
     m_D[d]+=dt_halve*m_M[d];
   }
+#ifndef NDEBUG
+  if(!(v2 > 0.0))
+  {
+     cout << "Severe error: m" << this->m_id << " has v^2 = " << v2 << ".\n"
+          << "r = (" << m_r[0] << " / " << m_r[1] << " / " << m_r[2] << "), "
+          << "F = (" << m_F[0] << " / " << m_F[1] << " / " << m_F[2] << "), "
+          << "v = (" << m_v[0] << " / " << m_v[1] << " / " << m_v[2] << ").\n";
+     exit(5);
+  }
+#endif
   summv2+=m_m*v2;
   double w[3];
   m_q.rotate(m_D,w);
@@ -310,13 +320,19 @@ void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
     Iw2+=m_I[d]*w[d]*w[d];
   }
   sumIw2+=Iw2;
+}
 
-  /*
-#ifndef NDEBUG
-  cout << "m" << this->m_id << " \tF = (" << m_F[0] << " " << m_F[1] << " " << m_F[2]
-       << "), \n\tv = " << m_v[0] << " " << m_v[1] << " " << m_v[2] << "\n";
-#endif
-  */
+double Molecule::Urot()
+{
+   double w[3];
+   m_q.rotate(m_D,w);
+   double Iw2=0.;
+   for(unsigned short d=0;d<3;++d)
+   {
+      w[d]*=m_invI[d];
+      Iw2+=m_I[d]*w[d]*w[d];
+   }
+   return 0.5*Iw2;
 }
 
 void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2)
@@ -452,6 +468,7 @@ double Molecule::tersoffParameters(double params[15]) //returns delta_r
 
 inline void Molecule::setupCache(const vector<Component>* components)
 {
+  if(components->size() == 0) return;
   assert(components);
   assert(m_componentid >= 0);
   m_numsites=m_numorientedsites=0;
@@ -508,6 +525,7 @@ inline void Molecule::setupCache(const vector<Component>* components)
   m_dipoles_F = &(m_quadrupoles_F[numQuadrupoles()*3]);
   m_tersoff_F = &(m_dipoles_F[numDipoles()*3]);
 #endif
+  this->clearFM();
 }
 
 inline void Molecule::clearFM()
@@ -524,6 +542,21 @@ inline void Molecule::calcFM()
   {
     const double* Fsite=site_F(si);
     const double* dsite=site_d(si);
+#ifndef NDEBUG
+    for(int d=0; d < 3; d++)
+    {
+       if(!((dsite[d] >= 0) || (dsite[d] < 0)))
+       {
+          cout << "Severe dsite[" << d << "] error for site " << si << " of m" << m_id << ".\n";
+          assert(false);
+       }
+       if(!((Fsite[d] >= 0) || (Fsite[d] < 0)))
+       {
+          cout << "Severe Fsite[" << d << "] error for site " << si << " of m" << m_id << ".\n";
+          assert(false);
+       }
+    }
+#endif
     Fadd(Fsite);
     m_M[0]+=dsite[1]*Fsite[2]-dsite[2]*Fsite[1];
     m_M[1]+=dsite[2]*Fsite[0]-dsite[0]*Fsite[2];
@@ -535,3 +568,21 @@ void Molecule::setDomain(Domain* domain){
   Molecule::_domain = domain;
 }
 
+void Molecule::check(unsigned long id)
+{
+   assert(m_id == id);
+   assert(m_componentid >= 0);
+   assert(m_m > 0.0);
+   assert(m_numsites > 0);
+   assert(m_numorientedsites >= 0);
+   for(int d=0; d < 3; d++)
+   {
+      assert((m_r[d] >= 0.0) || (m_r[d] < 0.0));
+      assert((m_v[d] >= 0.0) || (m_v[d] < 0.0));
+      assert((m_D[d] >= 0.0) || (m_D[d] < 0.0));
+      assert((m_F[d] >= 0.0) || (m_F[d] < 0.0));
+      assert((m_M[d] >= 0.0) || (m_M[d] < 0.0));
+      assert((m_I[d] >= 0.0) || (m_I[d] < 0.0));
+      assert((m_invI[d] >= 0.0) || (m_invI[d] < 0.0));
+   }
+}

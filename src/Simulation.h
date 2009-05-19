@@ -6,6 +6,10 @@
 #include <list>
 #include <sstream>
 
+#ifdef GRANDCANONICAL
+#include "ensemble/GrandCanonical.h"
+#endif
+
 #include "utils/Log.h"
 
 using namespace std;
@@ -111,13 +115,15 @@ class Simulation{
     //! @brief output results 
     //! @param simstep timestep of the output
     //! @todo comment
-    void output(int simstep);
+    void output(unsigned long simstep);
     
     //! The following things have to be done here:
     //! - bring all molecules to the corresponding processes (including copies for halo)
     //! - update the caches of the molecules
     //! - update the ParticleContainer
     void updateParticleContainerAndDecomposition();
+
+    double Tfactor(unsigned long simstep);
     
   private:
     //! Logging interface
@@ -149,6 +155,17 @@ class Simulation{
 
     //! Number of discrete time steps for the simulation        
     unsigned long _numberOfTimesteps;
+
+    //! initial number of steps
+    unsigned long _initSimulation;
+    //! step number for the end of the configurational equilibration
+    unsigned long _initCanonical;
+#ifdef GRANDCANONICAL
+    //! step number for activation of the muVT ensemble
+    unsigned long _initGrandCanonical;
+#endif
+    //! step number for activation of all sorts of statistics
+    unsigned long _initStatistics;
     
     unsigned long _numberOfComponents;
 
@@ -173,5 +190,17 @@ class Simulation{
     std::list<md_io::OutputBase*> _outputPlugins;
     
     unsigned _restartOutputInterval;
+
+#ifdef GRANDCANONICAL
+    /*
+     * M.H. grand canonical ensemble (May 11, 2009)
+     */
+    std::list< ensemble::ChemicalPotential > _lmu;
+    
+    /*
+     * Planck's constant
+     */
+    double h;
+#endif
 };
 #endif /*SIMULATION_H_*/

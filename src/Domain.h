@@ -5,6 +5,7 @@
 #include <fstream>
 #include <map>
 #include <queue>
+#include <list>
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
@@ -16,6 +17,13 @@ namespace datastructures{
   template<class ParticleType>
   class ParticleContainer;
 }
+
+#ifdef GRANDCANONICAL
+namespace ensemble
+{
+   class ChemicalPotential;
+}
+#endif
 
 namespace parallel{
   class DomainDecompBase; 
@@ -154,13 +162,19 @@ class Domain{
     //! \li velocities: vx, vy, vz (all double)
     //! \li Orientation (quaternion): q0, q1, q2, q3 (all double)
     //! \li Angular Momentum: Dx, Dy, Dz (all double)
+    //!
+    //! returns the maximal molecule ID
     //! 
     //! An example can be seen in the documentation of this class
     //! @param particleContainer Here the Molecules from the input file are stored 
-    void readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
+    unsigned long readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
 #ifdef TRUNCATED_SHIFTED
           ,
        double cutoffRadius
+#endif
+#ifdef GRANDCANONICAL
+          ,
+       list< ensemble::ChemicalPotential >* lmu
 #endif
 );
 
@@ -214,6 +228,7 @@ class Domain{
     double getGlobalBetaRot(int thermostat);
 
     double T(int thermostat) { return this->_globalTemperatureMap[thermostat]; }
+    double targetT(int thermostat) { return this->_universalTargetTemperature[thermostat]; }
 
     //! @brief return the length of the domain
     //!
@@ -274,10 +289,11 @@ class Domain{
 #ifdef COMPLEX_POTENTIAL_SET
     void calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
                                 datastructures::ParticleContainer<Molecule>* particleContainer,
-                                bool collectThermostatVelocity );
+                                bool collectThermostatVelocity, double Tfactor );
 #else
     void calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
-                                datastructures::ParticleContainer<Molecule>* particleContainer );
+                                datastructures::ParticleContainer<Molecule>* particleContainer,
+                                double Tfactor );
 #endif
     
     //! @brief calculate _localSummv2 and _localSumIw2
@@ -342,6 +358,12 @@ class Domain{
     unsigned maxCoset() { return this->_universalTau.size(); }
 #endif
 
+    double N() {return this->_globalNumMolecules;}
+    double N(unsigned cid) { return this->_components[cid].numMolecules(); }
+#ifdef GRANDCANONICAL
+    void Nadd(unsigned cid, int N, int localN);
+#endif
+
    double getGlobalLength(int d) { return this->_globalLength[d]; }
 
    void setupRDF(double interval, unsigned bins);
@@ -349,7 +371,7 @@ class Domain{
    void collectRDF(parallel::DomainDecompBase* domainDecomp);
    void outputRDF(const char* prefix, unsigned i, unsigned j);
    void accumulateRDF();
-   void tickRDF() { this->_universalTimesteps++; }
+   void tickRDF() { this->_universalRDFTimesteps++; }
    inline void observeRDF(unsigned i) { this->_localCtr[i] ++; }
    inline void observeRDF(double dd, unsigned i, unsigned j)
    {
@@ -361,6 +383,11 @@ class Domain{
    void thermostatOff() { this->_universalNVE = true; }
    void thermostatOn() { this->_universalNVE = false; }
    bool NVE() { return this->_universalNVE; }
+   bool thermostatWarning() { return (this->_universalSelectiveThermostatWarning > 0); }
+
+#ifdef GRANDCANONICAL
+   void evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm);
+#endif
 
   private:
     //! Logging interface
@@ -402,7 +429,6 @@ class Domain{
     // //! global Number of rotational degrees of freedom
     // unsigned long _globalRotDOF;
     //! global Number of Molecules
-    //! @todo redundancy?
     unsigned long _globalNumMolecules;
     //! side length of the cubic simulation box
     double _globalLength[3];
@@ -489,10 +515,14 @@ class Domain{
     bool _doCollectRDF;
     double _universalInterval;
     unsigned _universalBins;
-    unsigned _universalTimesteps, _universalAccumulatedTimesteps;
+    unsigned _universalRDFTimesteps, _universalAccumulatedTimesteps;
     double ddmax;
     unsigned long *_localCtr, *_globalCtr, *_globalAccumulatedCtr;
     unsigned long ***_localDistribution, ***_globalDistribution, ***_globalAccumulatedDistribution;
+
+    int _universalSelectiveThermostatCounter;
+    int _universalSelectiveThermostatWarning;
+    int _universalSelectiveThermostatError;
 
     //! local sum (over all molecules) of the mass multiplied with the squared velocity
     map<int, double> _local2KETrans;

@@ -21,7 +21,7 @@
 #define MOLECULE_H_
 
 #ifdef COMPLEX_POTENTIAL_SET
-#define MAXTN 9
+#define MAXTN 12
 #endif
 
 /**
@@ -81,10 +81,13 @@ public:
 #endif  
      */
 
-     assert(m_sites_d); delete[] m_sites_d; assert(m_osites_e); delete[] m_osites_e; assert(m_sites_F); delete[] m_sites_F;
+     delete[] m_sites_d; delete[] m_osites_e; delete[] m_sites_F;
   }
   /** get the ID */
   unsigned long id() const { return m_id; }
+#ifdef GRANDCANONICAL
+  void setid(unsigned long id) { this->m_id = id; }
+#endif
   /** get the Component */
   int componentid() const { return m_componentid; }
   /** get the position */
@@ -107,7 +110,8 @@ public:
   double M(unsigned short d) const {return m_M[d]; }
 
   //double Upot() const { return m_Upot; }
-  double Ukin() const { return .5*m_m*(m_v[0]*m_v[0]+m_v[1]*m_v[1]+m_v[2]*m_v[2]); }
+  double Utrans() const { return .5*m_m*(m_v[0]*m_v[0]+m_v[1]*m_v[1]+m_v[2]*m_v[2]); }
+  double Urot();
 
   /** get number of sites */
   unsigned int numSites() const { return m_numsites; }
@@ -233,8 +237,14 @@ public:
   /** write binary information to stream */
   void save_restart(std::ostream& ostrm) const;
 
-//  Linked cells
+  /*
+   * veraltet, aber aus Versehen von Martin Buchholz im Code gelassen (M.H. 17. Februar 2009)
+   * nach dem neuen Schema von Martin Buchholz ist eine Cell als STL-Liste organisiert,
+   * deshalb ist das hier unnötig.
+   *
+  //  Linked cells
   Molecule* nextinCell() const { return m_nextincell; }
+   */
   
   static void setDomain(Domain* domain);
   static void setblubb(double a);
@@ -249,6 +259,10 @@ public:
   void addTersoffNeighbour(Molecule* m, bool pairType);
   double tersoffParameters(double params[15]); //returns delta_r
 #endif
+
+  // clear forces and moments
+  void clearFM();
+  void check(unsigned long id);
 
 private:
   
@@ -296,13 +310,17 @@ private:
 #ifdef COMPLEX_POTENTIAL_SET
   double *m_dipoles_F, *m_tersoff_F;
 #endif
-
+ 
+  /*
+   * veraltet, aber aus Versehen von Martin Buchholz im Code gelassen (M.H. 17. Februar 2009)
+   *
   // used by CELL data structure for intrusive single-linked "collision" lists
   Molecule* m_nextincell;
-
   // used by Cells::addMolecule to modify m_nextincell
   void setNextinCell(Molecule* next) { m_nextincell=next; }
-//  friend void Cells::addMolecule(Molecule* atom);
+  //  friend void Cells::addMolecule(Molecule* atom);
+   *
+   */
 
 #ifdef COMPLEX_POTENTIAL_SET
   //! near molecules with Tersoff centres
@@ -316,8 +334,6 @@ private:
 
   // setup cache values/properties
   void setupCache(const std::vector<Component>* components);
-  // clear forces and moments
-  void clearFM();
   // calculate forces and moments for already given site forces
   void calcFM();
 };
