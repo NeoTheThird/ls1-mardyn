@@ -344,7 +344,7 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
          this->_universalBTrans[thermit->first] = 1.0;
          this->_universalBRot[thermit->first] = pow(this->_universalBRot[thermit->first], 0.0091);
       }
-#ifndef NDEBUG
+#ifdef NDEBUG
       if((this->_universalSelectiveThermostatCounter > 0) &&
 	 ((this->_universalSelectiveThermostatCounter % 20) == 10))
 #endif
