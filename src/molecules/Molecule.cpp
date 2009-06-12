@@ -132,7 +132,7 @@ Molecule::Molecule(const Molecule& m)
 #ifdef COMPLEX_POTENTIAL_SET
   m_dipoles_e = &(m_quadrupoles_e[numQuadrupoles()*3]);
 #endif
-  m_sites_F=new double[m_numsites*3];;
+  m_sites_F=new double[m_numsites*3];
   assert(m_sites_F);
   //for(unsigned int i=0;i<m_numsites*3;++i) m_sites_F[i]=m.m_sites_F[i]; // not necessary -> cache only
   m_ljcenters_F=&(m_sites_F[0]);
@@ -506,7 +506,8 @@ inline void Molecule::setupCache(const vector<Component>* components)
   m_sites_d=new double[m_numsites*3];
   assert(m_sites_d);
   m_ljcenters_d = &(m_sites_d[0]);
-  m_quadrupoles_d = &(m_ljcenters_d[numLJcenters()*3]);
+  m_charges_d = &(m_ljcenters_d[numLJcenters()*3]);
+  m_quadrupoles_d = &(m_charges_d[numCharges()*3]);
 #ifdef COMPLEX_POTENTIAL_SET
   m_dipoles_d = &(m_quadrupoles_d[numQuadrupoles()*3]);
   m_tersoff_d = &(m_dipoles_d[numDipoles()*3]);
@@ -520,7 +521,8 @@ inline void Molecule::setupCache(const vector<Component>* components)
   m_sites_F = new double[m_numsites*3];;
   assert(m_sites_F);
   m_ljcenters_F = &(m_sites_F[0]);
-  m_quadrupoles_F = &(m_ljcenters_F[numLJcenters()*3]);
+  m_charges_F = &(m_ljcenters_F[numLJcenters()*3]);
+  m_quadrupoles_F = &(m_charges_F[numCharges()*3]);
 #ifdef COMPLEX_POTENTIAL_SET
   m_dipoles_F = &(m_quadrupoles_F[numQuadrupoles()*3]);
   m_tersoff_F = &(m_dipoles_F[numDipoles()*3]);

@@ -729,8 +729,6 @@ void Simulation::simulate()
 #ifndef NDEBUG
                 cout << "   * grand canonical ensemble(" << j
 		     << "): test deletions and insertions\n";
-#else
-                cout << " uVT[" << j << "] ";
 #endif
              }
              this->_moleculeContainer->grandcanonicalStep(
@@ -816,11 +814,6 @@ void Simulation::simulate()
       if(!this->_domain->ownrank()) cout << "   * alert z-oscillators\n";
 #endif
       this->_integrator->zOscillation(this->_zoscillator, this->_moleculeContainer);
-
-      if(simstep >= (0.5*(this->_initCanonical + this->_initStatistics)))
-      {
-         this->_zoscillation = false;
-      }
     }
 #endif
 

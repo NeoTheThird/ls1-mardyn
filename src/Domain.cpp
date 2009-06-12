@@ -348,9 +348,10 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
       if((this->_universalSelectiveThermostatCounter > 0) &&
 	 ((this->_universalSelectiveThermostatCounter % 20) == 10))
 #endif
-         cout << "\n\t\t\t\tcounter " << this->_universalSelectiveThermostatCounter
-              << ",\t warning " << this->_universalSelectiveThermostatWarning
-              << ",\t error " << this->_universalSelectiveThermostatError << "\n";
+         if(this->_localRank == 0)
+            cout << "\n\t\t\t\tcounter " << this->_universalSelectiveThermostatCounter
+                 << ",\t warning " << this->_universalSelectiveThermostatWarning
+                 << ",\t error " << this->_universalSelectiveThermostatError << "\n";
 
 #ifdef COMPLEX_POTENTIAL_SET
       if(collectThermostatVelocities && this->_universalUndirectedThermostat[thermit->first])

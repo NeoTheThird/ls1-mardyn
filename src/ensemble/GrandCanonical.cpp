@@ -380,11 +380,15 @@ Molecule ensemble::ChemicalPotential::loadMolecule()
       assert(!this->reservoir.empty());
       Molecule tmp = this->reservoir.front();
       this->reservoir.pop_front();
-      if(this->reservoir.empty()) this->reservoir.push_back( tmp );
+      if(this->reservoir.empty())
+      {
+	 tmp.scale_v(-1.0);
+	 this->reservoir.push_back( tmp );
+      }
       assert(tmp.componentid() == componentid);
 #ifndef NDEBUG
       tmp.check(tmp.id());
 #endif
       return tmp;
-#endif
 }
+#endif

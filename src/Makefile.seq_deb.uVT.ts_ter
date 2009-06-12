@@ -25,7 +25,7 @@ OBJECTS_SEQ = $(shell find ./ -name "*.cpp" | sed -e "s/\.cpp/.o/g" | grep -v Do
 
 OBJECTS = $(OBJECTS_$(SEQPAR))
 
-BINARY = ls1_mardyn.$(SEQPAR)_$(DEBRUN).$(NVTuVT).$(FLTS)_$(LCQTER)
+BINARY = ls1.mardyn_branch.$(SEQPAR)_$(DEBRUN).$(NVTuVT).$(FLTS)_$(LCQTER)
 
 CXX_SEQ = g++ 
 CXX_PAR = mpiCC
