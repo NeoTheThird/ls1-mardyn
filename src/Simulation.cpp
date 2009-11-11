@@ -291,6 +291,12 @@ Simulation::Simulation(int argc, char **argv){
        inputfilestream >> uCAT;
        this->_domain->setUCAT(uCAT);
     }
+    else if(token == "tauHalfLife")
+    {
+       double thl;
+       inputfilestream >> thl;
+       this->_domain->setTauHalfLife(thl);
+    }
     else if(token == "profile")
     {
        unsigned xun, yun, zun;
@@ -806,6 +812,7 @@ void Simulation::simulate()
       if(!this->_domain->ownrank()) cout << "   * process the uniform acceleration\n";
 #endif
       this->_integrator->accelerateUniformly(this->_moleculeContainer, this->_domain);
+      this->_domain->adjustTau(this->_integrator->getTimestepLength());
     }
 
     if(this->_zoscillation)

@@ -2,6 +2,8 @@
 #include "molecules/Molecule.h"
 #include "datastructures/ParticleContainer.h"
 #include "Domain.h"
+#include <cstdio>
+#include <cstring>
 
 using namespace std;
 

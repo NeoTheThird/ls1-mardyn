@@ -332,10 +332,10 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
   double drs[3],dr2;  // site distance vector & length^2
   // LJ centers
 #ifdef COMPLEX_POTENTIAL_SET
-  // no LJ interaction between molecules with Tersoff centres
+  // no LJ interaction between solid atoms of the same component
   const unsigned int nt1 = mi.numTersoff();
   const unsigned int nt2 = mj.numTersoff();
-  if(!nt1 || !nt2)
+  if((mi.componentid() != mj.componentid()) || !nt1)
   {
 #endif
     const unsigned int nc1 = mi.numLJcenters();
@@ -599,10 +599,10 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
   double drs[3], dr2;  // site distance vector & length^2
   // LJ centers
 #ifdef COMPLEX_POTENTIAL_SET
-  // no LJ interaction between molecules with Tersoff centres
+  // no LJ interaction between equal solid atoms
   const unsigned int nt1 = mi.numTersoff();
   const unsigned int nt2 = mj.numTersoff();
-  if(!nt1 || !nt2)
+  if((mi.componentid() != mj.componentid()) || !nt1)
   {
 #endif
     const unsigned int nc1 = mi.numLJcenters();

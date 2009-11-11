@@ -107,6 +107,8 @@ Domain::Domain(int rank){
     this->_universalThermostatDirectedVelocity[d] = map<int, double>();
     this->_localThermostatDirectedVelocity[d] = map<int, double>();
   }
+  this->_universalInfiniteTauHalfLife = true;
+  this->_universalTauHalfLife = 1.0e+10;
 #endif
    this->_universalSelectiveThermostatCounter = 0;
    this->_universalSelectiveThermostatWarning = 0;
@@ -500,297 +502,6 @@ void Domain::calculateVelocitySums(datastructures::ParticleContainer<Molecule>* 
    }
 }
 
-void Domain::setPhaseSpaceFile(string filename){
-  _phaseSpaceFileStream.open(filename.c_str());
-}  
-
-void Domain::readPhaseSpaceHeader(
-   double timestep
-#ifdef TRUNCATED_SHIFTED
-      ,
-   double cutoff
-#endif
-#ifdef COMPLEX_POTENTIAL_SET
-      ,
-   double cutoffTersoff
-#endif
-)
-{
-  string token;
-  _phaseSpaceFileStream >> token;
-  _inpversion=0;
-  if((token != "MDProject") && (token != "MOLDY") && (token != "ls1r1") && (token != "mrdyn") && (token != "mardyn"))
-  {
-    if(_localRank == 0) cerr << "Input: NOT A MOLDY INPUT! (starts with " << token << ")" << endl;
-    exit(1);
-  }
-  else
-  {
-    if((token != "mardyn") && (_localRank == 0))
-       cerr << "Warning: phase space file should begin with 'mardyn' instead of '" << token << "'.\n";
-
-    unsigned REQUIRED_INPUT_VERSION = 20080101;
-#ifdef COMPLEX_POTENTIAL_SET
-    REQUIRED_INPUT_VERSION = 20080701;
-#endif
-
-    _phaseSpaceFileStream >> _inpversion;
-    if(_inpversion < REQUIRED_INPUT_VERSION)
-    {
-      if(_localRank == 0) cerr << "Input: OLD VERSION (" << _inpversion << ")" << endl;
-      exit(1);
-    }
-  }
-
-  char c;
-  double x,y,z;
-  unsigned int numcomponents=0;
-  unsigned int j;
-  double m,sigma,eps;
-  double xi,eta;
-  unsigned long i;
-
-  // When the last header element is reached, "header" is set to false
-  bool header = true;
-  
-  while(header) {
-    _phaseSpaceFileStream >> c;
-    if(c=='#') {
-      _phaseSpaceFileStream.ignore(1024,'\n');
-      continue;
-    }
-    else {
-      _phaseSpaceFileStream.putback(c);
-    }
-    token.clear();
-    _phaseSpaceFileStream >> token;
-    if((token == "currentTime") || (token == "t"))
-    {
-      _phaseSpaceFileStream >> _currentTime;
-    }
-    else if((token == "Temperature") || (token == "T"))
-    {
-      _phaseSpaceFileStream >> _universalTargetTemperature[0];
-      this->_universalComponentwiseThermostat = false;
-#ifdef COMPLEX_POTENTIAL_SET
-      this->_universalUndirectedThermostat[0] = false;
-#endif
-    }
-    else if((token == "ThermostatTemperature") || (token == "ThT") || (token == "h"))
-    {
-       int i;
-       _phaseSpaceFileStream >> i;
-       _phaseSpaceFileStream >> _universalTargetTemperature[i];
-#ifdef COMPLEX_POTENTIAL_SET
-       if(!(this->_universalUndirectedThermostat[i] == true))
-          this->_universalUndirectedThermostat[i] = false;
-#endif
-       if(i < 0) continue;
-       if(i == 0)
-       {
-          this->_universalComponentwiseThermostat = false;
-       }
-       else
-       {
-          if(!this->_universalComponentwiseThermostat)
-          {
-             this->_universalComponentwiseThermostat = true;
-             this->_universalTargetTemperature.erase(0);
-#ifdef COMPLEX_POTENTIAL_SET
-             this->_universalUndirectedThermostat.erase(0);
-             for(int d=0; d < 3; d++) this->_universalThermostatDirectedVelocity[d].erase(0);
-#endif
-             for( vector<Component>::iterator tc = this->_components.begin();
-                  tc != this->_components.end();
-                  tc ++ )
-                if(!(this->_universalThermostatID[ tc->ID() ] > 0))
-                   this->_universalThermostatID[ tc->ID() ] = -1;
-          }
-       }
-    }
-    else if((token == "ComponentThermostat") || (token == "CT") || (token == "o"))
-    {
-       if(!this->_universalComponentwiseThermostat)
-       {
-          this->_universalComponentwiseThermostat = true;
-          this->_universalTargetTemperature.erase(0);
-          for( vector<Component>::iterator tc = this->_components.begin();
-               tc != this->_components.end();
-               tc ++ )
-             if(!(this->_universalThermostatID[ tc->ID() ] > 0))
-                this->_universalThermostatID[ tc->ID() ] = -1;
-       }
-       int cid;
-       _phaseSpaceFileStream >> cid;
-       cid--;
-       int th;
-       _phaseSpaceFileStream >> th;
-       if(0 >= th) continue;
-       this->_universalThermostatID[cid] = th;
-       this->_universalThermostatN[th] = 0;
-    }
-#ifdef COMPLEX_POTENTIAL_SET
-    else if((token == "Undirected") || (token == "U"))
-    {
-       int tst;
-       _phaseSpaceFileStream >> tst;
-       this->_universalUndirectedThermostat[tst] = true;
-       for(int d=0; d < 3; d++)
-       {
-          this->_universalThermostatDirectedVelocity[d][tst] = 0.0;
-          this->_localThermostatDirectedVelocity[d][tst] = 0.0;
-       }
-    }
-#endif
-    else if((token == "Length") || (token == "L"))
-    {
-      _phaseSpaceFileStream >> _globalLength[0] >> _globalLength[1] >> _globalLength[2];
-      for(int i=0; i < 3; i++) _globalLength[i] *= 1.0000003;   // to avoid rounding problems with coordinates
-    }
-    else if((token == "NumberOfComponents") || (token == "C"))
-    {
-      _phaseSpaceFileStream >> numcomponents;
-      _components.resize(numcomponents);
-      for(i=0;i<numcomponents;++i)
-      {
-        _components[i].setID(i);
-        unsigned int numljcenters=0;
-        unsigned int numcharges=0;
-        unsigned int numquadrupoles=0;
-        _phaseSpaceFileStream >> numljcenters >> numcharges >> numquadrupoles;
-#ifdef COMPLEX_POTENTIAL_SET
-        unsigned int numdipoles = 0;
-        unsigned int numtersoff = 0;
-        _phaseSpaceFileStream >> numdipoles >> numtersoff;
-#ifndef NDEBUG
-        cout << "component with " << numljcenters << " " << numcharges << " " << numquadrupoles << " "
-             << numdipoles << " " << numtersoff << "\n";
-#endif
-#endif
-        for(j=0;j<numljcenters;++j)
-        {
-#ifndef NDEBUG
-          if(!_localRank) cout << "reading LJ data\n";
-#endif
-          _phaseSpaceFileStream >> x >> y >> z >> m >> eps >> sigma;
-#ifdef TRUNCATED_SHIFTED
-          _components[i].addLJcenter(x, y, z, m, eps, sigma, cutoff, this->_localRank);
-#else
-          _components[i].addLJcenter(x, y, z, m, eps, sigma);
-#endif
-        }
-        for(j = 0; j < numcharges; j++)
-        {
-#ifndef NDEBUG
-          if(!_localRank) cout << "reading partial charge data\n";
-#endif
-          double q;
-          _phaseSpaceFileStream >> x >> y >> z >> m >> q;
-          _components[i].addCharge(x, y, z, m, q);
-        }
-        for(j=0;j<numquadrupoles;++j)
-        {
-#ifndef NDEBUG
-          if(!_localRank) cout << "reading Q data\n";
-#endif
-          double eQx,eQy,eQz,absQ;
-          _phaseSpaceFileStream >> x >> y >> z >> eQx >> eQy >> eQz >> absQ;
-          _components[i].addQuadrupole(x,y,z,eQx,eQy,eQz,absQ);
-        }
-#ifdef COMPLEX_POTENTIAL_SET
-        for(j=0;j<numdipoles;++j)
-        {
-#ifndef NDEBUG
-          if(!_localRank) cout << "reading D data\n";
-#endif
-          double eMyx,eMyy,eMyz,absMy;
-          _phaseSpaceFileStream >> x >> y >> z >> eMyx >> eMyy >> eMyz >> absMy;
-          _components[i].addDipole(x,y,z,eMyx,eMyy,eMyz,absMy);
-        }
-        for(j = 0; j < numtersoff; j++)
-        {
-#ifndef NDEBUG
-          if(!_localRank) cout << "reading Tersoff data\n";
-#endif
-          double x, y, z, m, A, B, lambda, mu, R, S, c, d, h, n, beta;
-          _phaseSpaceFileStream >> x >> y >> z;
-          _phaseSpaceFileStream >> m >> A >> B;
-          _phaseSpaceFileStream >> lambda >> mu >> R >> S;
-          /*
-           * note that S = rcT is strongly recommended
-           * and rcT > S would lead to WRONG results
-           */
-          if(S > cutoffTersoff)
-          {
-             if(!_localRank)
-                cout << "severe error:   S = " << S << "  >  rcT = " << cutoffTersoff << "\n";
-             exit(1);
-          }
-          else if(2.0*S < cutoffTersoff)
-             if(!_localRank) 
-                cout << "warning:   S = " << S << ",   rcT = " << cutoffTersoff << "\n";
-          _phaseSpaceFileStream >> c >> d >> h >> n >> beta;
-          _components[i].addTersoff(
-            x, y, z,
-            m, A, B,
-            lambda, mu, R, S,
-            c, d, h, n, beta
-          );
-#ifndef NDEBUG
-          if(!_localRank) cout << x << " " << y << " " << z << " " << m << " " << A << " " << B << " " << lambda << " " << mu << " R=" << R << " S=" << S << " " << c << " " << d << " " << h << " " << n << " " << beta << "\n";
-#endif
-        }
-#endif
-        double IDummy1,IDummy2,IDummy3;
-        _phaseSpaceFileStream >> IDummy1 >> IDummy2 >> IDummy3;
-        if(IDummy1>0.) _components[i].setI11(IDummy1);
-        if(IDummy2>0.) _components[i].setI22(IDummy2);
-        if(IDummy3>0.) _components[i].setI33(IDummy3);
-      }
-      _mixcoeff.clear();
-      for(i=0;i<numcomponents-1;++i)
-      {
-        for(j=i+1;j<numcomponents;++j)
-        {
-          _phaseSpaceFileStream >> xi >> eta;
-          _mixcoeff.push_back(xi);
-          _mixcoeff.push_back(eta);
-        }
-      }
-      _phaseSpaceFileStream >> _epsilonRF;
-      #ifndef NDEBUG
-          cout << "eRF:\t" << _epsilonRF << "\n";
-      #endif
-    }
-    else if((token == "NumberOfMolecules") || (token == "N"))
-    {
-      _phaseSpaceFileStream >> _globalNumMolecules;
-      header = false;
-    }
-#ifdef COMPLEX_POTENTIAL_SET
-    else if((token == "AssignCoset") || (token == "S"))
-    {
-      unsigned cid, cosetid;
-      _phaseSpaceFileStream >> cid >> cosetid;
-      cid--;
-      this->assignCoset(cid, cosetid);
-    }
-    else if((token == "Accelerate") || (token == "A"))
-    {
-       unsigned cosetid;
-       _phaseSpaceFileStream >> cosetid;
-       double v[3];
-       for(unsigned d = 0; d < 3; d++) _phaseSpaceFileStream >> v[d];
-       double tau;
-       _phaseSpaceFileStream >> tau;
-       double ainit[3];
-       for(unsigned d = 0; d < 3; d++) _phaseSpaceFileStream >> ainit[d];
-       this->specifyComponentSet(cosetid, v, tau, ainit, timestep);
-    }
-#endif
-  }
-}
-
 void Domain::writeCheckpoint( string filename, 
                               datastructures::ParticleContainer<Molecule>* particleContainer,
                               parallel::DomainDecompBase* domainDecomp, double dt )
@@ -901,127 +612,7 @@ void Domain::writeCheckpoint( string filename,
   
     domainDecomp->writeMoleculesToFile(filename, particleContainer); 
 }
- 
-unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
-#ifdef TRUNCATED_SHIFTED
-  ,
-  double cutoffRadius
-#endif
-#ifdef GRANDCANONICAL
-  ,
-  list< ensemble::ChemicalPotential >* lmu
-#endif
-)
-{  
-  string token;
 
-  double x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz;
-  double Fx,Fy,Fz,Mx,My,Mz;
-  unsigned int numcomponents=_components.size();
-  unsigned long i,id;
-  int componentid;
-  
-  unsigned long maxid = 0;
-
-  x=y=z=vx=vy=vz=q1=q2=q3=Dx=Dy=Dz=0.;
-  q0=1.;
-  Fx=Fy=Fz=Mx=My=Mz=0.;
-  _phaseSpaceFileStream >> token;
-  if((token=="MoleculeFormat") || (token == "M")) {
-    string ntypestring("ICRVQD");
-    enum Ndatatype { ICRVQD, IRV, ICRV, ICRVFQDM } ntype=ICRVQD;
-
-    if(_localRank==0) cout << "reading " << _globalNumMolecules << " molecules" << flush;
-    if(_inpversion >= 51129) _phaseSpaceFileStream >> ntypestring;
-    ntypestring.erase(ntypestring.find_last_not_of(" \t\n")+1);
-    ntypestring.erase(0,ntypestring.find_first_not_of(" \t\n"));
-    if (ntypestring=="ICRVFQDM")
-      ntype=ICRVFQDM;
-    else if (ntypestring=="ICRV")
-      ntype=ICRV;
-    else if (ntypestring=="IRV")
-      ntype=IRV;
-    if(_localRank==0) cout << " (" << ntypestring << ")" << flush;
-    if(!numcomponents)
-    {
-      if(_localRank==0) cout << endl << "No components defined! Setting up single one-centered LJ" << endl;
-      numcomponents=1;
-      _components.resize(numcomponents);
-      _components[0].setID(0);
-      _components[0].addLJcenter(0.,0.,0.,1.,1.,1.
-#ifdef TRUNCATED_SHIFTED
-        ,
-        cutoffRadius, this->_localRank
-#endif
-      );
-    }
-    //m_molecules.clear();
-    for(i=0;i<_globalNumMolecules;++i)
-    {
-      if(ntype==ICRVFQDM)
-        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz >> Fx >> Fy >> Fz
-              >> q0 >> q1 >> q2 >> q3 >> Dx >> Dy >> Dz >> Mx >> My >> Mz;
-      else if(ntype==ICRV)
-        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz;
-      else if(ntype==IRV)
-        _phaseSpaceFileStream >> id >> x >> y >> z >> vx >> vy >> vz;
-      else
-        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz
-              >> q0 >> q1 >> q2 >> q3 >> Dx >> Dy >> Dz;
-      if((x<0.0 || x>=_globalLength[0] || y<0.0 || y>=_globalLength[1] || z<0.0 || z>=_globalLength[2]) && _localRank == 0) {
-        cerr << endl << id << ": Molecule " << x << ";" << y << ";" << z << " out of box! " << flush;
-      }
-      // if(_localRank==0) cout << "processing molecule " << id << ".\n";
-
-      if(((int)componentid > (int)numcomponents))
-      {
-        if (_localRank == 0) cerr << "Molecule id "
-                                  << id << " has wrong componentid: "
-                                  << componentid << ">" << numcomponents << endl;
-        exit(1);
-      }
-      --componentid;
-        
-      //  store only those molecules within the domain of this process (handled by "LinkedCells")
-      
-      // @todo Pointer!!! new!!!  
-      Molecule m1 = Molecule(id,componentid,x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz,&_components);
-      particleContainer->addParticle(m1);
-      //(_molecules.back()).setFM(Fx,Fy,Fz,Mx,My,Mz);
-      _components[componentid].incrnumMolecules();
-      // _globalRotDOF+=_components[componentid].rot_dof();
-      if(id > maxid) maxid = id;
-#ifdef GRANDCANONICAL
-      std::list< ensemble::ChemicalPotential >::iterator cpit;
-      for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)
-      {
-         if( !cpit->hasSample() &&
-	     (componentid == cpit->getComponentID()) )
-	 {
-	    cpit->storeMolecule(m1);
-	 }
-      }
-#endif
-      
-      if(!(i%4096)) if(_localRank==0) cout << '.' << flush;
-    }
-    if(_localRank==0) cout << " done" << endl;
-      
-    if(!_globalRho){
-      _globalRho=_globalNumMolecules/(_globalLength[0]*_globalLength[1]*_globalLength[2]);
-      if(_localRank==0) cout << "calculated global Rho:\t" << _globalRho << endl;
-    }
-    _phaseSpaceFileStream.close();
-  }
-  else {
-    cout << token << "\n";
-    _log.error("read input file", "Error in the PhaseSpace File"); 
-    exit(1);
-  }
-
-  return maxid;
-}      
-      
 void Domain::initParameterStreams(double cutoffRadius){
   _comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoffRadius); 
 }
@@ -1158,6 +749,15 @@ void Domain::specifyComponentSet(unsigned cosetid, double v[3], double tau, doub
       cout << "coset " << cosetid << " will receive "
            << this->_globalVelocityQueuelength[cosetid] << " velocity queue entries.\n";
    }
+}
+
+void Domain::adjustTau(double dt)
+{
+   if(this->_universalInfiniteTauHalfLife) return;
+   double taufactor = pow(2.0, dt / this->_universalTauHalfLife);
+   map<unsigned, double>::iterator tauit;
+   for(tauit = _universalTau.begin(); tauit != _universalTau.end(); tauit++)
+      tauit->second *= taufactor;
 }
 
 /*
@@ -1718,3 +1318,414 @@ void Domain::evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm)
       (this->_globalLength[0] * this->_globalLength[1] * this->_globalLength[2]);
 }
 #endif
+
+void Domain::setPhaseSpaceFile(string filename){
+  _phaseSpaceFileStream.open(filename.c_str());
+}  
+
+void Domain::readPhaseSpaceHeader(
+   double timestep
+#ifdef TRUNCATED_SHIFTED
+      ,
+   double cutoff
+#endif
+#ifdef COMPLEX_POTENTIAL_SET
+      ,
+   double cutoffTersoff
+#endif
+)
+{
+  string token;
+  _phaseSpaceFileStream >> token;
+  _inpversion=0;
+  if((token != "MDProject") && (token != "MOLDY") && (token != "ls1r1") && (token != "mrdyn") && (token != "mardyn"))
+  {
+    if(_localRank == 0) cerr << "Input: NOT A MOLDY INPUT! (starts with " << token << ")" << endl;
+    exit(1);
+  }
+  else
+  {
+    if((token != "mardyn") && (_localRank == 0))
+       cerr << "Warning: phase space file should begin with 'mardyn' instead of '" << token << "'.\n";
+
+    unsigned REQUIRED_INPUT_VERSION = 20080101;
+#ifdef COMPLEX_POTENTIAL_SET
+    REQUIRED_INPUT_VERSION = 20080701;
+#endif
+
+    _phaseSpaceFileStream >> _inpversion;
+    if(_inpversion < REQUIRED_INPUT_VERSION)
+    {
+      if(_localRank == 0) cerr << "Input: OLD VERSION (" << _inpversion << ")" << endl;
+      exit(1);
+    }
+  }
+
+  char c;
+  double x,y,z;
+  unsigned int numcomponents=0;
+  unsigned int j;
+  double m,sigma,eps;
+  double xi,eta;
+  unsigned long i;
+
+  // When the last header element is reached, "header" is set to false
+  bool header = true;
+  
+  while(header) {
+    _phaseSpaceFileStream >> c;
+    if(c=='#') {
+      _phaseSpaceFileStream.ignore(1024,'\n');
+      continue;
+    }
+    else {
+      _phaseSpaceFileStream.putback(c);
+    }
+    token.clear();
+    _phaseSpaceFileStream >> token;
+    if((token == "currentTime") || (token == "t"))
+    {
+      _phaseSpaceFileStream >> _currentTime;
+    }
+    else if((token == "Temperature") || (token == "T"))
+    {
+      _phaseSpaceFileStream >> _universalTargetTemperature[0];
+      this->_universalComponentwiseThermostat = false;
+#ifdef COMPLEX_POTENTIAL_SET
+      this->_universalUndirectedThermostat[0] = false;
+#endif
+    }
+    else if((token == "ThermostatTemperature") || (token == "ThT") || (token == "h"))
+    {
+       int i;
+       _phaseSpaceFileStream >> i;
+       _phaseSpaceFileStream >> _universalTargetTemperature[i];
+#ifdef COMPLEX_POTENTIAL_SET
+       if(!(this->_universalUndirectedThermostat[i] == true))
+          this->_universalUndirectedThermostat[i] = false;
+#endif
+       if(i < 0) continue;
+       if(i == 0)
+       {
+          this->_universalComponentwiseThermostat = false;
+       }
+       else
+       {
+          if(!this->_universalComponentwiseThermostat)
+          {
+             this->_universalComponentwiseThermostat = true;
+             this->_universalTargetTemperature.erase(0);
+#ifdef COMPLEX_POTENTIAL_SET
+             this->_universalUndirectedThermostat.erase(0);
+             for(int d=0; d < 3; d++) this->_universalThermostatDirectedVelocity[d].erase(0);
+#endif
+             for( vector<Component>::iterator tc = this->_components.begin();
+                  tc != this->_components.end();
+                  tc ++ )
+                if(!(this->_universalThermostatID[ tc->ID() ] > 0))
+                   this->_universalThermostatID[ tc->ID() ] = -1;
+          }
+       }
+    }
+    else if((token == "ComponentThermostat") || (token == "CT") || (token == "o"))
+    {
+       if(!this->_universalComponentwiseThermostat)
+       {
+          this->_universalComponentwiseThermostat = true;
+          this->_universalTargetTemperature.erase(0);
+          for( vector<Component>::iterator tc = this->_components.begin();
+               tc != this->_components.end();
+               tc ++ )
+             if(!(this->_universalThermostatID[ tc->ID() ] > 0))
+                this->_universalThermostatID[ tc->ID() ] = -1;
+       }
+       int cid;
+       _phaseSpaceFileStream >> cid;
+       cid--;
+       int th;
+       _phaseSpaceFileStream >> th;
+       if(0 >= th) continue;
+       this->_universalThermostatID[cid] = th;
+       this->_universalThermostatN[th] = 0;
+    }
+#ifdef COMPLEX_POTENTIAL_SET
+    else if((token == "Undirected") || (token == "U"))
+    {
+       int tst;
+       _phaseSpaceFileStream >> tst;
+       this->_universalUndirectedThermostat[tst] = true;
+       for(int d=0; d < 3; d++)
+       {
+          this->_universalThermostatDirectedVelocity[d][tst] = 0.0;
+          this->_localThermostatDirectedVelocity[d][tst] = 0.0;
+       }
+    }
+#endif
+    else if((token == "Length") || (token == "L"))
+    {
+      _phaseSpaceFileStream >> _globalLength[0] >> _globalLength[1] >> _globalLength[2];
+      for(int i=0; i < 3; i++) _globalLength[i] *= 1.0000003;   // to avoid rounding problems with coordinates
+    }
+    else if((token == "NumberOfComponents") || (token == "C"))
+    {
+      _phaseSpaceFileStream >> numcomponents;
+      _components.resize(numcomponents);
+      for(i=0;i<numcomponents;++i)
+      {
+        _components[i].setID(i);
+        unsigned int numljcenters=0;
+        unsigned int numcharges=0;
+        unsigned int numquadrupoles=0;
+        _phaseSpaceFileStream >> numljcenters >> numcharges >> numquadrupoles;
+#ifdef COMPLEX_POTENTIAL_SET
+        unsigned int numdipoles = 0;
+        unsigned int numtersoff = 0;
+        _phaseSpaceFileStream >> numdipoles >> numtersoff;
+#ifndef NDEBUG
+        cout << "component with " << numljcenters << " " << numcharges << " " << numquadrupoles << " "
+             << numdipoles << " " << numtersoff << "\n";
+#endif
+#endif
+        for(j=0;j<numljcenters;++j)
+        {
+#ifndef NDEBUG
+          if(!_localRank) cout << "reading LJ data\n";
+#endif
+          _phaseSpaceFileStream >> x >> y >> z >> m >> eps >> sigma;
+#ifdef TRUNCATED_SHIFTED
+          _components[i].addLJcenter(x, y, z, m, eps, sigma, cutoff, this->_localRank);
+#else
+          _components[i].addLJcenter(x, y, z, m, eps, sigma);
+#endif
+        }
+        for(j = 0; j < numcharges; j++)
+        {
+#ifndef NDEBUG
+          if(!_localRank) cout << "reading partial charge data\n";
+#endif
+          double q;
+          _phaseSpaceFileStream >> x >> y >> z >> m >> q;
+          _components[i].addCharge(x, y, z, m, q);
+        }
+        for(j=0;j<numquadrupoles;++j)
+        {
+#ifndef NDEBUG
+          if(!_localRank) cout << "reading Q data\n";
+#endif
+          double eQx,eQy,eQz,absQ;
+          _phaseSpaceFileStream >> x >> y >> z >> eQx >> eQy >> eQz >> absQ;
+          _components[i].addQuadrupole(x,y,z,eQx,eQy,eQz,absQ);
+        }
+#ifdef COMPLEX_POTENTIAL_SET
+        for(j=0;j<numdipoles;++j)
+        {
+#ifndef NDEBUG
+          if(!_localRank) cout << "reading D data\n";
+#endif
+          double eMyx,eMyy,eMyz,absMy;
+          _phaseSpaceFileStream >> x >> y >> z >> eMyx >> eMyy >> eMyz >> absMy;
+          _components[i].addDipole(x,y,z,eMyx,eMyy,eMyz,absMy);
+        }
+        for(j = 0; j < numtersoff; j++)
+        {
+#ifndef NDEBUG
+          if(!_localRank) cout << "reading Tersoff data\n";
+#endif
+          double x, y, z, m, A, B, lambda, mu, R, S, c, d, h, n, beta;
+          _phaseSpaceFileStream >> x >> y >> z;
+          _phaseSpaceFileStream >> m >> A >> B;
+          _phaseSpaceFileStream >> lambda >> mu >> R >> S;
+          /*
+           * note that S = rcT is strongly recommended
+           * and rcT > S would lead to WRONG results
+           */
+          if(S > cutoffTersoff)
+          {
+             if(!_localRank)
+                cout << "severe error:   S = " << S << "  >  rcT = " << cutoffTersoff << "\n";
+             exit(1);
+          }
+          else if(2.0*S < cutoffTersoff)
+             if(!_localRank) 
+                cout << "warning:   S = " << S << ",   rcT = " << cutoffTersoff << "\n";
+          _phaseSpaceFileStream >> c >> d >> h >> n >> beta;
+          _components[i].addTersoff(
+            x, y, z,
+            m, A, B,
+            lambda, mu, R, S,
+            c, d, h, n, beta
+          );
+#ifndef NDEBUG
+          if(!_localRank) cout << x << " " << y << " " << z << " " << m << " " << A << " " << B << " " << lambda << " " << mu << " R=" << R << " S=" << S << " " << c << " " << d << " " << h << " " << n << " " << beta << "\n";
+#endif
+        }
+#endif
+        double IDummy1,IDummy2,IDummy3;
+        _phaseSpaceFileStream >> IDummy1 >> IDummy2 >> IDummy3;
+        if(IDummy1>0.) _components[i].setI11(IDummy1);
+        if(IDummy2>0.) _components[i].setI22(IDummy2);
+        if(IDummy3>0.) _components[i].setI33(IDummy3);
+      }
+      _mixcoeff.clear();
+      for(i=0;i<numcomponents-1;++i)
+      {
+        for(j=i+1;j<numcomponents;++j)
+        {
+          _phaseSpaceFileStream >> xi >> eta;
+          _mixcoeff.push_back(xi);
+          _mixcoeff.push_back(eta);
+        }
+      }
+      _phaseSpaceFileStream >> _epsilonRF;
+      #ifndef NDEBUG
+          cout << "eRF:\t" << _epsilonRF << "\n";
+      #endif
+    }
+    else if((token == "NumberOfMolecules") || (token == "N"))
+    {
+      _phaseSpaceFileStream >> _globalNumMolecules;
+      header = false;
+    }
+#ifdef COMPLEX_POTENTIAL_SET
+    else if((token == "AssignCoset") || (token == "S"))
+    {
+      unsigned cid, cosetid;
+      _phaseSpaceFileStream >> cid >> cosetid;
+      cid--;
+      this->assignCoset(cid, cosetid);
+    }
+    else if((token == "Accelerate") || (token == "A"))
+    {
+       unsigned cosetid;
+       _phaseSpaceFileStream >> cosetid;
+       double v[3];
+       for(unsigned d = 0; d < 3; d++) _phaseSpaceFileStream >> v[d];
+       double tau;
+       _phaseSpaceFileStream >> tau;
+       double ainit[3];
+       for(unsigned d = 0; d < 3; d++) _phaseSpaceFileStream >> ainit[d];
+       this->specifyComponentSet(cosetid, v, tau, ainit, timestep);
+    }
+#endif
+  }
+}
+
+unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
+#ifdef TRUNCATED_SHIFTED
+  ,
+  double cutoffRadius
+#endif
+#ifdef GRANDCANONICAL
+  ,
+  list< ensemble::ChemicalPotential >* lmu
+#endif
+)
+{  
+  string token;
+
+  double x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz;
+  double Fx,Fy,Fz,Mx,My,Mz;
+  unsigned int numcomponents=_components.size();
+  unsigned long i,id;
+  int componentid;
+  
+  unsigned long maxid = 0;
+
+  x=y=z=vx=vy=vz=q1=q2=q3=Dx=Dy=Dz=0.;
+  q0=1.;
+  Fx=Fy=Fz=Mx=My=Mz=0.;
+  _phaseSpaceFileStream >> token;
+  if((token=="MoleculeFormat") || (token == "M")) {
+    string ntypestring("ICRVQD");
+    enum Ndatatype { ICRVQD, IRV, ICRV, ICRVFQDM } ntype=ICRVQD;
+
+    if(_localRank==0) cout << "reading " << _globalNumMolecules << " molecules" << flush;
+    if(_inpversion >= 51129) _phaseSpaceFileStream >> ntypestring;
+    ntypestring.erase(ntypestring.find_last_not_of(" \t\n")+1);
+    ntypestring.erase(0,ntypestring.find_first_not_of(" \t\n"));
+    if (ntypestring=="ICRVFQDM")
+      ntype=ICRVFQDM;
+    else if (ntypestring=="ICRV")
+      ntype=ICRV;
+    else if (ntypestring=="IRV")
+      ntype=IRV;
+    if(_localRank==0) cout << " (" << ntypestring << ")" << flush;
+    if(!numcomponents)
+    {
+      if(_localRank==0) cout << endl << "No components defined! Setting up single one-centered LJ" << endl;
+      numcomponents=1;
+      _components.resize(numcomponents);
+      _components[0].setID(0);
+      _components[0].addLJcenter(0.,0.,0.,1.,1.,1.
+#ifdef TRUNCATED_SHIFTED
+        ,
+        cutoffRadius, this->_localRank
+#endif
+      );
+    }
+    //m_molecules.clear();
+    for(i=0;i<_globalNumMolecules;++i)
+    {
+      if(ntype==ICRVFQDM)
+        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz >> Fx >> Fy >> Fz
+              >> q0 >> q1 >> q2 >> q3 >> Dx >> Dy >> Dz >> Mx >> My >> Mz;
+      else if(ntype==ICRV)
+        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz;
+      else if(ntype==IRV)
+        _phaseSpaceFileStream >> id >> x >> y >> z >> vx >> vy >> vz;
+      else
+        _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz
+              >> q0 >> q1 >> q2 >> q3 >> Dx >> Dy >> Dz;
+      if((x<0.0 || x>=_globalLength[0] || y<0.0 || y>=_globalLength[1] || z<0.0 || z>=_globalLength[2]) && _localRank == 0) {
+        cerr << endl << id << ": Molecule " << x << ";" << y << ";" << z << " out of box! " << flush;
+      }
+      // if(_localRank==0) cout << "processing molecule " << id << ".\n";
+
+      if(((int)componentid > (int)numcomponents))
+      {
+        if (_localRank == 0) cerr << "Molecule id "
+                                  << id << " has wrong componentid: "
+                                  << componentid << ">" << numcomponents << endl;
+        exit(1);
+      }
+      --componentid;
+        
+      //  store only those molecules within the domain of this process (handled by "LinkedCells")
+      
+      // @todo Pointer!!! new!!!  
+      Molecule m1 = Molecule(id,componentid,x,y,z,vx,vy,vz,q0,q1,q2,q3,Dx,Dy,Dz,&_components);
+      particleContainer->addParticle(m1);
+      //(_molecules.back()).setFM(Fx,Fy,Fz,Mx,My,Mz);
+      _components[componentid].incrnumMolecules();
+      // _globalRotDOF+=_components[componentid].rot_dof();
+      if(id > maxid) maxid = id;
+#ifdef GRANDCANONICAL
+      std::list< ensemble::ChemicalPotential >::iterator cpit;
+      for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)
+      {
+         if( !cpit->hasSample() &&
+	     (componentid == cpit->getComponentID()) )
+	 {
+	    cpit->storeMolecule(m1);
+	 }
+      }
+#endif
+      
+      if(!(i%4096)) if(_localRank==0) cout << '.' << flush;
+    }
+    if(_localRank==0) cout << " done" << endl;
+      
+    if(!_globalRho){
+      _globalRho=_globalNumMolecules/(_globalLength[0]*_globalLength[1]*_globalLength[2]);
+      if(_localRank==0) cout << "calculated global Rho:\t" << _globalRho << endl;
+    }
+    _phaseSpaceFileStream.close();
+  }
+  else {
+    cout << token << "\n";
+    _log.error("read input file", "Error in the PhaseSpace File"); 
+    exit(1);
+  }
+
+  return maxid;
+} 
