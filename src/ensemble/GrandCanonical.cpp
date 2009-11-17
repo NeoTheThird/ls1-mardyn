@@ -123,6 +123,9 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
    // get information on the system decomposition
    //
    unsigned localN;
+#ifndef NDEBUG
+   cout << "Rank " << ownrank << " counts its particles: ";
+#endif
    if( (maxredco[0] < 0.0) || (maxredco[1] < 0.0) ||
        (maxredco[2] < 0.0) || (minredco[0] > 1.0) ||
        (minredco[1] > 1.0) || (minredco[2] > 1.0)    ) localN = 0;
@@ -133,13 +136,18 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
          this->componentid, this->control_bottom, this->control_top
       );
    else localN = cell->countParticles(this->componentid);
+#ifndef NDEBUG
+   cout << "Ni(" << ownrank << ") = " << localN << "\n";
+#endif
    float minrnd = 0.0;
    float maxrnd = 1.0;
+#ifndef NDEBUG
+   cout << "Rank " << ownrank << " requests the molecule distribution.\n";
+#endif
    this->globalN = comm->Ndistribution(localN, &minrnd, &maxrnd);
 #ifndef NDEBUG
-   if(ownrank < 4)
-      cout << "rank " << ownrank << " believes N(" << componentid << ")=" << globalN << ", rho=" << globalN/globalV
-           << ", the decisive density quotient equals " << (float)globalN/globalReducedVolume << "\n";
+   cout << "rank " << ownrank << " believes N(" << componentid << ")=" << globalN << ", rho=" << globalN/globalV
+        << ", the decisive density quotient equals " << (float)globalN/globalReducedVolume << "\n";
 #endif
 
    // construct deletions
@@ -157,7 +165,7 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
       {
          localIndex = (unsigned)floor(localN*(sel-minrnd)/(maxrnd-minrnd));
 #ifndef NDEBUG
-         // cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
+         cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
 #endif
          this->remainingDeletions.push_back(localIndex);
          this->remainingDecisions.push_back(dec);

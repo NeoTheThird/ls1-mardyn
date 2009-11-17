@@ -47,10 +47,6 @@
 
 #include <iostream>
 
-// See page 27 of MPICH2 User Guide for reference
-#undef SEEK_SET
-#undef SEEK_END
-#undef SEEK_CUR
 #include <mpi.h>
 #include <math.h>
 

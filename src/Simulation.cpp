@@ -679,6 +679,12 @@ void Simulation::simulate()
        simstep <= this->_numberOfTimesteps;
        simstep++ )
   {
+#ifndef NDEBUG
+    if(this->_domain->ownrank() < 3)
+       cout << "\ntimestep " << simstep << " [rank " << this->_domain->ownrank() << "]:\n";
+    this->_domainDecomposition->barrier();
+#endif
+
 #ifdef GRANDCANONICAL
     if(simstep >= this->_initGrandCanonical)
     {
@@ -690,6 +696,11 @@ void Simulation::simulate()
        {
 	  if(!((simstep + 2*j + 3) % cpit->getInterval()))
 	  {
+#ifndef NDEBUG
+             if(!this->_domain->ownrank()) cout << " preparing chemical potential ID " << j
+                  << "(" << cpit->getMu() << " for c" << cpit->getComponentID()
+                  << " with interval " << cpit->getInterval() << ".";
+#endif
 	     cpit->prepareTimestep(
 	        this->_moleculeContainer, this->_domainDecomposition
              );
@@ -699,15 +710,11 @@ void Simulation::simulate()
     }
 #endif
 
-#ifndef NDEBUG
-    if(this->_domain->ownrank() < 3)
-       cout << "\ntimestep " << simstep << " [rank " << this->_domain->ownrank() << "]:\n";
-#endif
-
     _integrator->eventNewTimestep(_moleculeContainer, _domain);
 
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * container and decomposition\n";
+    this->_domainDecomposition->barrier();
 #endif
 
     updateParticleContainerAndDecomposition();
@@ -753,7 +760,6 @@ void Simulation::simulate()
                      << "(" << ((localBalance > 0)? "+": "")
 		     << localBalance << ")" << " / c = "
 		     << cpit->getComponentID() << "]   ";
-                cout.flush();
              }
 #endif	     
              this->_domain->Nadd(
@@ -846,6 +852,7 @@ void Simulation::simulate()
 
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * velocity scaling\n";
+    this->_domainDecomposition->barrier();
 #endif
 
     if(!this->_domain->NVE())
@@ -890,7 +897,14 @@ void Simulation::simulate()
        }
    }
 
+#ifndef NDEBUG
+    if(!this->_domain->ownrank()) cout << "            => advancing time: ";
+#endif
     _domain->advanceTime(_integrator->getTimestepLength());
+#ifndef NDEBUG
+    if(!this->_domain->ownrank()) cout << " done.\n";
+    this->_domainDecomposition->barrier();
+#endif
     
     output(simstep);
   }
@@ -904,6 +918,7 @@ void Simulation::simulate()
   // osstrm.fill('0');
   // osstrm << this->_domain->ownrank();
   osstrm << ".restart.xdr";
+  if(!this->_domain->ownrank()) cout << "Writing XDR checkpoint.\n";
   _domain->writeCheckpoint(osstrm.str(), _moleculeContainer, _domainDecomposition, _integrator->getTimestepLength());
   
   // finish output
@@ -928,6 +943,9 @@ void Simulation::output(unsigned long simstep){
   std::list<md_io::OutputBase*>::iterator outputIter;
   for(outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++)
   {
+#ifndef NDEBUG
+     if(!ownrank) cout << "            => doOutput: ";
+#endif
      (*outputIter)->doOutput(
         _moleculeContainer, _domainDecomposition, _domain, simstep
 #ifdef GRANDCANONICAL
@@ -935,6 +953,9 @@ void Simulation::output(unsigned long simstep){
         &(this->_lmu)
 #endif
      ); 
+#ifndef NDEBUG
+     if(!ownrank) cout << "done.\n";
+#endif
   }
 
   if(this->_doRecordRDF && !(simstep % this->_RDFOutputTimesteps))
@@ -960,6 +981,9 @@ void Simulation::output(unsigned long simstep){
     this->_domain->resetRDF();
   }
 #ifdef COMPLEX_POTENTIAL_SET
+#ifndef NDEBUG
+     if(!ownrank) cout << "            => profile operations: ";
+#endif
   if((simstep >= this->_initStatistics) && this->_doRecordProfile
                                         && !(simstep % this->_profileRecordingTimesteps))
   {
@@ -981,6 +1005,9 @@ void Simulation::output(unsigned long simstep){
     }
     this->_domain->resetProfile();
   }
+#ifndef NDEBUG
+     if(!ownrank) cout << "done.\n";
+#endif
 #endif
 
   if(!(simstep % this->_restartOutputInterval))
@@ -993,6 +1020,7 @@ void Simulation::output(unsigned long simstep){
      // osstrm.fill('0');
      // osstrm << this->_domain->ownrank();
      osstrm << ".restart.xdr";
+     if(ownrank==0) cout << "Writing regular XDR output.\n";
      _domain->writeCheckpoint(osstrm.str(), _moleculeContainer, _domainDecomposition, _integrator->getTimestepLength());
   }
 
@@ -1007,10 +1035,9 @@ void Simulation::output(unsigned long simstep){
     if(a > 0)
     {
        cout.precision(4);
-       cout << "\t\t" << _domain->getDirectedVelocity(1, 2)
+       cout << "\t\t" << _domain->getDirectedVelocity(1, 2) << " " << _domain->getDirectedVelocity(1)
             << "\t" << _domain->getUniformAcceleration(1, 2)
-            << "\t" << _domain->getUniformAcceleration(1)
-            << "\t" << _domain->getCosetN(1);
+            << " " << _domain->getUniformAcceleration(1);
     }
 #endif
 #ifdef GRANDCANONICAL

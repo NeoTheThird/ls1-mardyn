@@ -182,6 +182,12 @@ template<class ParticleType>
 unsigned datastructures::LinkedCells<ParticleType>::countParticles(
    int cid, double* cbottom, double* ctop
 ) {
+   //X return this->countParticles(cid);
+
+#ifndef NDEBUG
+   cout << "\nCounting all particles between (" << cbottom[0] << " / " << cbottom[1] << " / " << cbottom[2] << ") and (" << ctop[0] << " / " << ctop[1] << " / " << ctop[2] << ").";
+#endif
+
    int minIndex[3];
    int maxIndex[3];
    for(int d=0; d < 3; d++)
@@ -198,7 +204,14 @@ unsigned datastructures::LinkedCells<ParticleType>::countParticles(
       else maxIndex[d] = (int)floor(
          (ctop[d] - this->_haloBoundingBoxMin[d]) / _cellLength[d]
       );
+
+      if(minIndex[d] < 0) minIndex[d] = 0;
+      if(maxIndex[d] >= _cellsPerDimension[d]) maxIndex[d] = _cellsPerDimension[d] - 1;
    }
+
+#ifndef NDEBUG
+   cout << "\nThis corresponds to cell indices from (" << minIndex[0] << " / " << minIndex[1] << " / " << minIndex[2] << ") to (" << maxIndex[0] << " / " << maxIndex[1] << " / " << maxIndex[2] << ").\n";
+#endif
    
    unsigned N = 0;
    int cix[3];
@@ -211,13 +224,14 @@ unsigned datastructures::LinkedCells<ParticleType>::countParticles(
       for(cix[1] = minIndex[1]; maxIndex[1] >= cix[1]; (cix[1])++)
 	 for(cix[2] = minIndex[2]; maxIndex[2] >= cix[2]; (cix[2])++)
 	 {
-	    individualCheck = (cix[0] == minIndex[0]) ||
-	                      (cix[0] == maxIndex[0]) ||
-	                      (cix[1] == maxIndex[1]) ||
-	                      (cix[1] == maxIndex[1]) ||
-	                      (cix[2] == maxIndex[2]) ||
-	                      (cix[2] == maxIndex[2]);
+	    individualCheck = (cix[0] == minIndex[0]) || (cix[0] == minIndex[0] + 1) ||
+	                      (cix[0] == maxIndex[0]) || (cix[0] == maxIndex[0] - 1) ||
+	                      (cix[1] == minIndex[1]) || (cix[1] == minIndex[1] + 1) ||
+	                      (cix[1] == maxIndex[1]) || (cix[1] == maxIndex[1] - 1) ||
+	                      (cix[2] == minIndex[2]) || (cix[2] == minIndex[2] + 1) ||
+	                      (cix[2] == maxIndex[2]) || (cix[2] == maxIndex[2] - 1);
 	    cellid = this->cellIndexOf3DIndex(cix[0], cix[1], cix[2]);
+            if((cellid < 0) || (cellid >= this->_cells.size())) continue;
             Cell<ParticleType>& currentCell = _cells[cellid];
             if(currentCell.isHaloCell()) continue;
 	    if(individualCheck)
@@ -311,7 +325,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
 
 #ifdef COMPLEX_POTENTIAL_SET
 #ifndef NDEBUG
-  cout << "disconnecting Tersoff pairs.\n";
+  //X cout << "disconnecting Tersoff pairs.\n";
 #endif
   for(unsigned i=0; i < _cells.size(); i++)
   {
@@ -328,9 +342,9 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
 
 #ifndef NDEBUG  
 #ifdef COMPLEX_POTENTIAL_SET
-  cout << "processing pairs and preprocessing Tersoff pairs.\n"; //X
+  //X cout << "processing pairs and preprocessing Tersoff pairs.\n"; 
 #else
-  cout << "processing pairs.\n"; //X
+  //X cout << "processing pairs.\n";
 #endif
 #endif
 
@@ -614,7 +628,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
   
 #ifdef COMPLEX_POTENTIAL_SET
 #ifndef NDEBUG
-  cout << "processing Tersoff potential.\n";  //X
+  //X cout << "processing Tersoff potential.\n";  
 #endif
   double params[15];
   double delta_r;
@@ -841,7 +855,7 @@ ParticleType* datastructures::LinkedCells<ParticleType>::end(){
 template<class ParticleType>
 void datastructures::LinkedCells<ParticleType>::deleteOuterParticles(){ 
 #ifndef NDEBUG
-  cout << "clearing halo.\n";  //X
+  //X cout << "clearing halo: ";  
 #endif
   typename std::list<ParticleType>::iterator particleIterator = _particles.begin();
   
@@ -865,6 +879,9 @@ void datastructures::LinkedCells<ParticleType>::deleteOuterParticles(){
       particleIterator++;
     }
   }
+#ifndef NDEBUG
+  //X cout << "halo cleared.\n";  
+#endif
 }
 
 #ifdef GRANDCANONICAL

@@ -576,7 +576,7 @@ void Molecule::check(unsigned long id)
    assert(m_componentid >= 0);
    assert(m_m > 0.0);
    assert(m_numsites > 0);
-   assert(m_numorientedsites >= 0);
+   assert(m_numsites >= m_numorientedsites);
    for(int d=0; d < 3; d++)
    {
       assert((m_r[d] >= 0.0) || (m_r[d] < 0.0));

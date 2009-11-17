@@ -507,9 +507,19 @@ void parallel::DomainDecomposition::broadcastVelocitySum(
 #ifdef GRANDCANONICAL
 unsigned parallel::DomainDecomposition::Ndistribution(unsigned localN, float* minrnd, float* maxrnd)
 {
+#ifndef NDEBUG
+   cout << "\nRank " << ownrank << " entering parallel::DomainDecomposition::Ndistribution.\n";
+   cout.flush();
+   this->barrier();
+#endif
    int num_procs;
    MPI_Comm_size(comm_topology, &num_procs);
    unsigned* moldistribution = new unsigned[num_procs];
+   if(!moldistribution)
+   {
+      cout << "SEVERE ERROR. REQUIRED MEMORY FOR moldistribution UNAVAILABLE.\n";
+      return 1;
+   }
    MPI_Allgather(&localN, 1, MPI_UNSIGNED, moldistribution, 1, MPI_UNSIGNED, this->comm_topology);
    unsigned globalN = 0;
    for(int r=0; r < ownrank; r++) globalN += moldistribution[r];

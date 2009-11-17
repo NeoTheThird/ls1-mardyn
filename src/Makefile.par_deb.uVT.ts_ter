@@ -29,7 +29,7 @@ BINARY = ls1.mardyn_branch.$(SEQPAR)_$(DEBRUN).$(NVTuVT).$(FLTS)_$(LCQTER)
 
 CXX_SEQ = g++ 
 CXX_PAR = mpiCC
-CXXFLAGS_DEB = -Wall -g
+CXXFLAGS_DEB = -g
 LNKFLAGS_DEB = -O0 -g -D$(D$(SEQPAR))
 CXXFLAGS_RUN = -O2
 LNKFLAGS_RUN = -D$(D$(SEQPAR))

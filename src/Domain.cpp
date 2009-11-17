@@ -372,11 +372,14 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
          }
 
 #ifndef NDEBUG
-         cout << "\n         * thermostat " << thermit->first
-              << " directed velocity: ("
-              << this->_universalThermostatDirectedVelocity[0][thermit->first]
-              << " / " << this->_universalThermostatDirectedVelocity[1][thermit->first]
-              << " / " << this->_universalThermostatDirectedVelocity[2][thermit->first] << ")\n";
+         if(!this->_localRank)
+         {
+            cout << "\n         * thermostat " << thermit->first
+                 << " directed velocity: ("
+                 << this->_universalThermostatDirectedVelocity[0][thermit->first]
+                 << " / " << this->_universalThermostatDirectedVelocity[1][thermit->first]
+                 << " / " << this->_universalThermostatDirectedVelocity[2][thermit->first] << ")\n";
+         }
 #endif
       }
 #endif
@@ -506,14 +509,20 @@ void Domain::writeCheckpoint( string filename,
                               datastructures::ParticleContainer<Molecule>* particleContainer,
                               parallel::DomainDecompBase* domainDecomp, double dt )
 {
-#ifdef GRANDCANONICAL
-  domainDecomp->assertDisjunctivity(particleContainer);
-#endif
+// #ifdef GRANDCANONICAL
+// #ifndef NDEBUG
+//   cout << "         Rank " << this->_localRank << " asserting disjunctivity.\n";
+// #endif
+//   domainDecomp->assertDisjunctivity(particleContainer);
+// #ifndef NDEBUG
+//   cout << "         Acknowledged by rank " << this->_localRank << ".\n";
+// #endif
+// #endif
 
   if(!this->_localRank)
   {
     ofstream checkpointfilestream(filename.c_str());
-    checkpointfilestream << "mardyn 20090219";
+    checkpointfilestream << "mardyn 20091117";
 #ifdef COMPLEX_POTENTIAL_SET
     checkpointfilestream << " tersoff";
 #endif
@@ -610,7 +619,13 @@ void Domain::writeCheckpoint( string filename,
     checkpointfilestream.close();
     }
   
+#ifndef NDEBUG
+    cout << "         Rank " << this->_localRank << " starts writing molecules.\n";
+#endif
     domainDecomp->writeMoleculesToFile(filename, particleContainer); 
+#ifndef NDEBUG
+    cout << "         Rank " << this->_localRank << " succeeded.\n";
+#endif
 }
 
 void Domain::initParameterStreams(double cutoffRadius){

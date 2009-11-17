@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2008 by Martin Bernreuther and colleagues               *
+ *   Copyright (C) 2009 by Martin Bernreuther and colleagues               *
  *   bernreuther@hlrs.de                                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -334,7 +334,6 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #ifdef COMPLEX_POTENTIAL_SET
   // no LJ interaction between solid atoms of the same component
   const unsigned int nt1 = mi.numTersoff();
-  const unsigned int nt2 = mj.numTersoff();
   if((mi.componentid() != mj.componentid()) || !nt1)
   {
 #endif
@@ -601,7 +600,6 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #ifdef COMPLEX_POTENTIAL_SET
   // no LJ interaction between equal solid atoms
   const unsigned int nt1 = mi.numTersoff();
-  const unsigned int nt2 = mj.numTersoff();
   if((mi.componentid() != mj.componentid()) || !nt1)
   {
 #endif
