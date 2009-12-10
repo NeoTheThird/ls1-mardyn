@@ -94,7 +94,7 @@ Domain::Domain(int rank){
   this->_doCollectRDF = false;
   this->_universalNVE = false;
 #ifdef COMPLEX_POTENTIAL_SET
-  this->_universalConstantAccelerationTimesteps = 30;
+  this->_universalConstantAccelerationTimesteps = 0;
   if(!rank)
     for(unsigned d=0; d < 3; d++)
       this->_globalVelocitySum[d] = map<unsigned, long double>();
@@ -107,8 +107,9 @@ Domain::Domain(int rank){
     this->_universalThermostatDirectedVelocity[d] = map<int, double>();
     this->_localThermostatDirectedVelocity[d] = map<int, double>();
   }
-  this->_universalInfiniteTauHalfLife = true;
-  this->_universalTauHalfLife = 1.0e+10;
+  this->_universalConstantTau = true;
+  this->_universalZetaFlow = 0.0;
+  this->_universalTauPrime = 0.0;
 #endif
    this->_universalSelectiveThermostatCounter = 0;
    this->_universalSelectiveThermostatWarning = 0;
@@ -758,14 +759,47 @@ void Domain::specifyComponentSet(unsigned cosetid, double v[3], double tau, doub
          this->_globalTargetVelocity[d][cosetid] = v[d];
          this->_globalVelocitySum[d][cosetid] = 0.0;
       }
-      this->_globalVelocityQueuelength[cosetid] = (unsigned)ceil(
-         sqrt(this->_universalTau[cosetid] / (timestep*this->_universalConstantAccelerationTimesteps))
-      );
-      cout << "coset " << cosetid << " will receive "
-           << this->_globalVelocityQueuelength[cosetid] << " velocity queue entries.\n";
+      if(this->_universalConstantAccelerationTimesteps == 0)
+      {
+         cout << "SEVERE ERROR: unknown UCAT!\n";
+         exit(77);
+      }
+      if(this->_universalTauPrime != 0.0)
+      {
+         this->_globalVelocityQueuelength[cosetid] = (unsigned)ceil(
+            this->_universalTauPrime / (timestep*this->_universalConstantAccelerationTimesteps)
+         );
+         cout << "coset " << cosetid << " will receive "
+              << this->_globalVelocityQueuelength[cosetid] << " velocity queue entries.\n";
+      }
+      else
+         this->_globalVelocityQueuelength[cosetid] = (unsigned)ceil(
+            sqrt(this->_universalTau[cosetid] / (timestep*this->_universalConstantAccelerationTimesteps))
+         );
+   }
+}
+void Domain::specifyTauPrime(double tauPrime, double dt)
+{
+   this->_universalTauPrime = tauPrime;
+   if(this->_localRank != 0) return;
+   if(this->_universalConstantAccelerationTimesteps == 0)
+   {
+      cout << "SEVERE ERROR: unknown UCAT!\n";
+      exit(78);
+   }
+   unsigned vql = (unsigned)ceil(tauPrime / (dt*this->_universalConstantAccelerationTimesteps));
+   map<unsigned, unsigned>::iterator vqlit;
+   for(vqlit = _globalVelocityQueuelength.begin(); vqlit != _globalVelocityQueuelength.end(); vqlit++)
+   {
+      vqlit->second = vql;
+      cout << "coset " << vqlit->first << " will receive "
+           << vqlit->second << " velocity queue entries.\n";
    }
 }
 
+/*
+ * exponentielle Variante
+ *
 void Domain::adjustTau(double dt)
 {
    if(this->_universalInfiniteTauHalfLife) return;
@@ -773,6 +807,22 @@ void Domain::adjustTau(double dt)
    map<unsigned, double>::iterator tauit;
    for(tauit = _universalTau.begin(); tauit != _universalTau.end(); tauit++)
       tauit->second *= taufactor;
+}
+ */
+
+/*
+ * quadratische Variante
+ */
+void Domain::adjustTau(double dt)
+{
+   if(this->_universalConstantTau) return;
+   map<unsigned, double>::iterator tauit;
+   double increment;
+   for(tauit = _universalTau.begin(); tauit != _universalTau.end(); tauit++)
+   {
+      increment = dt * this->_universalZetaFlow * sqrt(tauit->second);
+      tauit->second += increment;
+   }
 }
 
 /*

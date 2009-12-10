@@ -319,12 +319,13 @@ class Domain{
     void assignCoset(unsigned cid, unsigned cosetid) { _universalComponentSetID[cid] = cosetid; }
     /// sets the information on the acceleration model for one coset
     void specifyComponentSet(unsigned cosetid, double v[3], double tau, double ainit[3], double timestep);
-    /// sets a finite half life for tau
-    void setTauHalfLife(double thl)
+    /// sets the zeta value for the flow controller
+    void setZetaFlow(double zeta)
     {
-       this->_universalInfiniteTauHalfLife = false;
-       this->_universalTauHalfLife = thl;
+       this->_universalConstantTau = false;
+       this->_universalZetaFlow = zeta;
     }
+    void specifyTauPrime(double tauPrime, double dt);
     void adjustTau(double dt);
     /// sets the number of timesteps between two updates of the uniform acceleration
     void setUCAT(unsigned uCAT) { this->_universalConstantAccelerationTimesteps = uCAT; }
@@ -488,8 +489,9 @@ class Domain{
     map<unsigned, double> _globalTargetVelocity[3];
     /// delay variable tau of a coset
     map<unsigned, double> _universalTau;
-    bool _universalInfiniteTauHalfLife;
-    double _universalTauHalfLife;
+    bool _universalConstantTau;
+    double _universalZetaFlow;
+    double _universalTauPrime;
     /// queue of previously recorded velocity sums
     map<unsigned, deque<long double> > _globalPriorVelocitySums[3];
     /// number of items in the velocity queue

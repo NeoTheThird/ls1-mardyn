@@ -291,11 +291,22 @@ Simulation::Simulation(int argc, char **argv){
        inputfilestream >> uCAT;
        this->_domain->setUCAT(uCAT);
     }
-    else if(token == "tauHalfLife")
+    else if(token == "zetaFlow")
     {
-       double thl;
-       inputfilestream >> thl;
-       this->_domain->setTauHalfLife(thl);
+       double zeta;
+       inputfilestream >> zeta;
+       this->_domain->setZetaFlow(zeta);
+    }
+    else if(token == "tauPrimeFlow")
+    {
+       double tauPrime;
+       inputfilestream >> tauPrime;
+       if(timestepLength == 0.0)
+       {
+          cout << "timestep missing.\n";
+          exit(1);
+       }
+       this->_domain->specifyTauPrime(tauPrime, timestepLength);
     }
     else if(token == "profile")
     {
