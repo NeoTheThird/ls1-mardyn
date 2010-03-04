@@ -57,17 +57,17 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     //! For all pairs, the force between the two Molecules has to be calculated
     //! and stored in the molecules. For original pairs(pairType 0), the contributions
     //! to the macroscopic values have to be collected
-    double processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType, double dd){
+    double processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType, double dd, bool cLJ){
       ParaStrm& params=_domain.getComp2Params()(particle1.componentid(),particle2.componentid());
       params.reset_read();
       if(pairType == 0){
         if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
 
-        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial);
+        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ);
         return _upot6LJ + _upotXpoles;
       }
       else if(pairType == 1){
-        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4);
+        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4,cLJ);
         return 0.0;
       }
 #ifdef GRANDCANONICAL
@@ -77,7 +77,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
         _dummy2 = 0.0;  // U_polarity
         _dummy3 = 0.0;  // U_dipole_reaction_field
         
-        FluidPot(particle1, particle2, params, distanceVector, _dummy1, _dummy2, _dummy3);
+        FluidPot(particle1, particle2, params, distanceVector, _dummy1, _dummy2, _dummy3,cLJ);
         return _dummy1/6.0 + _dummy2 + _dummy3;
       }
 #endif

@@ -16,7 +16,7 @@ template<class ParticleType>
 utils::Log datastructures::LinkedCells<ParticleType>::_log("LinkedCells");
 
 template<class ParticleType>
-datastructures::LinkedCells<ParticleType>::LinkedCells(double bBoxMin[3], double bBoxMax[3], double cutoffRadius,
+datastructures::LinkedCells<ParticleType>::LinkedCells(double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 #ifdef COMPLEX_POTENTIAL_SET
                 double tersoffCutoffRadius,
 #endif
@@ -24,7 +24,8 @@ datastructures::LinkedCells<ParticleType>::LinkedCells(double bBoxMin[3], double
                 datastructures::ParticleContainer<ParticleType>(partPairsHandler, bBoxMin, bBoxMax){
                
   int numberOfCells = 1;
-  _cutoffRadius = cutoffRadius,
+  _cutoffRadius = cutoffRadius;
+  _LJCutoffRadius = LJCutoffRadius;
 #ifdef COMPLEX_POTENTIAL_SET
   this->_tersoffCutoffRadius = tersoffCutoffRadius;
 #endif
@@ -288,6 +289,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
   
   // sqare of the cutoffradius
   double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius; 
+  double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
 #ifdef COMPLEX_POTENTIAL_SET
   double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * this->_tersoffCutoffRadius;
 #endif
@@ -341,11 +343,14 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
 #endif
 
 #ifndef NDEBUG  
+  /*
 #ifdef COMPLEX_POTENTIAL_SET
-  //X cout << "processing pairs and preprocessing Tersoff pairs.\n"; 
+  cout << "processing pairs and preprocessing Tersoff pairs: "; 
 #else
-  //X cout << "processing pairs.\n";
+  cout << "processing pairs: ";
 #endif
+  cout << "cutoffRadiusSquare = " << cutoffRadiusSquare << ", LJCutoffRadiusSquare = " << LJCutoffRadiusSquare << "\n";
+  */
 #endif
 
   // loop over all inner cells and calculate forces to forward neighbours
@@ -368,7 +373,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
             }
           }
         }
@@ -384,7 +389,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
               if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
               {
                  this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
@@ -413,7 +418,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
             }
           }
 #ifdef COMPLEX_POTENTIAL_SET
@@ -426,7 +431,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
               if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
                 this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
             }
@@ -512,7 +517,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-               this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+               this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
             }
           }
         }
@@ -528,7 +533,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
               if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
                 this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
             }
@@ -556,7 +561,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
             }
           }
 #ifdef COMPLEX_POTENTIAL_SET
@@ -569,7 +574,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
             dd = molecule2.dist2(molecule1,distanceVector);
             if(dd < cutoffRadiusSquare)
             {
-              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd);
+              this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,0,dd,(dd < LJCutoffRadiusSquare));
               if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
                 this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,false);
             }
@@ -600,7 +605,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
               dd = molecule2.dist2(molecule1,distanceVector);
               if(dd < cutoffRadiusSquare)
               {
-                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd);
+                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd,(dd < LJCutoffRadiusSquare));
               }
             }
 #ifdef COMPLEX_POTENTIAL_SET
@@ -613,7 +618,7 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
               dd = molecule2.dist2(molecule1,distanceVector);
               if(dd < cutoffRadiusSquare)
               {
-                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd);
+                this->_particlePairsHandler.processPair(molecule1,molecule2,distanceVector,1,dd,(dd < LJCutoffRadiusSquare));
                 if((molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare))
                   this->_particlePairsHandler.preprocessTersoffPair(molecule1,molecule2,true);
               }
@@ -918,6 +923,7 @@ double datastructures::LinkedCells<ParticleType>::getEnergy(ParticleType* m1)
   
    // sqare of the cutoffradius
    double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius; 
+   double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
    double dd;
    double distanceVector[3];
 
@@ -936,7 +942,7 @@ double datastructures::LinkedCells<ParticleType>::getEnergy(ParticleType* m1)
          if((*molIter2)->numTersoff() > 0) continue;
          dd = (*molIter2)->dist2(*m1, distanceVector);
          if(dd > cutoffRadiusSquare) continue;
-         u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd);
+         u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
       }
 
       // backward and forward neighbours
@@ -955,7 +961,7 @@ double datastructures::LinkedCells<ParticleType>::getEnergy(ParticleType* m1)
             if((*molIter2)->numTersoff() > 0) continue;
             dd = (*molIter2)->dist2(*m1, distanceVector);
             if(dd > cutoffRadiusSquare) continue;
-            u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd);
+            u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
          }
       }
    }
@@ -971,7 +977,7 @@ double datastructures::LinkedCells<ParticleType>::getEnergy(ParticleType* m1)
          if(m1->id() == (*molIter2)->id()) continue;
          dd = (*molIter2)->dist2(*m1, distanceVector);
          if(dd > cutoffRadiusSquare) continue;
-         u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd);
+         u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
       }
 
       // backward and forward neighbours
@@ -989,7 +995,7 @@ double datastructures::LinkedCells<ParticleType>::getEnergy(ParticleType* m1)
          {
             dd = (*molIter2)->dist2(*m1, distanceVector);
             if(dd > cutoffRadiusSquare) continue;
-            u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd);
+            u += this->_particlePairsHandler.processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
          }
       }
 

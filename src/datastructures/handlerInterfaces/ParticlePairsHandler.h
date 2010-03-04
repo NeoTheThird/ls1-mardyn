@@ -56,7 +56,7 @@ class datastructures::ParticlePairsHandler{
     //! @param pairType describes whether the pair is am original pair(0), a duplicated pair(1),
     //!                 or a pair containing a grand canonical test particle (2)
     //!                 for details about pair types see comments on traversePairs() in ParticleContainer
-    virtual double processPair(ParticleType& particle1, ParticleType& particle2, double distanceVector[3], int pairType, double dd) = 0;
+    virtual double processPair(ParticleType& particle1, ParticleType& particle2, double distanceVector[3], int pairType, double dd, bool cLJ) = 0;
 #ifdef COMPLEX_POTENTIAL_SET
     virtual void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType) = 0;
     // virtual void processTersoffPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType) = 0;

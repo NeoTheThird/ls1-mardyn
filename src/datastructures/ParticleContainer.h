@@ -139,6 +139,7 @@ class datastructures::ParticleContainer {
     virtual double get_halo_L(int index);
 
     virtual double getCutoff() = 0;
+    virtual double getLJCutoff() = 0;
 #ifdef COMPLEX_POTENTIAL_SET
     virtual double getTersoffCutoff() = 0;
 #endif

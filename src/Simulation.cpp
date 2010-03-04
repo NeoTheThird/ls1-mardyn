@@ -62,6 +62,8 @@ Simulation::Simulation(int argc, char **argv){
   unsigned cosetid = 0;
 #endif
 
+  this->_cutoffRadius = 0;
+  this->_LJCutoffRadius = 0;
   this->_resultOutputTimesteps = 25;
 #ifdef COMPLEX_POTENTIAL_SET
   this->_doRecordProfile = false;
@@ -119,11 +121,12 @@ Simulation::Simulation(int argc, char **argv){
          cout << "timestep missing.\n";
          exit(1);
       }
+      if(this->_LJCutoffRadius == 0.0) _LJCutoffRadius = this->_cutoffRadius;
       _domain->readPhaseSpaceHeader(
          timestepLength
 #ifdef TRUNCATED_SHIFTED
             ,
-         this->_cutoffRadius
+         this->_LJCutoffRadius
 #endif
 #ifdef COMPLEX_POTENTIAL_SET
             ,
@@ -132,13 +135,16 @@ Simulation::Simulation(int argc, char **argv){
       );
       this->_numberOfComponents = _domain->getComponents().size();
 
-      _domain->initParameterStreams(_cutoffRadius);
+      _domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius);
     }
     else if(token=="timestepLength") {
       inputfilestream >> timestepLength;
     }
     else if(token=="cutoffRadius")   {
       inputfilestream >> _cutoffRadius;
+    } 
+    else if(token=="LJCutoffRadius")   {
+      inputfilestream >> _LJCutoffRadius;
     } 
 #ifdef COMPLEX_POTENTIAL_SET
     else if(token=="tersoffCutoffRadius")   {
@@ -158,12 +164,14 @@ Simulation::Simulation(int argc, char **argv){
           bBoxMax[i] = (_domainDecomposition->getCoords(i)+1)*_domain->getGlobalLength(i)/_domainDecomposition->getGridSize(i);
         }
         
-        _moleculeContainer = new datastructures::LinkedCells<Molecule>(bBoxMin, bBoxMax, _cutoffRadius, 
+        if(_LJCutoffRadius == 0) _LJCutoffRadius = _cutoffRadius;
+        cout.precision(5);
+        if(!ownrank) cout << "Fluid cutoff radii: " << _LJCutoffRadius << " (potential), " << _cutoffRadius << " (RDF / electrostatics)\n";
+        _moleculeContainer = new datastructures::LinkedCells<Molecule>(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 #ifdef COMPLEX_POTENTIAL_SET
            _tersoffCutoffRadius,
 #endif
            cellsInCutoffRadius, *_particlePairsHandler);
-        
       }
     }
     else if(token=="output")  {
@@ -511,11 +519,12 @@ Simulation::Simulation(int argc, char **argv){
     }
   }
   
+  if(this->_LJCutoffRadius == 0.0) _LJCutoffRadius = this->_cutoffRadius;
   unsigned long maxid = _domain->readPhaseSpaceData(
     _moleculeContainer
 #ifdef TRUNCATED_SHIFTED
     ,
-    this->_cutoffRadius
+    this->_LJCutoffRadius
 #endif
 #ifdef GRANDCANONICAL
     ,
@@ -523,7 +532,7 @@ Simulation::Simulation(int argc, char **argv){
 #endif
   );
   if(!ownrank) cout << "Maximal molecule ID: " << maxid << ".\n";
-  _domain->initFarFieldCorr(_cutoffRadius);
+  _domain->initFarFieldCorr(_cutoffRadius, _LJCutoffRadius);
   
 #ifdef GRANDCANONICAL
   unsigned idi = this->_lmu.size();
@@ -660,6 +669,7 @@ void Simulation::initialize(){
   for(outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++){
     (*outputIter)->initOutput(_moleculeContainer, _domainDecomposition, _domain); 
   }
+  if((this->_initSimulation > this->_initStatistics) && this->_doRecordRDF) this->_domain->tickRDF();
 
   if(!this->_domain->ownrank()) cout << "system is initialised.\n\n";
 }
@@ -695,6 +705,7 @@ void Simulation::simulate()
        cout << "\ntimestep " << simstep << " [rank " << this->_domain->ownrank() << "]:\n";
     this->_domainDecomposition->barrier();
 #endif
+    if((simstep == this->_initStatistics) && this->_doRecordRDF) this->_domain->tickRDF();
 
 #ifdef GRANDCANONICAL
     if(simstep >= this->_initGrandCanonical)
@@ -790,13 +801,6 @@ void Simulation::simulate()
     // clear halo
     _moleculeContainer->deleteOuterParticles();
 
-   if((simstep >= this->_initStatistics) && (this->_doRecordRDF))
-   {
-      this->_particlePairsHandler->recordRDF();
-      this->_moleculeContainer->countParticles(this->_domain);
-      this->_domain->tickRDF();
-   }
-
 #ifdef GRANDCANONICAL
     if(simstep >= _initGrandCanonical)
     {
@@ -830,6 +834,24 @@ void Simulation::simulate()
 #endif
       this->_integrator->accelerateUniformly(this->_moleculeContainer, this->_domain);
       this->_domain->adjustTau(this->_integrator->getTimestepLength());
+    }
+
+    if(simstep >= this->_initStatistics)
+    {
+#ifdef GRANDCANONICAL
+       if(this->_lmu.size() == 0)
+       {      
+#endif
+          this->_domain->record_cv();
+#ifdef GRANDCANONICAL
+       }
+#endif
+       if(this->_doRecordRDF)
+       {
+          this->_domain->tickRDF();
+          this->_particlePairsHandler->recordRDF();
+          this->_moleculeContainer->countParticles(this->_domain);
+       }
     }
 
     if(this->_zoscillation)
@@ -1094,3 +1116,4 @@ double Simulation::Tfactor(unsigned long simstep)
    else if(xi < 0.6) return 2.0;
    else return 4 - 10.0*xi/3.0;
 }
+

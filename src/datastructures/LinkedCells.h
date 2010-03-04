@@ -78,7 +78,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     //!        ==> cells have to be larger: cellsPerDimension = phasespacelength/celllength = 100/celllength = 66 cells \n
     //!        ==> celllength = 100/66 = 1.5152
     //! @param partPairsHandler specified concrete action to be done for each pair
-    LinkedCells(double bBoxMin[3], double bBoxMax[3], double cutoffRadius,
+    LinkedCells(double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 #ifdef COMPLEX_POTENTIAL_SET
                 double tersoffCutoffRadius,
 #endif
@@ -201,6 +201,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     void deleteOuterParticles();
 
     double getCutoff() { return this->_cutoffRadius; }
+    double getLJCutoff() { return this->_LJCutoffRadius; }
 #ifdef COMPLEX_POTENTIAL_SET
     double getTersoffCutoff() { return this->_tersoffCutoffRadius; }
 #endif
@@ -261,6 +262,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     double _cellLength[3];
     //! cutoff radius
     double _cutoffRadius;
+    double _LJCutoffRadius;
 #ifdef COMPLEX_POTENTIAL_SET
     //! Tersoff cutoff radius
     double _tersoffCutoffRadius;

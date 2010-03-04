@@ -131,6 +131,7 @@ class Simulation{
     
     //! maximum distance at which the forces between two molecules still have to be calculated.
     double _cutoffRadius;
+    double _LJCutoffRadius;  // LJ cutoff (may be smaller than overall cutoff)
 
 #ifdef COMPLEX_POTENTIAL_SET
     //! maximum distance at which the Tersoff forces between two molecules still have to be calculated.

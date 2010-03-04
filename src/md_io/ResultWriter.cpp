@@ -25,12 +25,12 @@ void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>
   if(domainDecomp->getRank()==0){
     _resultStream.open(resultfile.c_str());
     _resultStream << "# LS1 _M_olekul_ARDYN_amik: simulation starting at " << ctime(&now) << endl;
-    _resultStream << "#\tt\tU_pot\tp\t\t";
+    _resultStream << "#\tt\tU_pot\tp\tc_v\t";
 #ifdef GRANDCANONICAL
-    _resultStream << "N(uVT)[1..i]\trho(uVT)[1..i]\t\t";
+    _resultStream << "\tN(uVT)[1..i]\trho(uVT)[1..i]\t";
 #endif
     for(unsigned i=0; domain->maxThermostat() >= i; i++)
-      _resultStream << "T(" << i << ")\tbetaTrans(" << i << ")\tbetaRot(" << i << ")\t";
+      _resultStream << "\tT(" << i << ")\tbetaTrans(" << i << ")\tbetaRot(" << i << ")\t";
 #ifdef COMPLEX_POTENTIAL_SET
     for(unsigned i=1; domain->maxCoset() >= i; i++)
       _resultStream << "\tN(" << i << ")\tvx vy vz\tv(" << i << ")\tax ay az\ta(" << i << ")\t";
@@ -57,7 +57,8 @@ void md_io::ResultWriter::doOutput
   {
     _resultStream << simstep << "\t" << domain->getCurrentTime()
                   << "\t" << domain->getAverageGlobalUpot() << "\t"
-                  << domain->getGlobalPressure() << "\t\t";
+                  << domain->getGlobalPressure() << "\t"
+                  << domain->cv() << "\t\t";
 #ifdef GRANDCANONICAL
     std::list< ensemble::ChemicalPotential >::iterator cpit;
     for(cpit = lmu->begin(); cpit != lmu->end(); cpit++)

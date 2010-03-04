@@ -25,7 +25,7 @@
 using namespace std;
 
 void Comp2Param::initialize(const vector<Component>& components, const vector<double>& mixcoeff
-                           , double epsRF, double rc)
+                           , double epsRF, double rc, double rcLJ)
 {
   m_numcomp=components.size();
   m_ssparatbl.redim(m_numcomp,m_numcomp);

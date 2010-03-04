@@ -1,6 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2009 by Martin Bernreuther and colleagues               *
- *   bernreuther@hlrs.de                                                   *
+ *   Copyright (C) 2010 by Martin Bernreuther and colleagues               *
+ *   Head of development: M. Bernreuther <bernreuther@hlrs.de>             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -323,7 +323,7 @@ inline void PotForceChargeDipole( const double dr[3], const double& dr2,
 
    drm == distance FROM j TO i ... !!!
 */
-inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial )
+inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool cLJ)
 // ???better calc Virial, when molecule forces are calculated:
 //    summing up molecule virials instead of site virials???
 { // Force Calculation
@@ -350,12 +350,15 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
         params >> eps24;
         double sig2;
         params >> sig2;
-	cout.flush();
-        PotForceLJ(drs,dr2,eps24,sig2,f,u);
 #ifdef TRUNCATED_SHIFTED
         double shift6;
         params >> shift6;
-        u += shift6;
+#endif
+        if(cLJ)
+        {
+           PotForceLJ(drs,dr2,eps24,sig2,f,u);
+#ifdef TRUNCATED_SHIFTED
+           u += shift6;
 #endif
 
 // even for interactions within the cell a neighbor might try to add/subtract
@@ -364,17 +367,18 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-        {
-          mi.Fljcenteradd(si,f);
-          mj.Fljcentersub(sj,f);
-        }
-        Upot6LJ+=u;
-        /*
-        u/=6.;
-        mi.Upotadd(u);
-        mj.Upotadd(u);
-        */
-        for(unsigned short d=0;d<3;++d) Virial+=drm[d]*f[d];
+           {
+             mi.Fljcenteradd(si,f);
+             mj.Fljcentersub(sj,f);
+           }
+           Upot6LJ+=u;
+           /*
+           u/=6.;
+           mi.Upotadd(u);
+           mj.Upotadd(u);
+           */
+           for(unsigned short d=0;d<3;++d) Virial+=drm[d]*f[d];
+         }
       }
     }
 #ifdef COMPLEX_POTENTIAL_SET
@@ -591,7 +595,7 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
  * calculates the potential energy of the mi-mj interaction,
  * if and only if both of them are fluid (no interaction between Tersoff sites is considered)
  */
-inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF)
+inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool cLJ)
 {
   double f[3];
   double u;
@@ -616,13 +620,18 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
         params >> eps24;
         double sig2;
         params >> sig2;
-        PotForceLJ(drs,dr2,eps24,sig2,f,u);
 #ifdef TRUNCATED_SHIFTED
         double shift6;
         params >> shift6;
-        u += shift6;
 #endif
-        Upot6LJ+=u;
+        if(cLJ)
+        {
+           PotForceLJ(drs,dr2,eps24,sig2,f,u);
+#ifdef TRUNCATED_SHIFTED
+           u += shift6;
+#endif
+           Upot6LJ+=u;
+        }
       }
     }
 #ifdef COMPLEX_POTENTIAL_SET

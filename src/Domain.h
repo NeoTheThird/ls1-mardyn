@@ -143,7 +143,7 @@ class Domain{
        double timestep
 #ifdef TRUNCATED_SHIFTED
           ,
-       double cutoff
+       double cutoffLJ
 #endif
 #ifdef COMPLEX_POTENTIAL_SET
           ,
@@ -170,7 +170,7 @@ class Domain{
     unsigned long readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
 #ifdef TRUNCATED_SHIFTED
           ,
-       double cutoffRadius
+       double cutoffRadiusLJ
 #endif
 #ifdef GRANDCANONICAL
           ,
@@ -198,14 +198,14 @@ class Domain{
     //! @param cutoffRadius cutoff radius
     //! @todo How does the Correction work? Give reference to some paper,
     //!       documentation in the implementation
-    void initFarFieldCorr(double cutoffRadius); // CHECKED
+    void initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ); // CHECKED
 
     //! @brief initialize parameter streams
     //!
     //! This method should only be called, after the the component information
     //! and all molecule data have been read in
     //! @param cutoffRadius cutoff radius
-    void initParameterStreams(double cutoffRadius);
+    void initParameterStreams(double cutoff, double cutoffRadiusLJ);
 
     //! @brief set the potential of the local process
     void setLocalUpot(double Upot); 
@@ -383,9 +383,10 @@ class Domain{
    inline void observeRDF(unsigned i) { this->_localCtr[i] ++; }
    inline void observeRDF(double dd, unsigned i, unsigned j)
    {
+      if(this->_universalRDFTimesteps < 0) return;
       if(dd > this->ddmax) return;
       if(i > j) { this->observeRDF(dd, j, i); return; }
-      unsigned l = (unsigned)(sqrt(dd)/this->_universalInterval);
+      unsigned l = (unsigned)floor(sqrt(dd)/(double)_universalInterval);
       this->_localDistribution[i][j-i][l] ++;
    }
    void thermostatOff() { this->_universalNVE = true; }
@@ -393,9 +394,19 @@ class Domain{
    bool NVE() { return this->_universalNVE; }
    bool thermostatWarning() { return (this->_universalSelectiveThermostatWarning > 0); }
 
+   void record_cv();
+   double cv();
+
 #ifdef GRANDCANONICAL
    void evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm);
 #endif
+
+   void init_cv(unsigned N, double U, double UU)
+   {
+      this->_globalUSteps = N;
+      this->_globalSigmaU = U;
+      this->_globalSigmaUU = UU;
+   }
 
   private:
     //! Logging interface
@@ -497,6 +508,11 @@ class Domain{
     /// number of items in the velocity queue
     map<unsigned, unsigned> _globalVelocityQueuelength;
 
+    //! computation of the isochoric heat capacity
+    unsigned _globalUSteps;
+    double _globalSigmaU;
+    double _globalSigmaUU;    
+
     //! 1 / dimension of a profile cuboid
     double _universalInvProfileUnit[3];
     //! number of successive profile cuboids in x/y/z direction
@@ -526,7 +542,7 @@ class Domain{
     bool _doCollectRDF;
     double _universalInterval;
     unsigned _universalBins;
-    unsigned _universalRDFTimesteps, _universalAccumulatedTimesteps;
+    int _universalRDFTimesteps, _universalAccumulatedTimesteps;
     double ddmax;
     unsigned long *_localCtr, *_globalCtr, *_globalAccumulatedCtr;
     unsigned long ***_localDistribution, ***_globalDistribution, ***_globalAccumulatedDistribution;

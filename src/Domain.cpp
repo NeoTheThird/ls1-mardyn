@@ -92,7 +92,11 @@ Domain::Domain(int rank){
   this->_local2KERot[0] = 0.0; 
   this->_currentTime = 0.0;
   this->_doCollectRDF = false;
+  this->_universalRDFTimesteps = -1;
   this->_universalNVE = false;
+  this->_globalUSteps = false;
+  this->_globalSigmaU = 0.0;
+  this->_globalSigmaUU = 0.0;
 #ifdef COMPLEX_POTENTIAL_SET
   this->_universalConstantAccelerationTimesteps = 0;
   if(!rank)
@@ -537,6 +541,11 @@ void Domain::writeCheckpoint( string filename,
 #ifdef COMPLEX_POTENTIAL_SET
     checkpointfilestream << "# rcT\t" << particleContainer->getTersoffCutoff() << "\n";
 #endif
+    if(this->_globalUSteps > 1)
+    {
+       checkpointfilestream << " I\t" << this->_globalUSteps << " "
+                            << this->_globalSigmaU << " " << this->_globalSigmaUU << "\n";
+    }
     checkpointfilestream << " C\t" << _components.size() << endl;
     for(vector<Component>::const_iterator pos=_components.begin();pos!=_components.end();++pos){
       pos->write(checkpointfilestream);
@@ -629,11 +638,11 @@ void Domain::writeCheckpoint( string filename,
 #endif
 }
 
-void Domain::initParameterStreams(double cutoffRadius){
-  _comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoffRadius); 
+void Domain::initParameterStreams(double cutoff, double cutoffRadiusLJ){
+  _comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoff, cutoffRadiusLJ); 
 }
 
-void Domain::initFarFieldCorr(double cutoffRadius) {
+void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
   double UpotCorrLJ=0.;
   double VirialCorrLJ=0.;
   double MySelbstTerm=0.;
@@ -693,7 +702,7 @@ void Domain::initFarFieldCorr(double cutoffRadius) {
           double yj=cj.ljcenter(sj).ry();
           double zj=cj.ljcenter(sj).rz();
           double tau2=sqrt(xj*xj+yj*yj+zj*zj);
-          if(tau1+tau2>=cutoffRadius){
+          if(tau1+tau2>=cutoffRadiusLJ){
             cerr << "Error calculating cutoff corrections, rc too small" << endl;
           }
           double eps24;
@@ -704,19 +713,19 @@ void Domain::initFarFieldCorr(double cutoffRadius) {
 #ifndef TRUNCATED_SHIFTED
           double fac=double(ci.numMolecules())*double(cj.numMolecules())*eps24;
           if(tau1==0. && tau2==0.){
-            UpotCorrLJ+=fac*(TICCu(-6,cutoffRadius,sig2)-TICCu(-3,cutoffRadius,sig2));
-            VirialCorrLJ+=fac*(TICCv(-6,cutoffRadius,sig2)-TICCv(-3,cutoffRadius,sig2));
+            UpotCorrLJ+=fac*(TICCu(-6,cutoffRadiusLJ,sig2)-TICCu(-3,cutoffRadiusLJ,sig2));
+            VirialCorrLJ+=fac*(TICCv(-6,cutoffRadiusLJ,sig2)-TICCv(-3,cutoffRadiusLJ,sig2));
           }
           else if(tau1!=0. && tau2!=0.) {
-            UpotCorrLJ+=fac*(TISSu(-6,cutoffRadius,sig2,tau1,tau2)-TISSu(-3,cutoffRadius,sig2,tau1,tau2));
-            VirialCorrLJ+=fac*(TISSv(-6,cutoffRadius,sig2,tau1,tau2)-TISSv(-3,cutoffRadius,sig2,tau1,tau2));
+            UpotCorrLJ+=fac*(TISSu(-6,cutoffRadiusLJ,sig2,tau1,tau2)-TISSu(-3,cutoffRadiusLJ,sig2,tau1,tau2));
+            VirialCorrLJ+=fac*(TISSv(-6,cutoffRadiusLJ,sig2,tau1,tau2)-TISSv(-3,cutoffRadiusLJ,sig2,tau1,tau2));
           }
           else {
             if(tau2==0.) {
               tau2=tau1;
             }
-            UpotCorrLJ+=fac*(TICSu(-6,cutoffRadius,sig2,tau2)-TICSu(-3,cutoffRadius,sig2,tau2));
-            VirialCorrLJ+=fac*(TICSv(-6,cutoffRadius,sig2,tau2)-TICSv(-3,cutoffRadius,sig2,tau2));
+            UpotCorrLJ+=fac*(TICSu(-6,cutoffRadiusLJ,sig2,tau2)-TICSu(-3,cutoffRadiusLJ,sig2,tau2));
+            VirialCorrLJ+=fac*(TICSv(-6,cutoffRadiusLJ,sig2,tau2)-TICSv(-3,cutoffRadiusLJ,sig2,tau2));
           }
 #endif
 
@@ -1199,7 +1208,7 @@ void Domain::setupRDF(double interval, unsigned bins)
    this->_doCollectRDF = true;
    this->_universalInterval = interval;
    this->_universalBins = bins;
-   this->_universalRDFTimesteps = 0;
+   this->_universalRDFTimesteps = -1;
    this->_universalAccumulatedTimesteps = 0;
    this->ddmax = interval*interval*bins*bins;
 
@@ -1255,6 +1264,7 @@ void Domain::resetRDF()
 
 void Domain::accumulateRDF()
 {
+   if(0 >= this->_universalRDFTimesteps) return;
    this->_universalAccumulatedTimesteps += this->_universalRDFTimesteps;
    if(!this->_localRank)
    {
@@ -1295,12 +1305,14 @@ void Domain::collectRDF(parallel::DomainDecompBase* domainDecomp)
 void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
 {
    if(this->_localRank) return;
+   if(5 >= _universalRDFTimesteps) return;
    string rdfname(prefix);
    rdfname += ".rdf";
    ofstream rdfout(rdfname.c_str());
    if (!rdfout) return;
 
    double V = _globalLength[0] * _globalLength[1] * _globalLength[2];
+   cout << "N_i = " << _globalCtr[i] << " / " << _universalRDFTimesteps << "\n";
    double N_i = _globalCtr[i] / _universalRDFTimesteps;
    double N_Ai = _globalAccumulatedCtr[i] / _universalAccumulatedTimesteps;
    double N_j = _globalCtr[j] / _universalRDFTimesteps;
@@ -1392,7 +1404,7 @@ void Domain::readPhaseSpaceHeader(
    double timestep
 #ifdef TRUNCATED_SHIFTED
       ,
-   double cutoff
+   double cutoffLJ
 #endif
 #ifdef COMPLEX_POTENTIAL_SET
       ,
@@ -1492,6 +1504,14 @@ void Domain::readPhaseSpaceHeader(
           }
        }
     }
+    else if((token == "HeatCapacity") || (token == "cv") || (token == "I"))
+    {
+       unsigned N;
+       double U, UU;
+       _phaseSpaceFileStream >> N >> U >> UU;
+       this->init_cv(N, U, UU);
+       if(!this->_localRank) cout << "Isochoric heat capacity initialized to " << N << " / " << U << " / " << UU << ".\n";
+    }
     else if((token == "ComponentThermostat") || (token == "CT") || (token == "o"))
     {
        if(!this->_universalComponentwiseThermostat)
@@ -1529,7 +1549,7 @@ void Domain::readPhaseSpaceHeader(
     else if((token == "Length") || (token == "L"))
     {
       _phaseSpaceFileStream >> _globalLength[0] >> _globalLength[1] >> _globalLength[2];
-      for(int i=0; i < 3; i++) _globalLength[i] *= 1.0000003;   // to avoid rounding problems with coordinates
+      for(int i=0; i < 3; i++) _globalLength[i] *= 1.000000031623;   // to avoid rounding problems with coordinates
     }
     else if((token == "NumberOfComponents") || (token == "C"))
     {
@@ -1558,7 +1578,7 @@ void Domain::readPhaseSpaceHeader(
 #endif
           _phaseSpaceFileStream >> x >> y >> z >> m >> eps >> sigma;
 #ifdef TRUNCATED_SHIFTED
-          _components[i].addLJcenter(x, y, z, m, eps, sigma, cutoff, this->_localRank);
+          _components[i].addLJcenter(x, y, z, m, eps, sigma, cutoffLJ, this->_localRank);
 #else
           _components[i].addLJcenter(x, y, z, m, eps, sigma);
 #endif
@@ -1678,7 +1698,7 @@ void Domain::readPhaseSpaceHeader(
 unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molecule>* particleContainer
 #ifdef TRUNCATED_SHIFTED
   ,
-  double cutoffRadius
+  double cutoffRadiusLJ
 #endif
 #ifdef GRANDCANONICAL
   ,
@@ -1724,7 +1744,7 @@ unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molec
       _components[0].addLJcenter(0.,0.,0.,1.,1.,1.
 #ifdef TRUNCATED_SHIFTED
         ,
-        cutoffRadius, this->_localRank
+        cutoffRadiusLJ, this->_localRank
 #endif
       );
     }
@@ -1794,3 +1814,24 @@ unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molec
 
   return maxid;
 } 
+
+void Domain::record_cv()
+{
+   if(_localRank != 0) return;
+
+   this->_globalUSteps ++;
+   this->_globalSigmaU += this->_globalUpot;
+   this->_globalSigmaUU += this->_globalUpot*_globalUpot;
+}
+
+double Domain::cv()
+{
+   if((_localRank != 0) || (_globalUSteps == 0)) return 0.0;
+
+   double id = 1.5 + 0.5*_universalRotationalDOF[0]/_globalNumMolecules;
+   double conf = (_globalSigmaUU - _globalSigmaU*_globalSigmaU/_globalUSteps)
+      / (_globalUSteps * _globalNumMolecules * _globalTemperatureMap[0] * _globalTemperatureMap[0]);
+
+   return id + conf;
+}
+

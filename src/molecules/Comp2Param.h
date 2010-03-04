@@ -33,8 +33,8 @@
 class Comp2Param{
 public:
   Comp2Param() : m_numcomp(0) {}
-  Comp2Param(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF,double rc)
-    { initialize(components,mixcoeff,epsRF,rc); }
+  Comp2Param(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF,double rc, double rcLJ)
+    { initialize(components,mixcoeff,epsRF,rc,rcLJ); }
 
   //~Comp2Param();
 
@@ -49,9 +49,8 @@ public:
         PotForce-function found in potforce.h and
         Domain::init_Corr in domain.*
       reading the stream
-      @todo: wozu braucht diese Methode rc? was ist epsRF?
   */
-  void initialize(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF, double rc);
+  void initialize(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF, double rc, double rcLJ);
 
 private:
   unsigned int m_numcomp; // number of components
