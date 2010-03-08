@@ -24,8 +24,7 @@
 
 using namespace std;
 
-void Comp2Param::initialize(const vector<Component>& components, const vector<double>& mixcoeff
-                           , double epsRF, double rc, double rcLJ)
+void Comp2Param::initialize(const vector<Component>& components, const vector<double>& mixcoeff, double epsRF, double rc, double rcLJ)
 {
   m_numcomp=components.size();
   m_ssparatbl.redim(m_numcomp,m_numcomp);
@@ -98,7 +97,7 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           epsilon24=24.*xi*sqrt(epsi*epsj);
           sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
 #ifdef TRUNCATED_SHIFTED
-          sigperrc2 = sigma2/(rc*rc);
+          sigperrc2 = sigma2/(rcLJ*rcLJ);
           sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
           shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
 #endif
@@ -132,7 +131,7 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           epsilon24=24.*xi*sqrt(epsi*epsj);
           sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
 #ifdef TRUNCATED_SHIFTED
-          sigperrc2 = sigma2/(rc*rc);
+          sigperrc2 = sigma2/(rcLJ*rcLJ);
           sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
           shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
 #endif

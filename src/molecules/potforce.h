@@ -592,8 +592,7 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 
 #ifdef GRANDCANONICAL
 /*
- * calculates the potential energy of the mi-mj interaction,
- * if and only if both of them are fluid (no interaction between Tersoff sites is considered)
+ * calculates the LJ and electrostatic potential energy of the mi-mj interaction (no multi-body potentials are considered)
  */
 inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool cLJ)
 {

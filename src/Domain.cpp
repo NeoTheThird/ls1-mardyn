@@ -94,7 +94,7 @@ Domain::Domain(int rank){
   this->_doCollectRDF = false;
   this->_universalRDFTimesteps = -1;
   this->_universalNVE = false;
-  this->_globalUSteps = false;
+  this->_globalUSteps = 0;
   this->_globalSigmaU = 0.0;
   this->_globalSigmaUU = 0.0;
 #ifdef COMPLEX_POTENTIAL_SET
@@ -533,6 +533,7 @@ void Domain::writeCheckpoint( string filename,
 #endif
     checkpointfilestream << "\n";
     //! @todo use real current time
+    checkpointfilestream.precision(9);
     checkpointfilestream << " t\t"  << this->_currentTime << "\n";
     checkpointfilestream << " dt\t" << dt << "\n";
     checkpointfilestream << " L\t" << _globalLength[0] << " " << _globalLength[1] << " " << _globalLength[2] << endl;
@@ -543,8 +544,10 @@ void Domain::writeCheckpoint( string filename,
 #endif
     if(this->_globalUSteps > 1)
     {
+       checkpointfilestream.precision(12);
        checkpointfilestream << " I\t" << this->_globalUSteps << " "
                             << this->_globalSigmaU << " " << this->_globalSigmaUU << "\n";
+       checkpointfilestream.precision(7);
     }
     checkpointfilestream << " C\t" << _components.size() << endl;
     for(vector<Component>::const_iterator pos=_components.begin();pos!=_components.end();++pos){

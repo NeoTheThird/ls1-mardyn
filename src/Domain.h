@@ -396,6 +396,10 @@ class Domain{
 
    void record_cv();
    double cv();
+   double cv_steps() { return _globalUSteps; }
+   double cv_SigmaU() { return _globalSigmaU; }
+   double cv_SigmaUU() { return _globalSigmaUU; }
+   double cv_NT2() { return _globalNumMolecules * _globalTemperatureMap[0] * _globalTemperatureMap[0]; }
 
 #ifdef GRANDCANONICAL
    void evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm);
