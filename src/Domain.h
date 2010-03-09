@@ -485,6 +485,11 @@ class Domain{
 #endif
     bool _universalNVE;
 
+    //! computation of the isochoric heat capacity
+    unsigned _globalUSteps;
+    double _globalSigmaU;
+    double _globalSigmaUU;    
+
 #ifdef COMPLEX_POTENTIAL_SET
     /// calculate new value of the uniform acceleration each # timesteps
     unsigned _universalConstantAccelerationTimesteps;
@@ -511,11 +516,6 @@ class Domain{
     map<unsigned, deque<long double> > _globalPriorVelocitySums[3];
     /// number of items in the velocity queue
     map<unsigned, unsigned> _globalVelocityQueuelength;
-
-    //! computation of the isochoric heat capacity
-    unsigned _globalUSteps;
-    double _globalSigmaU;
-    double _globalSigmaUU;    
 
     //! 1 / dimension of a profile cuboid
     double _universalInvProfileUnit[3];
