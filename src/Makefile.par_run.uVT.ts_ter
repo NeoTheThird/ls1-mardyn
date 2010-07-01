@@ -35,11 +35,11 @@ CXXFLAGS_RUN = -O2
 LNKFLAGS_RUN = -D$(D$(SEQPAR))
 
 CXXFLAGS_SEQ_DEBUG = -I$(shell pwd) -Wall -g -D$(PSET) -D$(CUTOFF) -D$(NLIST)
-CXXFLAGS_SEQ_RELEASE = -I$(shell pwd)  -O2 -DNDEBUG -D$(PSET) -D$(CUTOFF) -D$(NLIST)
+CXXFLAGS_SEQ_RELEASE = -I$(shell pwd) -O2 -DNDEBUG -D$(PSET) -D$(CUTOFF) -D$(NLIST)
 LINKFLAGS_SEQ_DEBUG = -O0 -g
 LINKFLAGS_SEQ_RELEASE =
 
-CXXOPT = -I$(shell pwd) $(CXXFLAGS_$(DEBRUN)) -D$(D$(SEQPAR)) -D$(D$(DEBRUN)) -D$(D$(NVTuVT)) -D$(D$(FLTS)) -D$(D$(LCQTER))
+CXXOPT = -I$(shell pwd) $(CXXFLAGS_$(DEBRUN)) -D$(D$(SEQPAR)) -D$(D$(DEBRUN)) -D$(D$(NVTuVT)) -D$(D$(FLTS)) -D$(D$(LCQTER)) -DCLUSTERING
 LNKOPT = $(LINKFLAGS_$(DEBRUN))
 
 # only linker and domain decomposition need MPI

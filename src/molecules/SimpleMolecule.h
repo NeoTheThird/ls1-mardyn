@@ -8,7 +8,7 @@
 
 //! @brief representation of a real Molecule
 //!
-//! The class SimleMolecule is used to represent molecules and operations
+//! The class SimpleMolecule is used to represent molecules and operations
 //! on them, e.g. methods to calculate the forces between molecules
 //! or update the position of a molecule,...
 //! This class is mainly for test purpuses, as it is only a very basic molecule model

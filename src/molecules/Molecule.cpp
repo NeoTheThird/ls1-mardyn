@@ -377,12 +377,15 @@ void Molecule::scale_v(double s, double offx, double offy, double offz)
 
 void Molecule::write(ostream& ostrm) const
 {
-    ostrm << m_id << "\t" << (m_componentid+1) << "\t"
-          << m_r[0] << " " << m_r[1] << " " << m_r[2] << "\t"
-          << m_v[0] << " " << m_v[1] << " " << m_v[2] << "\t"
+    ostrm << m_id << "\t" << (m_componentid+1) << "\t";
+    ostrm.precision(11);
+    ostrm << m_r[0] << " " << m_r[1] << " " << m_r[2] << "\t";
+    ostrm.precision(6);
+    ostrm << m_v[0] << " " << m_v[1] << " " << m_v[2] << "\t"
           << m_q.qw() << " " << m_q.qx() << " " << m_q.qy() << " " << m_q.qz() << "\t"
           << m_D[0] << " " << m_D[1] << " " << m_D[2] << "\t"
           << endl;
+    ostrm.precision(9);
 }
 
 void Molecule::save_restart(ostream& ostrm) const

@@ -232,7 +232,7 @@ unsigned datastructures::LinkedCells<ParticleType>::countParticles(
 	                      (cix[2] == minIndex[2]) || (cix[2] == minIndex[2] + 1) ||
 	                      (cix[2] == maxIndex[2]) || (cix[2] == maxIndex[2] - 1);
 	    cellid = this->cellIndexOf3DIndex(cix[0], cix[1], cix[2]);
-            if((cellid < 0) || (cellid >= this->_cells.size())) continue;
+            if(( cellid < 0 ) || ( cellid >= (int)(this->_cells.size()) )) continue;
             Cell<ParticleType>& currentCell = _cells[cellid];
             if(currentCell.isHaloCell()) continue;
 	    if(individualCheck)

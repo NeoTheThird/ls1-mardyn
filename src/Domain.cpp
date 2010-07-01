@@ -536,7 +536,9 @@ void Domain::writeCheckpoint( string filename,
     checkpointfilestream.precision(9);
     checkpointfilestream << " t\t"  << this->_currentTime << "\n";
     checkpointfilestream << " dt\t" << dt << "\n";
+    checkpointfilestream.precision(11);
     checkpointfilestream << " L\t" << _globalLength[0] << " " << _globalLength[1] << " " << _globalLength[2] << endl;
+    checkpointfilestream.precision(9);
     checkpointfilestream << "# rho\t" << this->_globalRho << "\n";
     checkpointfilestream << "# rc\t" << particleContainer->getCutoff() << "\n";
 #ifdef COMPLEX_POTENTIAL_SET

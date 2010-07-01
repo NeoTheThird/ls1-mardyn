@@ -1,6 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2005 by Martin Bernreuther   *
- *   Martin.Bernreuther@informatik.uni-stuttgart.de   *
+ *   Copyright (C) 2010 by Martin Bernreuther et al.                       *
+ *   bernreuther@hlrs.de                                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the                         *
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
- ****************c***********************************************************/
+ ***************************************************************************/
 #ifndef MOLECULE_H_
 #define MOLECULE_H_
 
