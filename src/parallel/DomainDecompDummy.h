@@ -51,6 +51,8 @@ class parallel::DomainDecompDummy: public parallel::DomainDecompBase {
   void reducevalues(double* d1, double* d2);
   void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2);
 
+  void triple(double* p);
+
   //! @brief There is only one process, so this method always returns 0
   int getRank(int x, int y, int z);
 

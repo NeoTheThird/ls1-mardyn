@@ -97,9 +97,7 @@ public:
   /** get the Orientation */
   const Quaternion& q() const { return m_q; }
 
-#ifdef COMPLEX_POTENTIAL_SET
   inline void move(int d, double dr) { m_r[d] += dr; }
-#endif
 
   /** get the rotatational speed */
   double D(unsigned short d) const { return m_D[d]; }
@@ -112,6 +110,7 @@ public:
   //double Upot() const { return m_Upot; }
   double Utrans() const { return .5*m_m*(m_v[0]*m_v[0]+m_v[1]*m_v[1]+m_v[2]*m_v[2]); }
   double Urot();
+  double m() { return m_m; }
 
   /** get number of sites */
   unsigned int numSites() const { return m_numsites; }
@@ -155,7 +154,7 @@ public:
   double v2() const {return m_v[0]*m_v[0]+m_v[1]*m_v[1]+m_v[2]*m_v[2]; }
 
   void setFM(double Fx, double Fy, double Fz, double Mx, double My, double Mz)
-    { m_F[0]=Fx; m_F[1]=Fy; m_F[2]=Fz; m_M[0]=Mx; m_M[1]=My; m_M[2]=My; }
+    { m_F[0]=Fx; m_F[1]=Fy; m_F[2]=Fz; m_M[0]=Mx; m_M[1]=My; m_M[2]=Mz; }
   void scale_v(double s) { for(unsigned short d=0;d<3;++d) m_v[d]*=s; }
 #ifdef COMPLEX_POTENTIAL_SET
   void scale_v(double s, double offx, double offy, double offz);
@@ -169,26 +168,56 @@ public:
   void Madd(const double a[]) { for(unsigned short d=0;d<3;++d) m_M[d]+=a[d]; }
   void Msub(const double a[]) { for(unsigned short d=0;d<3;++d) m_M[d]-=a[d]; }
 
+  inline void move(const double* dr)
+  {
+     m_r[0] += dr[0];
+     m_r[1] += dr[1];
+     m_r[2] += dr[2];
+  }
+  /*
+  void move(const double* dr, const double* globalLength)
+  {
+     for(unsigned d=0; d < 3; d++)
+     {
+        m_r[d] += dr[d];
+        if(m_r[d] > globalLength[d]) m_r[d] -= globalLength[d];
+        else if(m_r[d] < 0.0) m_r[d] += globalLength[d];
+     }
+  }
+  */
+  void vsub(const double ax, const double ay, const double az)
+  {
+     m_v[0] -= ax; m_v[1] -= ay; m_v[2] -= az;
+  }
 #ifdef COMPLEX_POTENTIAL_SET
   void vadd(const double ax, const double ay, const double az)
   {
      m_v[0] += ax; m_v[1] += ay; m_v[2] += az;
   }
-  void vsub(const double ax, const double ay, const double az)
-  {
-     m_v[0] -= ax; m_v[1] -= ay; m_v[2] -= az;
-  }
 
   void setXY() { fixedx = m_r[0]; fixedy = m_r[1]; }
+  void setXYZ() { fixedx = m_r[0]; fixedy = m_r[1]; fixedz = m_r[2]; }
 
   void resetXY()
   {
      m_v[0] = 0.0;
      m_v[1] = 0.0;
-     m_F[1] = 0.0;
      m_F[0] = 0.0; 
+     m_F[1] = 0.0;
      m_r[0] = fixedx;
      m_r[1] = fixedy;
+  }
+  void resetXYZ()
+  {
+     m_v[0] = 0.0;
+     m_v[1] = 0.0;
+     m_v[2] = 0.0;
+     m_F[0] = 0.0; 
+     m_F[1] = 0.0;
+     m_F[2] = 0.0;
+     m_r[0] = fixedx;
+     m_r[1] = fixedy;
+     m_r[2] = fixedz;
   }
 #endif
 
@@ -329,7 +358,7 @@ private:
   bool m_Tersoff_neighbours_second[MAXTN];
   int m_curTN;
   // map<Molecule*, bool> m_Tersoff_neighbours;
-  double fixedx, fixedy;
+  double fixedx, fixedy, fixedz;
 #endif
 
   // setup cache values/properties

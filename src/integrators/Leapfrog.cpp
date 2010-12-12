@@ -214,20 +214,20 @@ void integrators::Leapfrog::accelerateUniformly
    }
 
    Molecule* thismol;
-   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+   if(domain->aladin()) for(
+      thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next()
+   ) {
+      unsigned cid = thismol->componentid();
+      if(domain->doAccelerate(thismol->r(0), thismol->r(1), thismol->r(2)))
+         thismol->vadd( componentwiseVelocityDelta[0][cid],
+                        componentwiseVelocityDelta[1][cid], componentwiseVelocityDelta[2][cid] );
+   }
+   else for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
    {
       unsigned cid = thismol->componentid();
-      assert(componentwiseVelocityDelta[0].find(cid) != componentwiseVelocityDelta[0].end());
-#ifndef NDEBUG
-      if(thismol->id() == 32768) cout << "accelerating molecule 32768:  "
-                                  << thismol->v(2) << " + " << componentwiseVelocityDelta[2][cid]
-                                  << " = ";
-#endif
+      // assert(componentwiseVelocityDelta[0].find(cid) != componentwiseVelocityDelta[0].end());
       thismol->vadd( componentwiseVelocityDelta[0][cid],
                      componentwiseVelocityDelta[1][cid], componentwiseVelocityDelta[2][cid] );
-#ifndef NDEBUG
-      if(thismol->id() == 32768) cout << thismol->v(2) << "\n";
-#endif
    }
 }
 
@@ -306,6 +306,16 @@ void integrators::Leapfrog::init1D(
       if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->setXY();
 }
 
+void integrators::Leapfrog::init0D(
+   unsigned oscillator,
+   datastructures::ParticleContainer<Molecule>* molCont
+)
+{
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+      if(!(thismol->id() % oscillator) && thismol->numTersoff()) thismol->setXYZ();
+}
+
 void integrators::Leapfrog::zOscillation(
    unsigned zoscillator,
    datastructures::ParticleContainer<Molecule>* molCont
@@ -315,4 +325,15 @@ void integrators::Leapfrog::zOscillation(
    for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
       if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->resetXY();
 }
+
+void integrators::Leapfrog::oscillation(
+   unsigned oscillator,
+   datastructures::ParticleContainer<Molecule>* molCont
+      )
+{
+   Molecule* thismol;
+   for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
+      if(!(thismol->id() % oscillator) && thismol->numTersoff()) thismol->resetXYZ();
+}
 #endif
+

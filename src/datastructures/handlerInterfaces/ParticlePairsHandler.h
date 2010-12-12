@@ -63,6 +63,8 @@ class datastructures::ParticlePairsHandler{
     virtual void processTersoffAtom(Molecule& particle1, double params[15], double delta_r) = 0;
 #endif
     virtual void recordRDF() = 0;
+    virtual void enableWallLJ() = 0;
+    virtual void disableWallLJ() = 0;
 };
 
 #endif /*PARTICLEPAIRSHANDLER_H_*/

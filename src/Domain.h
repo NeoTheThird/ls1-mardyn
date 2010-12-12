@@ -239,6 +239,7 @@ class Domain{
     //!
     //! @todo provide justification for the formula
     double getGlobalPressure();
+    double getAveragePressure();
 
     //! @brief get the global average potential per particle
     //!
@@ -326,6 +327,23 @@ class Domain{
        this->_universalZetaFlow = zeta;
     }
     void specifyTauPrime(double tauPrime, double dt);
+    void specifyFlowControl(double* q0, double* q1)
+    {
+       this->_universalAladinMode = true;
+       for(int d=0; d < 3; d++)
+       {
+          this->_universalFlowControl0[d] = q0[d];
+          this->_universalFlowControl1[d] = q1[d];
+       }
+    }
+    bool doAccelerate(double x, double y, double z)
+    {
+       return (
+          (x > _universalFlowControl0[0]) && (x < _universalFlowControl1[0]) &&
+          (y > _universalFlowControl0[1]) && (y < _universalFlowControl1[1]) &&
+          (z > _universalFlowControl0[2]) && (z < _universalFlowControl1[2])
+       );
+    }
     void adjustTau(double dt);
     /// sets the number of timesteps between two updates of the uniform acceleration
     void setUCAT(unsigned uCAT) { this->_universalConstantAccelerationTimesteps = uCAT; }
@@ -340,6 +358,7 @@ class Domain{
         parallel::DomainDecompBase* domainDecomp,
         datastructures::ParticleContainer<Molecule>* molCont, double dtConstantAcc
     );
+    bool aladin() { return this->_universalAladinMode; }
     /// returns the acceleration map (necessary for passing data to the integrator)
     map<unsigned, double>* getUAA() { return this->_universalAdditionalAcceleration; }
     /// returns the cosetid of a component (0 for unaccelerated components)
@@ -362,9 +381,26 @@ class Domain{
     void collectProfile(parallel::DomainDecompBase* domainDecomp);
     void outputProfile(const char* prefix);
     void resetProfile();
+    void esfera();
 
     unsigned maxCoset() { return this->_universalTau.size(); }
 #endif
+
+    void cancelMomentum
+    (
+        parallel::DomainDecompBase* domainDecomp,
+        datastructures::ParticleContainer<Molecule>* molCont
+    );
+    void determineShift
+    (
+        parallel::DomainDecompBase* domainDecomp,
+        datastructures::ParticleContainer<Molecule>* molCont,
+        double fraction
+    );
+    void realign
+    (
+        datastructures::ParticleContainer<Molecule>* molCont
+    );
 
     double N() {return this->_globalNumMolecules;}
     double N(unsigned cid) { return this->_components[cid].numMolecules(); }
@@ -394,7 +430,7 @@ class Domain{
    bool NVE() { return this->_universalNVE; }
    bool thermostatWarning() { return (this->_universalSelectiveThermostatWarning > 0); }
 
-   void record_cv();
+   void record_cv_and_sigp();
    double cv();
    double cv_steps() { return _globalUSteps; }
    double cv_SigmaU() { return _globalSigmaU; }
@@ -488,7 +524,11 @@ class Domain{
     //! computation of the isochoric heat capacity
     unsigned _globalUSteps;
     double _globalSigmaU;
-    double _globalSigmaUU;    
+    double _globalSigmaUU;
+
+    //! computation of the average pressure
+    unsigned _globalpSteps;
+    double _globalSigmap;
 
 #ifdef COMPLEX_POTENTIAL_SET
     /// calculate new value of the uniform acceleration each # timesteps
@@ -516,6 +556,10 @@ class Domain{
     map<unsigned, deque<long double> > _globalPriorVelocitySums[3];
     /// number of items in the velocity queue
     map<unsigned, unsigned> _globalVelocityQueuelength;
+    // control volume for the flow regulation / acceleration
+    bool _universalAladinMode;
+    double _universalFlowControl0[3];
+    double _universalFlowControl1[3];
 
     //! 1 / dimension of a profile cuboid
     double _universalInvProfileUnit[3];
@@ -541,6 +585,10 @@ class Domain{
     unsigned _globalAccumulatedDatasets;
     //! which components should be considered?
     map<unsigned, bool> _universalProfiledComponents;
+
+    bool _universalSphericalGeometry;
+    double _universalR3max;
+    double _universalCentre[3];
 #endif
 
     bool _doCollectRDF;
@@ -583,6 +631,11 @@ class Domain{
     //! modified Lorentz-Berthelot mixing rule parameters
     //! @todo more explanation
     vector<double> _mixcoeff;
+
+    //! used for realignment to the centre of mass
+    double _globalRealignmentBalance[3];
+    double _globalRealignmentMass;
+    double _universalRealignmentMotion[3];
 };
 
 

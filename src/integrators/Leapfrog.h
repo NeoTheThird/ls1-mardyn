@@ -68,8 +68,16 @@ class integrators::Leapfrog: public integrators::Integrator{
        unsigned zoscillator,
        datastructures::ParticleContainer<Molecule>* molCont
     );
+    virtual void init0D(
+       unsigned oscillator,
+       datastructures::ParticleContainer<Molecule>* molCont
+    );
     virtual void zOscillation(
        unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* molCont
+    );
+    virtual void oscillation(
+       unsigned oscillator,
        datastructures::ParticleContainer<Molecule>* molCont
     );
 #endif

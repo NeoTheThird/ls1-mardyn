@@ -308,6 +308,13 @@ void parallel::DomainDecomposition::reducevalues(double* d1, double* d2)
    this->reducevalues(d1, d2, (unsigned long*)0, (unsigned long*)0);
 }
 
+void parallel::DomainDecomposition::triple(double* p)
+{
+   double pres[3];
+   MPI_Allreduce(p, pres, 3, MPI_DOUBLE, MPI_SUM, comm_topology); 
+   for(int d = 0; d < 3; d++) p[d] = pres[d];
+}
+
 /*
  * ACHTUNG: Version von Martin Buchholz mit unguenstiger Aufteilung der Primfaktoren
  *

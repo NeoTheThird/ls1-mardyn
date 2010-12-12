@@ -193,6 +193,11 @@ void parallel::DomainDecompDummy::broadcastVelocitySum(
 }
 #endif
 
+void parallel::DomainDecompDummy::triple(double* p)
+{
+   // NIL
+}
+
 #ifdef GRANDCANONICAL
 unsigned parallel::DomainDecompDummy::Ndistribution(unsigned localN, float* minrnd, float* maxrnd)
 {

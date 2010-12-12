@@ -25,7 +25,7 @@ void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>
   if(domainDecomp->getRank()==0){
     _resultStream.open(resultfile.c_str());
     _resultStream << "# LS1 _M_olekul_ARDYN_amik: simulation starting at " << ctime(&now) << endl;
-    _resultStream << "#\tt\tU_pot\tp\t\tc_v\tsteps\tSig U\tSig UU\tNT2\t";
+    _resultStream << "#\tt\tU_pot\tp\t<p>\t\tc_v\tsteps\tSig U\tSig UU\tNT2\t";
 #ifdef GRANDCANONICAL
     _resultStream << "\tN(uVT)[1..i]\trho(uVT)[1..i]\t";
 #endif
@@ -57,7 +57,8 @@ void md_io::ResultWriter::doOutput
   {
     _resultStream << simstep << "\t" << domain->getCurrentTime()
                   << "\t" << domain->getAverageGlobalUpot() << "\t"
-                  << domain->getGlobalPressure() << "\t\t"
+                  << domain->getGlobalPressure() << "\t"
+                  << domain->getAveragePressure() << "\t\t"
                   << domain->cv() << "\t"
                   << domain->cv_steps() << "\t"
                   << domain->cv_SigmaU() << "\t"

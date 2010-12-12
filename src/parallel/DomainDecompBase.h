@@ -86,6 +86,8 @@ class parallel::DomainDecompBase{
   virtual void reducevalues(double* d1, double* d2) = 0;
   virtual void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2) = 0;
 
+  virtual void triple(double* p) = 0;
+
   //! determines and returns the rank of the process at the given coordinates
   virtual int getRank(int x, int y, int z) = 0;
 

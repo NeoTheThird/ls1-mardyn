@@ -23,4 +23,8 @@ make -f Makefile.seq_run.NVT.fl_LCQ clean
 make -f Makefile.seq_run.NVT.fl_LCQ
 make -f Makefile.seq_deb.uVT.ts_ter clean
 make -f Makefile.seq_deb.uVT.ts_ter
+make -f Makefile.seq_run.NVT.fl_ter clean
+make -f Makefile.seq_run.NVT.fl_ter
+make -f Makefile.seq_deb.NVT.fl_ter clean
+make -f Makefile.seq_deb.NVT.fl_ter
 

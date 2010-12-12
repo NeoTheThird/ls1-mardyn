@@ -79,9 +79,19 @@ class integrators::Integrator{
        unsigned zoscillator,
        datastructures::ParticleContainer<Molecule>* moleculeContainer
     ) = 0;
+    virtual void init0D
+    (
+       unsigned oscillator,
+       datastructures::ParticleContainer<Molecule>* moleculeContainer
+    ) = 0;
     virtual void zOscillation
     (
        unsigned zoscillator,
+       datastructures::ParticleContainer<Molecule>* moleculeContainer
+    ) = 0;
+    virtual void oscillation
+    (
+       unsigned oscillator,
        datastructures::ParticleContainer<Molecule>* moleculeContainer
     ) = 0;
 #endif

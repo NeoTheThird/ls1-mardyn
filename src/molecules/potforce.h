@@ -323,7 +323,7 @@ inline void PotForceChargeDipole( const double dr[3], const double& dr2,
 
    drm == distance FROM j TO i ... !!!
 */
-inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool cLJ)
+inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool cLJ, bool wallLJ)
 // ???better calc Virial, when molecule forces are calculated:
 //    summing up molecule virials instead of site virials???
 { // Force Calculation
@@ -334,7 +334,8 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #ifdef COMPLEX_POTENTIAL_SET
   // no LJ interaction between solid atoms of the same component
   const unsigned int nt1 = mi.numTersoff();
-  if((mi.componentid() != mj.componentid()) || !nt1)
+  const unsigned int nt2 = mj.numTersoff();
+  if(!nt1 || !nt2 || (wallLJ && (mi.componentid() != mj.componentid())))
   {
 #endif
     const unsigned int nc1 = mi.numLJcenters();
@@ -594,7 +595,7 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 /*
  * calculates the LJ and electrostatic potential energy of the mi-mj interaction (no multi-body potentials are considered)
  */
-inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool cLJ)
+inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool cLJ, bool wallLJ)
 {
   double f[3];
   double u;
@@ -603,7 +604,8 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #ifdef COMPLEX_POTENTIAL_SET
   // no LJ interaction between equal solid atoms
   const unsigned int nt1 = mi.numTersoff();
-  if((mi.componentid() != mj.componentid()) || !nt1)
+  const unsigned int nt2 = mj.numTersoff();
+  if(!nt1 || !nt2 || (wallLJ && (mi.componentid() != mj.componentid())))
   {
 #endif
     const unsigned int nc1 = mi.numLJcenters();

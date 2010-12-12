@@ -58,7 +58,7 @@ Molecule::Molecule(unsigned long id, int componentid
 #ifdef COMPLEX_POTENTIAL_SET
    m_curTN = 0;
    // m_Tersoff_neighbours = map<Molecule*, bool>();
-   fixedx = rx; fixedy = ry;
+   fixedx = rx; fixedy = ry; fixedz = rz;
 #endif
   if(components) setupCache(components);
 }
@@ -150,6 +150,7 @@ Molecule::Molecule(const Molecule& m)
   // m_Tersoff_neighbours = m.m_Tersoff_neighbours;
   fixedx = m.fixedx;
   fixedy = m.fixedy;
+  fixedz = m.fixedz;
 #endif
 }
 

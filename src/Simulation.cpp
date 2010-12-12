@@ -73,6 +73,9 @@ Simulation::Simulation(int argc, char **argv){
   this->_collectThermostatDirectedVelocity = 100;
   this->_zoscillation = false;
   this->_zoscillator = 512;
+  this->_oscillation = false;
+  this->_oscillator = 512;
+  this->_wallLJ = true;
 #endif 
   this->_doRecordRDF = false;
   this->_RDFOutputTimesteps = 25000;
@@ -84,6 +87,8 @@ Simulation::Simulation(int argc, char **argv){
   this->h = 0;
 #endif
   this->_initStatistics = 20000;
+  this->_doAlignCentre = false;
+  this->_doCancelMomentum = false;
   
 #ifndef NDEBUG
   if(!ownrank) cout << "constructing domain:";
@@ -316,6 +321,40 @@ Simulation::Simulation(int argc, char **argv){
        }
        this->_domain->specifyTauPrime(tauPrime, timestepLength);
     }
+    else if(token == "flowControl")
+    {
+       double q0[3];
+       double q1[3];
+       inputfilestream >> q0[0] >> q0[1] >> q0[2] >> token;
+       if(token != "to")
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n";
+             cout << "Expected 'to' instead of '" << token << "'.\n\n";
+             cout << "Syntax: flowControl <x0> <y0> <z0> to <x1> <y1> <z1>\n";
+          }
+          exit(1);
+       }
+       inputfilestream >> q1[0] >> q1[1] >> q1[2];
+       this->_domain->specifyFlowControl(q0, q1);
+    }
+    else if(token == "wallLJ")
+    {
+       inputfilestream >> token;
+       if(token == "on") this->_wallLJ = true;
+       else if(token == "off") this->_wallLJ = false;
+       else
+       {
+          if(ownrank == 0)
+          {
+             cout << "Input failure.\n"
+                  << "Expected 'on' or 'off' instead of '" << token << "'.\n\n";
+             cout << "Syntax: wallLJ [on|off]\n";
+          }
+          exit(1);
+       }
+    }
     else if(token == "profile")
     {
        unsigned xun, yun, zun;
@@ -330,6 +369,10 @@ Simulation::Simulation(int argc, char **argv){
     else if(token == "profileOutputTimesteps")
     {
        inputfilestream >> this->_profileOutputTimesteps;
+    }
+    else if(token == "esfera")
+    {
+       this->_domain->esfera();
     }
 #endif
     else if(token == "RDF")
@@ -372,6 +415,11 @@ Simulation::Simulation(int argc, char **argv){
     {
        this->_zoscillation = true;
        inputfilestream >> this->_zoscillator;
+    }
+    else if(token == "oscillator")
+    {
+       this->_oscillation = true;
+       inputfilestream >> this->_oscillator;
     }
 #endif
 #ifdef GRANDCANONICAL
@@ -517,6 +565,16 @@ Simulation::Simulation(int argc, char **argv){
     {
        inputfilestream >> this->_initStatistics;
     }
+    else if(token == "nomomentum")
+    {
+       this->_doCancelMomentum = true;
+       inputfilestream >> this->_momentumInterval;
+    }
+    else if(token == "AlignCentre")
+    {
+       this->_doAlignCentre = true;
+       inputfilestream >> _alignmentInterval >> _alignmentCorrection;
+    }
   }
   
   if(this->_LJCutoffRadius == 0.0) _LJCutoffRadius = this->_cutoffRadius;
@@ -599,6 +657,9 @@ void Simulation::initialize(){
   if(this->_doRecordRDF) this->_domain->resetRDF();
 
 #ifdef COMPLEX_POTENTIAL_SET
+    if(this->_wallLJ) this->_particlePairsHandler->enableWallLJ();
+    else this->_particlePairsHandler->disableWallLJ();
+
     cout << "   [:[:]:]   ";
     if(this->_domain->isAcceleratingUniformly())
     {
@@ -661,6 +722,13 @@ void Simulation::initialize(){
     if(!this->_domain->ownrank()) cout << "   * initialize z-oscillators\n";
 #endif
     this->_integrator->init1D(this->_zoscillator, this->_moleculeContainer);
+  }
+  if(this->_oscillation)
+  {
+#ifndef NDEBUG
+    if(!this->_domain->ownrank()) cout << "   * initialize oscillators\n";
+#endif
+    this->_integrator->init0D(this->_oscillator, this->_moleculeContainer);
   }
 #endif
 
@@ -739,7 +807,18 @@ void Simulation::simulate()
     this->_domainDecomposition->barrier();
 #endif
 
-    updateParticleContainerAndDecomposition();
+   /*
+    * halo must be absent to facilitate correct centre of mass calculation
+    */
+   if(this->_doAlignCentre && !(simstep % _alignmentInterval))
+   {
+      this->_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+   }
+
+   /*
+    * includes creation of the halo
+    */
+   updateParticleContainerAndDecomposition();
 
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * traverse pairs\n";
@@ -793,6 +872,14 @@ void Simulation::simulate()
        }
     }
 #endif
+
+   /*
+    * halo must be present to permit shifting the particles
+    */
+   if(this->_doAlignCentre && !(simstep % _alignmentInterval))
+   {
+      this->_domain->realign(_moleculeContainer);
+   }
     
 #ifndef NDEBUG
     if(!this->_domain->ownrank()) cout << "   * delete outer particles\n";
@@ -816,6 +903,11 @@ void Simulation::simulate()
     if(!(simstep % _collectThermostatDirectedVelocity))
        _domain->calculateThermostatDirectedVelocity(_moleculeContainer);
 #endif
+
+   if(this->_doCancelMomentum && !(simstep % _momentumInterval))
+   {
+      this->_domain->cancelMomentum(_domainDecomposition, _moleculeContainer);
+   }
 
 #ifdef COMPLEX_POTENTIAL_SET
     if(this->_domain->isAcceleratingUniformly())
@@ -842,7 +934,7 @@ void Simulation::simulate()
        if(this->_lmu.size() == 0)
        {      
 #endif
-          this->_domain->record_cv();
+          this->_domain->record_cv_and_sigp();
 #ifdef GRANDCANONICAL
        }
 #endif
@@ -860,6 +952,13 @@ void Simulation::simulate()
       if(!this->_domain->ownrank()) cout << "   * alert z-oscillators\n";
 #endif
       this->_integrator->zOscillation(this->_zoscillator, this->_moleculeContainer);
+    }
+    if(this->_oscillation)
+    {
+#ifndef NDEBUG
+      if(!this->_domain->ownrank()) cout << "   * alert oscillators\n";
+#endif
+      this->_integrator->oscillation(this->_oscillator, this->_moleculeContainer);
     }
 #endif
 

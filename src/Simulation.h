@@ -152,7 +152,16 @@ class Simulation{
 
     bool _zoscillation;
     unsigned _zoscillator;
+    bool _oscillation;
+    unsigned _oscillator;
+    bool _wallLJ;
 #endif
+
+    bool _doCancelMomentum;
+    unsigned long _momentumInterval;
+    bool _doAlignCentre;
+    unsigned long _alignmentInterval;
+    double _alignmentCorrection;
 
     //! Number of discrete time steps for the simulation        
     unsigned long _numberOfTimesteps;

@@ -18,6 +18,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     //! Constructor
     ParticlePairs2PotForceAdapter(Domain& domain): _domain(domain){
        this->_doRecordRDF = false;
+       this->_permitWallLJ = true;
     }
     
     //! Destructor
@@ -63,11 +64,11 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
       if(pairType == 0){
         if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
 
-        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ);
+        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ,_permitWallLJ);
         return _upot6LJ + _upotXpoles;
       }
       else if(pairType == 1){
-        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4,cLJ);
+        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4,cLJ,_permitWallLJ);
         return 0.0;
       }
 #ifdef GRANDCANONICAL
@@ -77,7 +78,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
         _dummy2 = 0.0;  // U_polarity
         _dummy3 = 0.0;  // U_dipole_reaction_field
         
-        FluidPot(particle1, particle2, params, distanceVector, _dummy1, _dummy2, _dummy3,cLJ);
+        FluidPot(particle1, particle2, params, distanceVector, _dummy1, _dummy2, _dummy3, cLJ, _permitWallLJ);
         return _dummy1/6.0 + _dummy2 + _dummy3;
       }
 #endif
@@ -154,6 +155,8 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
 #endif
 
     void recordRDF() { this->_doRecordRDF = true; }
+    void enableWallLJ() { this->_permitWallLJ = true; }
+    void disableWallLJ() { this->_permitWallLJ = false; }
 
   private:
     //! @brief reference to the domain is needed to store the calculated macroscopic values
@@ -182,6 +185,9 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     double _dummy4;
 
     bool _doRecordRDF;
+
+    // are LJ interactions permitted between wall atoms of different components?
+    bool _permitWallLJ;
 };
 
 #endif /*PARTICLEPAIRS2POTFORCEADAPTER_H_*/

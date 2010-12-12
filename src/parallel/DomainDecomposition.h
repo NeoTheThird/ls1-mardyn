@@ -109,6 +109,8 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
   void reducevalues(double* d1, double* d2);
   void reducevalues(double* d1, double* d2, unsigned long* N1, unsigned long* N2);
 
+  void triple(double* p);
+
   //! determines and returns the rank of the process at the given coordinates
   int getRank(int x, int y, int z);
 
