@@ -76,6 +76,8 @@ Simulation::Simulation(int argc, char **argv){
   this->_oscillation = false;
   this->_oscillator = 1536;
   this->_wallLJ = true;
+#else
+  this->_wallLJ = false;
 #endif 
   this->_doRecordRDF = false;
   this->_RDFOutputTimesteps = 25000;

@@ -154,8 +154,8 @@ class Simulation{
     unsigned _zoscillator;
     bool _oscillation;
     unsigned _oscillator;
-    bool _wallLJ;
 #endif
+    bool _wallLJ;
 
     bool _doCancelMomentum;
     unsigned long _momentumInterval;
