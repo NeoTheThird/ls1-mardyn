@@ -1,6 +1,6 @@
 /***************************************************************************
- *   Copyright (C) 2005 by Martin Bernreuther   *
- *   Martin.Bernreuther@informatik.uni-stuttgart.de   *
+ *   Copyright (C) 2011 by Martin F. Bernreuther                           *
+ *   bernreuther@hlrs.de                                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -28,13 +28,13 @@
 
 
 /**
-  @author Martin Bernreuther <bernreuther@hlrs.de>, Martin Horsch <horsch@itt.uni-stuttgart.de>
+  @author Martin Bernreuther <bernreuther@hlrs.de>, Martin Horsch <m.horsch@imperial.ac.uk>
 */
 class Comp2Param{
 public:
   Comp2Param() : m_numcomp(0) {}
-  Comp2Param(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF,double rc, double rcLJ)
-    { initialize(components,mixcoeff,epsRF,rc,rcLJ); }
+  Comp2Param(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF,double rc, double rcLJ, bool wallLJ)
+    { initialize(components,mixcoeff,epsRF,rc,rcLJ,wallLJ); }
 
   //~Comp2Param();
 
@@ -50,7 +50,7 @@ public:
         Domain::init_Corr in domain.*
       reading the stream
   */
-  void initialize(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF, double rc, double rcLJ);
+  void initialize(const std::vector<Component>& components, const std::vector<double>& mixcoeff, double epsRF, double rc, double rcLJ, bool wallLJ);
 
 private:
   unsigned int m_numcomp; // number of components

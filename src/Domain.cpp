@@ -653,8 +653,8 @@ void Domain::writeCheckpoint( string filename,
 #endif
 }
 
-void Domain::initParameterStreams(double cutoff, double cutoffRadiusLJ){
-  _comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoff, cutoffRadiusLJ); 
+void Domain::initParameterStreams(double cutoff, double cutoffRadiusLJ, bool wallLJ){
+  _comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoff, cutoffRadiusLJ, wallLJ); 
 }
 
 void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
@@ -694,7 +694,14 @@ void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
 #endif
     double my2 = 0.0;
     for(unsigned d = 0; d < 3; d++) my2 += chargeBalance[d] * chargeBalance[d];
-    MySelbstTerm += my2 * ci.numMolecules();
+#ifdef COMPLEX_POTENTIAL_SET
+    if(!numtersoffi) // no electrostatic self-interaction between wall atoms
+    {
+#endif
+       MySelbstTerm += my2 * ci.numMolecules();
+#ifdef COMPLEX_POTENTIAL_SET
+    }
+#endif
 
     for(unsigned int j=0;j<numcomp;++j) {
       Component& cj=_components[j];
@@ -743,7 +750,6 @@ void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
             VirialCorrLJ+=fac*(TICSv(-6,cutoffRadiusLJ,sig2,tau2)-TICSv(-3,cutoffRadiusLJ,sig2,tau2));
           }
 #endif
-
         }
       }
     }
@@ -1618,9 +1624,9 @@ void Domain::readPhaseSpaceHeader(
     if((token != "mardyn") && (_localRank == 0))
        cerr << "Warning: phase space file should begin with 'mardyn' instead of '" << token << "'.\n";
 
-    unsigned REQUIRED_INPUT_VERSION = 20080101;
+    unsigned REQUIRED_INPUT_VERSION = 20080701;
 #ifdef COMPLEX_POTENTIAL_SET
-    REQUIRED_INPUT_VERSION = 20080701;
+    REQUIRED_INPUT_VERSION = 20090701;
 #endif
 
     _phaseSpaceFileStream >> _inpversion;

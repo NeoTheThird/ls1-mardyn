@@ -303,7 +303,7 @@ void integrators::Leapfrog::init1D(
 {
    Molecule* thismol;
    for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
-      if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->setXY();
+      if(thismol->numTersoff() && !(thismol->id() % zoscillator)) thismol->setXY();
 }
 
 void integrators::Leapfrog::init0D(
@@ -313,7 +313,7 @@ void integrators::Leapfrog::init0D(
 {
    Molecule* thismol;
    for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
-      if(!(thismol->id() % oscillator) && thismol->numTersoff()) thismol->setXYZ();
+      if(thismol->numTersoff() && !(thismol->id() % oscillator)) thismol->setXYZ();
 }
 
 void integrators::Leapfrog::zOscillation(
@@ -323,7 +323,7 @@ void integrators::Leapfrog::zOscillation(
 {
    Molecule* thismol;
    for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
-      if(!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->resetXY();
+      if(thismol->numTersoff() && !(thismol->id() % zoscillator)) thismol->resetXY();
 }
 
 void integrators::Leapfrog::oscillation(
@@ -333,7 +333,7 @@ void integrators::Leapfrog::oscillation(
 {
    Molecule* thismol;
    for(thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
-      if(!(thismol->id() % oscillator) && thismol->numTersoff()) thismol->resetXYZ();
+      if(thismol->numTersoff() && !(thismol->id() % oscillator)) thismol->resetXYZ();
 }
 #endif
 

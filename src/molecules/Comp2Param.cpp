@@ -24,16 +24,30 @@
 
 using namespace std;
 
-void Comp2Param::initialize(const vector<Component>& components, const vector<double>& mixcoeff, double epsRF, double rc, double rcLJ)
+void Comp2Param::initialize(const vector<Component>& components, const vector<double>& mixcoeff, double epsRF, double rc, double rcLJ, bool wallLJ)
 {
   m_numcomp=components.size();
   m_ssparatbl.redim(m_numcomp,m_numcomp);
+
+  for(unsigned int compi=0;compi<m_numcomp;++compi)
+  {
+    for(unsigned int compj=0;compj<m_numcomp;++compj)
+    {
+       ParaStrm& pstrmij=m_ssparatbl(compi,compj);
+       pstrmij = ParaStrm();
+    }
+  }  
 
   // interaction between LJ centers
   vector<double>::const_iterator mixpos=mixcoeff.begin();
   for(unsigned int compi=0;compi<m_numcomp;++compi)
   {
     ParaStrm& pstrmii=m_ssparatbl(compi,compi);
+#ifndef NDEBUG
+    cout.flush();
+    cout << "\nLJ parameters for " << compi << " and " << compi << ": ";
+    cout.flush();
+#endif
     unsigned int nci=components[compi].numLJcenters();
     double epsi,sigi,epsj,sigj,epsilon24,sigma2;
 #ifdef TRUNCATED_SHIFTED
@@ -62,86 +76,122 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           epsilon24=24.*sqrt(epsi*epsj);
           sigma2=.5*(sigi+sigj); sigma2*=sigma2;
           pstrmii << epsilon24;
+#ifndef NDEBUG
+          cout << "eps24=" << epsilon24 << " ";
+#endif
           pstrmii << sigma2;
+#ifndef NDEBUG
+          cout << "sig2=" << sigma2 << " ";
+          cout.flush();
+#endif
 #ifdef TRUNCATED_SHIFTED
           pstrmii << shift6i;
+#ifndef NDEBUG
+          cout << "shift6=" << shift6i << " ";
+#endif
 #endif
         }
       }
 #ifdef COMPLEX_POTENTIAL_SET
     }
-#endif
-    // unlike interaction
+#endif  
+    // unlike LJ interaction
     for(unsigned int compj=compi+1;compj<m_numcomp;++compj)
     {
+#ifdef COMPLEX_POTENTIAL_SET
+       unsigned ntj = components[compj].numTersoff();
+       if(wallLJ || !nti || !ntj)
+       {
+#endif
 #ifndef NDEBUG
-      cout << "parameters for " << compi << " and " << compj << ": ";
+         cout.flush();
+         cout << "\nLJ parameters for " << compi << " and " << compj << ": ";
+         cout.flush();
 #endif
-      ParaStrm& pstrmij=m_ssparatbl(compi,compj);
-      unsigned int ncj=components[compj].numLJcenters();
-      double xi=*mixpos; ++mixpos;
-      double eta=*mixpos; ++mixpos;
+         ParaStrm& pstrmij=m_ssparatbl(compi,compj);
+         unsigned int ncj=components[compj].numLJcenters();
+         double xi=*mixpos; ++mixpos;
+         double eta=*mixpos; ++mixpos;
 #ifdef TRUNCATED_SHIFTED
-      double shift6combined, sigperrc2, sigperrc6;
+         double shift6combined, sigperrc2, sigperrc6;
 #endif
-      for(unsigned int centeri=0;centeri<nci;++centeri)
-      {
-        const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
-        epsi=ljcenteri.eps();
-        sigi=ljcenteri.sigma();
-        for(unsigned int centerj=0;centerj<ncj;++centerj)
-        {
-          const LJcenter& ljcenterj=static_cast<const LJcenter&>(components[compj].ljcenter(centerj));
-          epsj=ljcenterj.eps();
-          sigj=ljcenterj.sigma();
-          epsilon24=24.*xi*sqrt(epsi*epsj);
-          sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
+         for(unsigned int centeri=0;centeri<nci;++centeri)
+         {
+           const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
+           epsi=ljcenteri.eps();
+           sigi=ljcenteri.sigma();
+           for(unsigned int centerj=0;centerj<ncj;++centerj)
+           {
+             const LJcenter& ljcenterj=static_cast<const LJcenter&>(components[compj].ljcenter(centerj));
+             epsj=ljcenterj.eps();
+             sigj=ljcenterj.sigma();
+             epsilon24=24.*xi*sqrt(epsi*epsj);
+             sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
 #ifdef TRUNCATED_SHIFTED
-          sigperrc2 = sigma2/(rcLJ*rcLJ);
-          sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
-          shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
+             sigperrc2 = sigma2/(rcLJ*rcLJ);
+             sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
+             shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
 #endif
-          pstrmij << epsilon24;
+             pstrmij << epsilon24;
 #ifndef NDEBUG
-          cout << "eps24=" << epsilon24 << " ";
+             cout << "eps24=" << epsilon24 << " ";
 #endif
-          pstrmij << sigma2;
+             pstrmij << sigma2;
 #ifndef NDEBUG
-          cout << "sig2=" << sigma2 << " ";
+             cout << "sig2=" << sigma2 << " ";
+             cout.flush();
 #endif
 #ifdef TRUNCATED_SHIFTED
-          pstrmij << shift6combined;  
+             pstrmij << shift6combined;  
 #ifndef NDEBUG
-          cout << "shift6=" << shift6combined << " ";
+             cout << "shift6=" << shift6combined << " ";
 #endif
 #endif
-        }
-      }
-      ParaStrm& pstrmji=m_ssparatbl(compj,compi);
-      for(unsigned int centerj=0;centerj<ncj;++centerj)
-      {
-        const LJcenter& ljcenterj=static_cast<const LJcenter&>(components[compj].ljcenter(centerj));
-        epsj=ljcenterj.eps();
-        sigj=ljcenterj.sigma();
-        for(unsigned int centeri=0;centeri<nci;++centeri)
-        {
-          const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
-          epsi=ljcenteri.eps();
-          sigi=ljcenteri.sigma();
-          epsilon24=24.*xi*sqrt(epsi*epsj);
-          sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
+           }
+         }
+         ParaStrm& pstrmji=m_ssparatbl(compj,compi);
+#ifndef NDEBUG
+         cout.flush();
+         cout << "\nLJ parameters for " << compj << " and " << compi << ": ";
+         cout.flush();
+#endif
+         for(unsigned int centerj=0;centerj<ncj;++centerj)
+         {
+           const LJcenter& ljcenterj=static_cast<const LJcenter&>(components[compj].ljcenter(centerj));
+           epsj=ljcenterj.eps();
+           sigj=ljcenterj.sigma();
+           for(unsigned int centeri=0;centeri<nci;++centeri)
+           {
+             const LJcenter& ljcenteri=static_cast<const LJcenter&>(components[compi].ljcenter(centeri));
+             epsi=ljcenteri.eps();
+             sigi=ljcenteri.sigma();
+             epsilon24=24.*xi*sqrt(epsi*epsj);
+             sigma2=eta*.5*(sigi+sigj); sigma2*=sigma2;
 #ifdef TRUNCATED_SHIFTED
-          sigperrc2 = sigma2/(rcLJ*rcLJ);
-          sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
-          shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
+             sigperrc2 = sigma2/(rcLJ*rcLJ);
+             sigperrc6 = sigperrc2*sigperrc2*sigperrc2;
+             shift6combined = epsilon24 * (sigperrc6 - sigperrc6*sigperrc6);
 #endif
-          pstrmji << epsilon24;
-          pstrmji << sigma2;
+             pstrmji << epsilon24;
+#ifndef NDEBUG
+             cout << "eps24=" << epsilon24 << " ";
+#endif
+             pstrmji << sigma2;
+#ifndef NDEBUG
+             cout << "sig2=" << sigma2 << " ";
+             cout.flush();
+#endif
 #ifdef TRUNCATED_SHIFTED
-          pstrmji << shift6combined;  
+             pstrmji << shift6combined;  
+#ifndef NDEBUG
+             cout << "shift6=" << shift6combined << " ";
 #endif
-        }
-      }
+#endif
+           }
+         }
+#ifdef COMPLEX_POTENTIAL_SET
+       }
+#endif
     }
   }
 
@@ -151,14 +201,26 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
     unsigned int nqi=components[compi].numQuadrupoles();
 #ifdef COMPLEX_POTENTIAL_SET
     unsigned int ndi=components[compi].numDipoles();
+    unsigned nti = components[compi].numTersoff();
 #endif
     for(unsigned int compj=0;compj<m_numcomp;++compj)
     {
       ParaStrm& pstrmij=m_ssparatbl(compi,compj);
+#ifndef NDEBUG
+         cout.flush();
+         cout << "\nElectrostatics parameters for " << compi << " and " << compj << ": ";
+         cout.flush();
+#endif
       unsigned nej = components[compj].numCharges();
       unsigned int nqj=components[compj].numQuadrupoles();
 #ifdef COMPLEX_POTENTIAL_SET
       unsigned int ndj=components[compj].numDipoles();
+      unsigned ntj = components[compj].numTersoff();
+
+      /*
+       * no electrostatics between solid atoms
+       */
+      if(nti && ntj) continue;
 #endif
       for(unsigned ei = 0; ei < nei; ei++)
       {
@@ -171,6 +233,10 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double cvalj = chargej.q();
           double q1q2per4pie0 = cvali*cvalj;  // 4pi*epsilon0 = Einheit!!!
           pstrmij << q1q2per4pie0;
+#ifndef NDEBUG
+          cout << "11=" << q1q2per4pie0 << " ";
+          cout.flush();
+#endif
         }
         // Charge-Quadrupole
         for(unsigned qj=0; qj < nqj; qj++)
@@ -179,6 +245,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absqj=quadrupolej.absQ();
           double qQ025per4pie0 = 0.25*cvali*absqj;
           pstrmij << qQ025per4pie0;
+#ifndef NDEBUG
+          cout << "14=" << qQ025per4pie0 << " ";
+#endif
         }
 #ifdef COMPLEX_POTENTIAL_SET
         // Charge-Dipole
@@ -188,6 +257,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absmyj = dipolej.absMy();
           double minusqmyper4pie0 = -cvali*absmyj;
           pstrmij << minusqmyper4pie0;
+#ifndef NDEBUG
+          cout << "12=" << minusqmyper4pie0 << " ";
+#endif
         }
 #endif
       }
@@ -202,6 +274,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double cvalj = chargej.q();
           double qQ025per4pie0 = 0.25*cvalj*absqi;
           pstrmij << qQ025per4pie0;
+#ifndef NDEBUG
+          cout << "41=" << qQ025per4pie0 << " ";
+#endif
         }
         // Quadrupole-Quadrupole
         for(unsigned int qj=0;qj<nqj;++qj)
@@ -210,6 +285,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absqj=quadrupolej.absQ();
           double q2075=.75*absqi*absqj;
           pstrmij << q2075;
+#ifndef NDEBUG
+          cout << "44=" << q2075 << " ";
+#endif
         }
 #ifdef COMPLEX_POTENTIAL_SET
         // Quadrupole-Dipole
@@ -219,6 +297,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absmyj=dipolej.absMy();
           double qmy15=1.5*absqi*absmyj;
           pstrmij << qmy15;
+#ifndef NDEBUG
+          cout << "42=" << qmy15 << " ";
+#endif
         }
 #endif
       }
@@ -235,6 +316,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double cvalj = chargej.q();
           double minusqmyper4pie0 = -cvalj*absmyi;
           pstrmij << minusqmyper4pie0;
+#ifndef NDEBUG
+          cout << "21=" << minusqmyper4pie0 << " ";
+#endif
         }
         // Dipole-Quadrupole
         for(unsigned int qj=0;qj<nqj;++qj)
@@ -243,6 +327,9 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absqj=quadrupolej.absQ();
           double myq15=1.5*absmyi*absqj;
           pstrmij << myq15;
+#ifndef NDEBUG
+          cout << "24=" << myq15 << " ";
+#endif
         }
         // Dipole-Dipole
         for(unsigned int dj=0;dj<ndj;++dj)
@@ -251,8 +338,14 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
           double absmyj=dipolej.absMy();
           double my2=absmyi*absmyj;
           pstrmij << my2;
+#ifndef NDEBUG
+          cout << "22a=" << my2 << " ";
+#endif
           double rffac=my2*epsRFInvrc3;
           pstrmij << rffac;
+#ifndef NDEBUG
+          cout << "22b=" << rffac << " ";
+#endif
         }
       }
 #endif
@@ -318,3 +411,4 @@ void Comp2Param::initialize(const vector<Component>& components, const vector<do
   */
 #endif
 }
+

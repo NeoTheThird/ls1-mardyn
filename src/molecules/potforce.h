@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2010 by Martin Bernreuther and colleagues               *
+ *   Copyright (C) 2011 by Martin Bernreuther and colleagues               *
  *   Head of development: M. Bernreuther <bernreuther@hlrs.de>             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -347,6 +347,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       {
         const double* djj=mj.ljcenter_d(sj);
         SiteSiteDistance(drm,dii,djj,drs,dr2);
+#ifndef NDEBUG
+        // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << ", " << nt1 << ", " << nt2 << ", " << wallLJ << "]";
+#endif
         double eps24;
         params >> eps24;
         double sig2;
@@ -357,6 +360,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #endif
         if(cLJ)
         {
+#ifndef NDEBUG
+           // cout << " LJ\n";
+#endif
            PotForceLJ(drs,dr2,eps24,sig2,f,u);
 #ifdef TRUNCATED_SHIFTED
            u += shift6;
@@ -380,9 +386,38 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
            */
            for(unsigned short d=0;d<3;++d) Virial+=drm[d]*f[d];
          }
+#ifndef NDEBUG
+         else
+         {
+           // cout << " ign LJ\n";
+         }
+#endif
       }
     }
 #ifdef COMPLEX_POTENTIAL_SET
+  }
+
+  // no electrostatic interactions between solid atoms,
+  // which are governed by short-range multi-body potentials only,
+  // according to the present approach
+  if(nt1 && nt2)
+  {
+#ifndef NDEBUG
+    if(!params.eos())
+    {
+       cout << "\nSEVERE ERROR. Surplus parameters: ";
+       while(!params.eos())
+       {
+          double param;
+          params >> param;
+          cout << param << "  ";
+          cout << "\n";
+       }
+    }
+#endif
+
+    assert(params.eos());
+    return;
   }
 #endif
 
@@ -406,6 +441,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       double q1q2per4pie0;  // 4pie0 = 1 in reduced units
       params >> q1q2per4pie0;
       SiteSiteDistance(drm, dii, djj, drs, dr2);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 1<->1 " << q1q2per4pie0 << "\n";
+#endif
       PotForce2Charge(drs, dr2, q1q2per4pie0, f, u);
 
       mi.Fchargeadd(si, f);
@@ -422,6 +460,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       params >> qQ025per4pie0;
       SiteSiteDistance(drm, dii, djj, drs, dr2);
       const double* ejj = mj.quadrupole_e(sj);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 1<->4\n";
+#endif
       PotForceChargeQuadrupole(drs, dr2, ejj, qQ025per4pie0, f, m2, u);
       
       mi.Fchargeadd(si, f);
@@ -440,6 +481,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       params >> minusqmyper4pie0;
       SiteSiteDistance(drm, dii, djj, drs, dr2);
       const double* ejj = mj.dipole_e(sj);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 1<->2\n";
+#endif
       PotForceChargeDipole(drs, dr2, ejj, minusqmyper4pie0, f, m2, u);
       
       mi.Fchargeadd(si, f);
@@ -463,6 +507,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       double qQ025per4pie0;  // 4pie0 = 1 in reduced units
       params >> qQ025per4pie0;
       minusSiteSiteDistance(drm, dii, djj, drs, dr2);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 4<->1\n";
+#endif
       PotForceChargeQuadrupole(drs, dr2, eii, qQ025per4pie0, f, m1, u);
       
       mi.Fquadrupolesub(si, f);
@@ -481,6 +528,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       params >> q2075;
       SiteSiteDistance(drm,dii,djj,drs,dr2);
       const double* ejj=mj.quadrupole_e(sj);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 4<->4\n";
+#endif
       PotForce2Quadrupole(drs,dr2,eii,ejj,q2075,f,m1,m2,u);
 
       mi.Fquadrupoleadd(si,f);
@@ -506,6 +556,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       minusSiteSiteDistance(drm, dii, djj, drs, dr2);
       const double* ejj=mj.dipole_e(sj);
       //for(unsigned short d=0;d<3;++d) drs[d]=-drs[d]; // avoid that and toggle add/sub below
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 4<->2\n";
+#endif
       PotForceDiQuadrupole(drs,dr2,ejj,eii,qmy15,f,m2,m1,u);
 
       mi.Fquadrupolesub(si, f); 
@@ -529,6 +582,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       double minusqmyper4pie0;
       params >> minusqmyper4pie0;
       minusSiteSiteDistance(drm, dii, djj, drs, dr2);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 2<->1\n";
+#endif
       PotForceChargeDipole(drs, dr2, eii, minusqmyper4pie0, f, m1, u);
       
       mi.Fdipolesub(si, f);
@@ -547,6 +603,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       params >> myq15;
       SiteSiteDistance(drm,dii,djj,drs,dr2);
       const double* ejj=mj.quadrupole_e(sj);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 2<->4\n";
+#endif
       PotForceDiQuadrupole(drs,dr2,eii,ejj,myq15,f,m1,m2,u);
 
       mi.Fdipoleadd(si,f);
@@ -571,6 +630,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       params >> rffac;
       SiteSiteDistance(drm,dii,djj,drs,dr2);
       const double* ejj=mj.dipole_e(sj);
+#ifndef NDEBUG
+      // cout << "   " << mi.id() << "<->" << mj.id() << "[" << dr2 << "]" << " 2<->2\n";
+#endif
       PotForce2Dipole(drs,dr2,eii,ejj,my2,rffac,f,m1,m2,u,MyRF);
 
       mi.Fdipoleadd(si,f);
@@ -588,6 +650,19 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 #endif
 
   // check whether all parameters were used
+#ifndef NDEBUG
+  if(!params.eos())
+  {
+     cout << "\nSEVERE ERROR. Surplus parameters: ";
+     while(!params.eos())
+     {
+        double param;
+        params >> param;
+        cout << param << "  ";
+        cout << "\n";
+     }
+  }
+#endif
   assert(params.eos());
 }
 
@@ -636,6 +711,15 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
       }
     }
 #ifdef COMPLEX_POTENTIAL_SET
+  }
+
+  // no electrostatic interactions between solid atoms,
+  // which are governed by short-range multi-body potentials only,
+  // according to the present approach
+  if(nt1 && nt2)
+  {
+    assert(params.eos());
+    return;
   }
 #endif
 
@@ -905,7 +989,7 @@ inline double TersoffPotential(Molecule* mi, double params[15], double& UpotTers
       mj = mi->getTersoffNeighbour(nmj);
       if(mj->numTersoff() == 0) continue;
 #ifndef NDEBUG
-      // cout << "\t\tconsidering " << mi->id() << "-" << mj->id() << " interaction.\n";
+      // cout << "   " << mi->id() << "<->" << mj->id() << " T";
 #endif
       double drij2 = mj->dist2(*mi, distanceVector);  // distance j->i
       if(params[12] > drij2)
@@ -917,12 +1001,16 @@ inline double TersoffPotential(Molecule* mi, double params[15], double& UpotTers
          mk = mj->getTersoffNeighbour(nmk);
          if(mk->id() == mi->id() || (mk->numTersoff() == 0)) continue; 
 #ifndef NDEBUG
-      // cout << "\t\tconsidering " << mj->id() << "-" << mk->id() << " attraction.\n";
+         // cout << " " << mk->id();
 #endif
          double drjk2 = mk->dist2(*mj, distanceVector);  // distance k->j
          if(params[12] > drjk2)
             Ui += TersoffUIJattr(mj, mk, params, distanceVector, drjk2);
       }
+#ifndef NDEBUG
+      // cout << "\n";
+      // cout.flush();
+#endif
    }
 
    return Ui;

@@ -205,7 +205,7 @@ class Domain{
     //! This method should only be called, after the the component information
     //! and all molecule data have been read in
     //! @param cutoffRadius cutoff radius
-    void initParameterStreams(double cutoff, double cutoffRadiusLJ);
+    void initParameterStreams(double cutoff, double cutoffRadiusLJ, bool wallLJ);
 
     //! @brief set the potential of the local process
     void setLocalUpot(double Upot); 

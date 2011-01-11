@@ -72,9 +72,9 @@ Simulation::Simulation(int argc, char **argv){
   this->_profileOutputPrefix = "out";
   this->_collectThermostatDirectedVelocity = 100;
   this->_zoscillation = false;
-  this->_zoscillator = 512;
+  this->_zoscillator = 1536;
   this->_oscillation = false;
-  this->_oscillator = 512;
+  this->_oscillator = 1536;
   this->_wallLJ = true;
 #endif 
   this->_doRecordRDF = false;
@@ -140,7 +140,7 @@ Simulation::Simulation(int argc, char **argv){
       );
       this->_numberOfComponents = _domain->getComponents().size();
 
-      _domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius);
+      _domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius, _wallLJ);
     }
     else if(token=="timestepLength") {
       inputfilestream >> timestepLength;
@@ -354,6 +354,7 @@ Simulation::Simulation(int argc, char **argv){
           }
           exit(1);
        }
+       _domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius, _wallLJ);
     }
     else if(token == "profile")
     {
@@ -646,6 +647,19 @@ void Simulation::initialize(){
   if(!this->_domain->ownrank()) cout << "   * updating domain decomposition\n";
   updateParticleContainerAndDecomposition();
 
+#ifdef COMPLEX_POTENTIAL_SET
+  if(this->_wallLJ)
+  {
+     this->_particlePairsHandler->enableWallLJ();
+     cout << "LJ interaction between wall atoms of different components is ENABLED now.\n";
+  }
+  else
+  {
+     this->_particlePairsHandler->disableWallLJ();
+     cout << "LJ interaction between wall atoms is now generally TURNED OFF.\n";
+  }
+#endif
+
   // Force calculation
   if(!this->_domain->ownrank()) cout << "   * force calculation\n";
   _moleculeContainer->traversePairs();
@@ -657,9 +671,6 @@ void Simulation::initialize(){
   if(this->_doRecordRDF) this->_domain->resetRDF();
 
 #ifdef COMPLEX_POTENTIAL_SET
-    if(this->_wallLJ) this->_particlePairsHandler->enableWallLJ();
-    else this->_particlePairsHandler->disableWallLJ();
-
     cout << "   [:[:]:]   ";
     if(this->_domain->isAcceleratingUniformly())
     {
