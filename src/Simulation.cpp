@@ -91,6 +91,8 @@ Simulation::Simulation(int argc, char **argv){
   this->_initStatistics = 20000;
   this->_doAlignCentre = false;
   this->_doCancelMomentum = false;
+  this->_stillinger = 0.0;
+  this->_TWFcoordination = 0;
   
 #ifndef NDEBUG
   if(!ownrank) cout << "constructing domain:";
@@ -394,6 +396,10 @@ Simulation::Simulation(int argc, char **argv){
     {
        inputfilestream >> this->_RDFOutputPrefix;
     }
+    else if(token == "TWF")
+    {
+       inputfilestream >> this->_stillinger >> this->_TWFcoordination;
+    }
     else if(token == "resultOutputTimesteps")
     {
        inputfilestream >> this->_resultOutputTimesteps;
@@ -649,6 +655,8 @@ void Simulation::initialize(){
   if(!this->_domain->ownrank()) cout << "   * updating domain decomposition\n";
   updateParticleContainerAndDecomposition();
 
+  if(this->_stillinger > 0.0) this->_particlePairsHandler->setStillinger(_stillinger);
+
 #ifdef COMPLEX_POTENTIAL_SET
   if(this->_wallLJ)
   {
@@ -748,7 +756,7 @@ void Simulation::initialize(){
   // initialize output
   std::list<md_io::OutputBase*>::iterator outputIter;
   for(outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++){
-    (*outputIter)->initOutput(_moleculeContainer, _domainDecomposition, _domain); 
+    (*outputIter)->initOutput(_moleculeContainer, _domainDecomposition, _domain, _TWFcoordination); 
   }
   if((this->_initSimulation > this->_initStatistics) && this->_doRecordRDF) this->_domain->tickRDF();
 

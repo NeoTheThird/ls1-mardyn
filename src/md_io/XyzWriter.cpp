@@ -13,7 +13,7 @@ md_io::XyzWriter::XyzWriter(unsigned long numberOfTimesteps, unsigned long write
 md_io::XyzWriter::~XyzWriter(){}
 
 void md_io::XyzWriter::initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain){
+                         parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned coord){
 }
 
 void md_io::XyzWriter::doOutput(

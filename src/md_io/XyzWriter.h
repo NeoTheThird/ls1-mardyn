@@ -26,8 +26,10 @@ class md_io::XyzWriter : public md_io::OutputBase{
  public:
   XyzWriter(unsigned long numberOfTimesteps, unsigned long writeFrequency, string outputPathAndPrefix);
   ~XyzWriter();
-  void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain);
+  void initOutput(
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned coord
+  );
   void doOutput(
      datastructures::ParticleContainer<Molecule>* particleContainer,
      parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep

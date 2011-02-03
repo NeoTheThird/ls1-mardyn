@@ -41,8 +41,11 @@ class md_io::OutputBase{
   //! @brief to be called at the beginning of the simulation
   //!
   //! @todo comment 
-  virtual void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain) = 0;
+  virtual void initOutput(
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain,
+     unsigned coordination
+  ) = 0;
   
   //! @brief to be called in each time step
   //!

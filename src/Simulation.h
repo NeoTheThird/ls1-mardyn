@@ -212,5 +212,9 @@ class Simulation{
      */
     double h;
 #endif
+
+    double _stillinger;  // Stillinger radius
+    unsigned _TWFcoordination;  // ten Wolde-Frenkel coordination number
 };
 #endif /*SIMULATION_H_*/
+

@@ -26,8 +26,10 @@ class md_io::VisittWriter : public md_io::OutputBase{
  public:
   VisittWriter(unsigned long numberOfTimesteps, unsigned long writeFrequency, string outputPathAndPrefix);
   ~VisittWriter();
-  void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain);
+  void initOutput(
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned _coord
+  );
   void doOutput
   (
      datastructures::ParticleContainer<Molecule>* particleContainer,
@@ -44,6 +46,8 @@ class md_io::VisittWriter : public md_io::OutputBase{
   unsigned _writeFrequency;
   string _outputPathAndPrefix;
   bool _wroteVIS;
+  unsigned _coord;
 };
 
 #endif /*VISITTWRITER_H_*/
+

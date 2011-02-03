@@ -136,7 +136,7 @@ public:
    void setTersoffRadius(double mTER) { this->maximalTersoffExternalRadius = mTER; }
 #endif
 
-   void writeVIM(std::ostream& ostrm);
+   void writeVIM(std::ostream& ostrm, int offset);
 
 private:
   unsigned int m_id;  // IDentification number

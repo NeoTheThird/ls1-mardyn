@@ -227,11 +227,11 @@ void Component::writePOVobjs(std::ostream& ostrm, string para) const
   ostrm << flush;
 }
 
-void Component::writeVIM(std::ostream& ostrm)
+void Component::writeVIM(std::ostream& ostrm, int offset)
 {
    for(std::vector<LJcenter>::const_iterator pos=m_ljcenters.begin();pos!=m_ljcenters.end();++pos)
    {
-      ostrm << "~ " << this->m_id+1 << " LJ "
+      ostrm << "~ " << this->m_id+1+offset << " LJ "
             << setw(7) << pos->rx() << ' ' << setw(7) << pos->ry() << ' ' << setw(7) << pos->rz() << ' '
             << setw(6) << pos->sigma() << ' ' << setw(2) << (1 + (this->m_id % 9)) << "\n";
    }

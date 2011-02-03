@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2010 by Martin Bernreuther et al.                       *
+ *   Copyright (C) 2011 by Martin Bernreuther et al.                       *
  *   bernreuther@hlrs.de                                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -288,6 +288,9 @@ public:
   void addTersoffNeighbour(Molecule* m, bool pairType);
   double tersoffParameters(double params[15]); //returns delta_r
 #endif
+  inline unsigned getCurTWFN() { return this->m_curTWFN; }
+  inline void clearTWFNeighbourList() { this->m_curTWFN = 0; }
+  void addTWFNeighbour(Molecule* m) { this->m_curTWFN++; }
 
   // clear forces and moments
   void clearFM();
@@ -339,17 +342,6 @@ private:
 #ifdef COMPLEX_POTENTIAL_SET
   double *m_dipoles_F, *m_tersoff_F;
 #endif
- 
-  /*
-   * veraltet, aber aus Versehen von Martin Buchholz im Code gelassen (M.H. 17. Februar 2009)
-   *
-  // used by CELL data structure for intrusive single-linked "collision" lists
-  Molecule* m_nextincell;
-  // used by Cells::addMolecule to modify m_nextincell
-  void setNextinCell(Molecule* next) { m_nextincell=next; }
-  //  friend void Cells::addMolecule(Molecule* atom);
-   *
-   */
 
 #ifdef COMPLEX_POTENTIAL_SET
   //! near molecules with Tersoff centres
@@ -360,6 +352,7 @@ private:
   // map<Molecule*, bool> m_Tersoff_neighbours;
   double fixedx, fixedy, fixedz;
 #endif
+  int m_curTWFN;
 
   // setup cache values/properties
   void setupCache(const std::vector<Component>* components);
@@ -368,3 +361,4 @@ private:
 };
 
 #endif /*MOLECULE_H_*/
+

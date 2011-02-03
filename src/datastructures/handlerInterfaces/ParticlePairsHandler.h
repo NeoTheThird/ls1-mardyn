@@ -65,6 +65,7 @@ class datastructures::ParticlePairsHandler{
     virtual void recordRDF() = 0;
     virtual void enableWallLJ() = 0;
     virtual void disableWallLJ() = 0;
+    virtual void setStillinger(double St) = 0;
 };
 
 #endif /*PARTICLEPAIRSHANDLER_H_*/

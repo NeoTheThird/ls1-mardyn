@@ -19,6 +19,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     ParticlePairs2PotForceAdapter(Domain& domain): _domain(domain){
        this->_doRecordRDF = false;
        this->_permitWallLJ = true;
+       this->_stillinger2 = 0.0;
     }
     
     //! Destructor
@@ -61,6 +62,20 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     double processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], int pairType, double dd, bool cLJ){
       ParaStrm& params=_domain.getComp2Params()(particle1.componentid(),particle2.componentid());
       params.reset_read();
+
+      if(dd < this->_stillinger2)
+      {
+#ifdef COMPLEX_POTENTIAL_SET
+         if(( !particle1.numTersoff() ) && ( !particle2.numTersoff() ))  // apply TWF criterion to fluid molecules only
+         {
+#endif
+            particle1.addTWFNeighbour(&particle2);
+            particle2.addTWFNeighbour(&particle1);
+#ifdef COMPLEX_POTENTIAL_SET
+         }
+#endif
+      }
+
       if(pairType == 0){
         if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
 
@@ -92,28 +107,8 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     //! @brief register Tersoff neighbours
     void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType)
     {
-#ifndef NDEBUG
-      // cout << "pre" << particle1.id() << "[" << ((unsigned long)&particle1 % 1000) << "]/" << particle2.id() << "[" << ((unsigned long)&particle2 % 1000) << "] ";
-      // cout.flush();
-#endif
       particle1.addTersoffNeighbour(&particle2, pairType);
       particle2.addTersoffNeighbour(&particle1, pairType);
-
-#ifndef NDEBUG
-      /*
-      map<Molecule*, bool>::iterator tnit;
-      map<Molecule*, bool>* tn = particle1.getTersoffNeighbours();
-      cout << "\nneighbours of " << particle1.id() << ":";
-      for(tnit = tn->begin(); tnit != tn->end(); tnit++)
-        cout << " [" << (long int)(tnit->first) << ": " << ((Molecule*)((long int)(tnit->first)))->id() << "]";
-      cout << "\n";
-      tn = particle2.getTersoffNeighbours();
-      cout << "neighbours of " << particle2.id() << ":";
-      for(tnit = tn->begin(); tnit != tn->end(); tnit++)
-        cout << " [" << (long int)(tnit->first) << ": " << ((Molecule*)((long int)(tnit->first)))->id() << "]";
-      cout << "\n";
-      */
-#endif
     }
 
     /*
@@ -157,6 +152,7 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
     void recordRDF() { this->_doRecordRDF = true; }
     void enableWallLJ() { this->_permitWallLJ = true; }
     void disableWallLJ() { this->_permitWallLJ = false; }
+    void setStillinger(double St) { this->_stillinger2 = St*St; }
 
   private:
     //! @brief reference to the domain is needed to store the calculated macroscopic values
@@ -188,6 +184,10 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
 
     // are LJ interactions permitted between wall atoms of different components?
     bool _permitWallLJ;
+
+    // Stillinger radius squared (a value of 0.0 means that cluster detection is turned off)
+    double _stillinger2;
 };
 
 #endif /*PARTICLEPAIRS2POTFORCEADAPTER_H_*/
+

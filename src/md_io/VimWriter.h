@@ -26,8 +26,10 @@ class md_io::VimWriter : public md_io::OutputBase{
  public:
   VimWriter(unsigned long numberOfTimesteps, unsigned long writeFrequency, string outputPathAndPrefix);
   ~VimWriter();
-  void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain);
+  void initOutput(
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned coord
+  );
   void doOutput
   (
      datastructures::ParticleContainer<Molecule>* particleContainer,
@@ -44,6 +46,8 @@ class md_io::VimWriter : public md_io::OutputBase{
   unsigned _writeFrequency;
   string _outputPathAndPrefix;
   bool _wroteVIM;
+  unsigned _coord;
 };
 
 #endif /*VISITTWRITER_H_*/
+

@@ -566,21 +566,21 @@ class Domain{
     //! number of successive profile cuboids in x/y/z direction
     unsigned _universalNProfileUnits[3];
     //! local N profile map
-    map<unsigned, long double> _localNProfile;
+    map< unsigned, map<unsigned, long double> > _localNProfile;
     //! global N profile map
-    map<unsigned, double> _globalNProfile;
+    map< unsigned, map<unsigned, double> > _globalNProfile;
     //! local directed velocity profile map
-    map<unsigned, long double> _localvProfile[3];
+    map< unsigned, map<unsigned, long double> > _localvProfile[3];
     //! global directed velocity  profile map
-    map<unsigned, double> _globalvProfile[3];
+    map< unsigned, map<unsigned, double> > _globalvProfile[3];
     //! local kinetic energy profile map
-    map<unsigned, long double> _localKineticProfile;
+    map< unsigned, map<unsigned, long double> > _localKineticProfile;
     //! global kinetic energy profile map
-    map<unsigned, double> _globalKineticProfile;
+    map< unsigned, map<unsigned, double> > _globalKineticProfile;
     //! local counter w. r. t. degrees of freedom
-    map<unsigned, long double> _localDOFProfile;
+    map< unsigned, map<unsigned, long double> > _localDOFProfile;
     //! global counter w. r. t. degrees of freedom
-    map<unsigned, double> _globalDOFProfile;
+    map< unsigned, map<unsigned, double> > _globalDOFProfile;
     //! how many _evaluated_ timesteps are currently accumulated in the profile?
     unsigned _globalAccumulatedDatasets;
     //! which components should be considered?
@@ -636,6 +636,9 @@ class Domain{
     double _globalRealignmentBalance[3];
     double _globalRealignmentMass;
     double _universalRealignmentMotion[3];
+
+    bool _universalUseOffset;
+    double _universalOffset[3];
 };
 
 

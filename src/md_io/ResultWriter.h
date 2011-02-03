@@ -26,8 +26,10 @@ class md_io::ResultWriter : public md_io::OutputBase{
  public:
   ResultWriter(unsigned wF, string outputPrefix);
   ~ResultWriter();
-  void initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain);
+  void initOutput(
+     datastructures::ParticleContainer<Molecule>* particleContainer,
+     parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned coord
+  );
   void doOutput
   (
      datastructures::ParticleContainer<Molecule>* particleContainer,

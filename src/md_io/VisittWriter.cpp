@@ -23,9 +23,11 @@ md_io::VisittWriter::VisittWriter( unsigned long numberOfTimesteps,
 md_io::VisittWriter::~VisittWriter(){}
 
 void md_io::VisittWriter::initOutput( datastructures::ParticleContainer<Molecule>* pC,
-                                      parallel::DomainDecompBase* domainDecomp, Domain* domain )
+                                      parallel::DomainDecompBase* domainDecomp,
+                                      Domain* domain, unsigned coord )
 {
    this->_wroteVIS = false;
+   this->_coord = coord;
 }
 
 void md_io::VisittWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC,
@@ -85,7 +87,7 @@ void md_io::VisittWriter::doOutput( datastructures::ParticleContainer<Molecule>*
         for(unsigned short d = 0; d < 3; d++) visittfstrm << setw(11) << pCit->r(d);
         visittfstrm << setprecision(3) << setw(7) << pCit->q().qw() << setw(7) << pCit->q().qx()
                     << setw(7) << pCit->q().qy()<< setw(7) << pCit->q().qz()
-                    << setw(9) << right << 0 << "\n";
+                    << setw(9) << right << (((_coord > 0) && (pCit->getCurTWFN() >= _coord))? 1: 0) << "\n";
       }
     }
     visittfstrm.close();
@@ -96,3 +98,4 @@ void md_io::VisittWriter::finishOutput(datastructures::ParticleContainer<Molecul
                          parallel::DomainDecompBase* domainDecomp, Domain* domain)
 {
 }
+

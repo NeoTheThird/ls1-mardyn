@@ -325,10 +325,6 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
 #endif
   */
 
-#ifdef COMPLEX_POTENTIAL_SET
-#ifndef NDEBUG
-  //X cout << "disconnecting Tersoff pairs.\n";
-#endif
   for(unsigned i=0; i < _cells.size(); i++)
   {
     Cell<ParticleType>& currentCell = _cells[i];
@@ -337,10 +333,12 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
          molIter1++ )
     {
       ParticleType& molecule1 = **molIter1;
+      molecule1.clearTWFNeighbourList();
+#ifdef COMPLEX_POTENTIAL_SET
       molecule1.clearTersoffNeighbourList();
+#endif
     }
   }
-#endif
 
 #ifndef NDEBUG  
   /*

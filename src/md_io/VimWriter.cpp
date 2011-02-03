@@ -19,9 +19,11 @@ md_io::VimWriter::VimWriter( unsigned long numberOfTimesteps,
 md_io::VimWriter::~VimWriter(){}
 
 void md_io::VimWriter::initOutput( datastructures::ParticleContainer<Molecule>* pC,
-                                      parallel::DomainDecompBase* domainDecomp, Domain* domain )
+                                   parallel::DomainDecompBase* domainDecomp,
+                                   Domain* domain, unsigned coord )
 {
    this->_wroteVIM = false;
+   this->_coord = coord;
 }
 
 void md_io::VimWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC,
@@ -55,12 +57,20 @@ void md_io::VimWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC
     double lmax = 0.0;
     for(int d=0; d < 3; d++) if(domain->getGlobalLength(d) > lmax) lmax = domain->getGlobalLength(d);
 
+    unsigned Ncomp = domain->getComponents().size();
     if(!domain->ownrank() && !this->_wroteVIM)
     {
       vector<Component> tcomp = domain->getComponents();
       for(vector<Component>::iterator tcit = tcomp.begin(); tcit != tcomp.end(); tcit++)
       {
-        tcit->writeVIM(vimfstrm);
+        tcit->writeVIM(vimfstrm, 0);
+      }
+      if(_coord > 0)
+      {
+         for(vector<Component>::iterator tcit = tcomp.begin(); tcit != tcomp.end(); tcit++)
+         {
+           tcit->writeVIM(vimfstrm, Ncomp);
+         }
       }
       this->_wroteVIM = true;
     }
@@ -85,13 +95,14 @@ void md_io::VimWriter::doOutput( datastructures::ParticleContainer<Molecule>* pC
       if(!halo)
       {
         vimfstrm << "! " << setprecision(3)
-                 << setw(2) << pCit->componentid()+1 << ' ';
+                 << setw(2) << pCit->componentid()+1 + (((_coord > 0) && (pCit->getCurTWFN() >= _coord))? Ncomp: 0)
+                 << ' ';
         for(unsigned short d = 0; d < 3; d++)
-          vimfstrm << setw(3) << floor(999.999 * pCit->r(d) / lmax) << ' ';
-        vimfstrm << setw(4) << floor(999.999 * pCit->q().qw()) << ' '
-                 << setw(4) << floor(999.999 * pCit->q().qx()) << ' '
-                 << setw(4) << floor(999.999 * pCit->q().qy()) << ' '
-                 << setw(4) << floor(999.999 * pCit->q().qz()) << '\n';
+          vimfstrm << setw(3) << floor(999.9999 * pCit->r(d) / lmax) << ' ';
+        vimfstrm << setw(4) << floor(999.9999 * pCit->q().qw()) << ' '
+                 << setw(4) << floor(999.9999 * pCit->q().qx()) << ' '
+                 << setw(4) << floor(999.9999 * pCit->q().qy()) << ' '
+                 << setw(4) << floor(999.9999 * pCit->q().qz()) << '\n';
       }
     }
     vimfstrm.close();

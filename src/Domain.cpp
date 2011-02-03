@@ -292,7 +292,7 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
       // equations of motion. The thermostat then removes the kinetic energy from
       // the rest of the system, effectively destroying a simulation run that could
       // be saved by a more intelligent version. It is essential that such an intervention
-      // does not occur regularly, therefore it is limited to three times every 3000 time
+      // does not occur regularly, therefore it is limited to three times every 2000 time
       // steps and it is also indicated in the output.
       //
       if( ( (this->_universalBTrans[thermit->first] < 0.95)
@@ -350,20 +350,20 @@ void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
          }
          cout.flush();
 
-         if(3960 >= this->_universalSelectiveThermostatCounter)
+         if(1800 >= this->_universalSelectiveThermostatCounter)
          {
             if(this->_universalSelectiveThermostatWarning > 0)
                _universalSelectiveThermostatError = _universalSelectiveThermostatWarning;
             if(this->_universalSelectiveThermostatCounter > 0)
                _universalSelectiveThermostatWarning = _universalSelectiveThermostatCounter;
-            this->_universalSelectiveThermostatCounter = 4000;
+            this->_universalSelectiveThermostatCounter = 2000;
          }
          this->_universalBTrans[thermit->first] = 1.0;
          this->_universalBRot[thermit->first] = pow(this->_universalBRot[thermit->first], 0.0091);
       }
 #ifdef NDEBUG
       if((this->_universalSelectiveThermostatCounter > 0) &&
-	 ((this->_universalSelectiveThermostatCounter % 20) == 10))
+	 ((this->_universalSelectiveThermostatCounter % 40) == 17))
 #endif
          if(this->_localRank == 0)
             cout << "\n\t\t\t\tcounter " << this->_universalSelectiveThermostatCounter
@@ -1152,22 +1152,22 @@ void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
             unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
                    + yun * this->_universalNProfileUnits[2] + zun;
 
-            this->_localNProfile[unID] += 1.0;
+            this->_localNProfile[cid][unID] += 1.0;
             if(this->_universalSphericalGeometry)
             {
-               _localvProfile[1][unID] += xr*thismol->v(0) + yr*thismol->v(1) + zr*thismol->v(2);
+               _localvProfile[1][cid][unID] += xr*thismol->v(0) + yr*thismol->v(1) + zr*thismol->v(2);
             }
             else
             {
-               for(int d=0; d<3; d++) this->_localvProfile[d][unID] += thismol->v(d);
+               for(int d=0; d<3; d++) this->_localvProfile[d][cid][unID] += thismol->v(d);
             }
-            this->_localDOFProfile[unID] += 3.0 + (long double)(this->_components[cid].rot_dof());
+            this->_localDOFProfile[cid][unID] += 3.0 + (long double)(this->_components[cid].rot_dof());
 
             // record _twice_ the total (ordered + unordered) kinetic energy
             mv2 = 0.0;
             Iw2 = 0.0;
             thismol->calculate_mv2_Iw2(mv2, Iw2);
-            this->_localKineticProfile[unID] += mv2+Iw2;
+            this->_localKineticProfile[cid][unID] += mv2+Iw2;
          }
          else if(!this->_universalSphericalGeometry || ((yun >= 0) && (yun < (int)_universalNProfileUnits[1])))
          {
@@ -1187,122 +1187,188 @@ void Domain::collectProfile(parallel::DomainDecompBase* domainDecomp)
                                                      * this->_universalNProfileUnits[2];
    for(unsigned unID = 0; unID < unIDs; unID++)
    {
-      this->_globalNProfile[unID] = (double)this->_localNProfile[unID];
-      for(int d=0; d<3; d++) this->_globalvProfile[d][unID] = (double)this->_localvProfile[d][unID];
-      this->_globalDOFProfile[unID] = (double)this->_localDOFProfile[unID];
-      this->_globalKineticProfile[unID] = (double)this->_localKineticProfile[unID];
+      for( map<unsigned, bool>::iterator pcit = _universalProfiledComponents.begin();
+           pcit != _universalProfiledComponents.end();
+           pcit++ )
+      {
+         if(!pcit->second) continue;
+         unsigned cid = pcit->first;
+
+         this->_globalNProfile[cid][unID] = (double)this->_localNProfile[cid][unID];
+         for(int d=0; d<3; d++) this->_globalvProfile[d][cid][unID] = (double)this->_localvProfile[d][cid][unID];
+         this->_globalDOFProfile[cid][unID] = (double)this->_localDOFProfile[cid][unID];
+         this->_globalKineticProfile[cid][unID] = (double)this->_localKineticProfile[cid][unID];
    
-      domainDecomp->reducevalues(&(this->_globalNProfile[unID]), &(this->_globalvProfile[0][unID]));
-      domainDecomp->reducevalues(&(this->_globalvProfile[1][unID]), &(this->_globalvProfile[2][unID]));
-      domainDecomp->reducevalues(&(this->_globalDOFProfile[unID]), &(this->_globalKineticProfile[unID]));
+         domainDecomp->reducevalues(&(this->_globalNProfile[cid][unID]), &(this->_globalvProfile[0][cid][unID]));
+         domainDecomp->reducevalues(&(this->_globalvProfile[1][cid][unID]), &(this->_globalvProfile[2][cid][unID]));
+         domainDecomp->reducevalues(&(this->_globalDOFProfile[cid][unID]), &(this->_globalKineticProfile[cid][unID]));
+      }
    }
 }
 
 void Domain::outputProfile(const char* prefix)
 {
    if(this->_localRank) return;
+
+   unsigned IDweight[3];
+   IDweight[0] = this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2];
+   IDweight[1] = this->_universalNProfileUnits[2];
+   IDweight[2] = 1;
    
-   string vzpryname(prefix);
-   string Tpryname(prefix);
-   string rhpryname(prefix);
-   if(this->_universalSphericalGeometry)
+   for(int asp = 0; asp < 3; asp++)
    {
-      rhpryname += ".rhprR";
-      vzpryname += ".vRprR";
-      Tpryname += ".TprR";
-   }
-   else
-   {
-      rhpryname += ".rhpry";
-      vzpryname += ".vzpry";
-      Tpryname += ".Tpry";
-   }
-   ofstream rhpry(rhpryname.c_str());
-   ofstream vzpry(vzpryname.c_str());
-   ofstream Tpry(Tpryname.c_str());
-   if (!(vzpry && Tpry && rhpry))
-   {
-      return;
-   }
-   rhpry.precision(5);
-   vzpry.precision(5);
-   Tpry.precision(6);
-   if(this->_universalSphericalGeometry)
-   {
-      rhpry << "# R\trho\ttotal DOF\n# \n";
-      vzpry << "# R\tvR\n# \n";
-      Tpry << "# R\t2Ekin/#DOF\n# \n";
-   }
-   else
-   {
-      rhpry << "# y\trho\ttotal DOF\n# \n";
-      vzpry << "# y\tvz\tv\n# \n";
-      Tpry << "# y\t2Ekin/#DOF\n# \n";
-   }
+      int aspy = asp;
+      int aspx = (asp == 0)? 1: 0;
+      int aspz = (asp == 2)? 1: 2;
 
-   double layerVolume;
-   if(_universalSphericalGeometry)
-   {
-      layerVolume = 4.0*PI*_universalR3max / (3.0*this->_universalNProfileUnits[1]);
-   }
-   else
-   {
-      layerVolume = this->_globalLength[0] * this->_globalLength[1] * this->_globalLength[2]
-                     / this->_universalNProfileUnits[1];
-   }
-   for(unsigned y = 0; y < this->_universalNProfileUnits[1]; y++)
-   {
-      double yval = (y + 0.5) / this->_universalInvProfileUnit[1];
-      if(_universalSphericalGeometry) yval = pow(yval, 1.0/3.0);
-
-      long double Ny = 0.0;
-      long double DOFy = 0.0;
-      long double twoEkiny = 0.0;
-      long double velocitysumy[3];
-      for(unsigned d = 0; d < 3; d++) velocitysumy[d] = 0.0;
-      for(unsigned x = 0; x < this->_universalNProfileUnits[0]; x++)
+      for( map<unsigned, bool>::iterator pcit = _universalProfiledComponents.begin();
+           pcit != _universalProfiledComponents.end();
+           pcit++ )
       {
-         for(unsigned z = 0; z < this->_universalNProfileUnits[2]; z++)
-         {
-            unsigned unID = x * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
-                          + y * this->_universalNProfileUnits[2] + z;
-            Ny += this->_globalNProfile[unID];
-            DOFy += this->_globalDOFProfile[unID];
-            twoEkiny += this->_globalKineticProfile[unID];
-            for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][unID];
-         }
-      }
+         if(!pcit->second) continue;
+         unsigned cid = pcit->first;
 
-      if(Ny >= 7.0)
-      {
-         rhpry << yval << "\t" << (Ny / (layerVolume * this->_globalAccumulatedDatasets))
-               << "\t" << DOFy << "\n";
-         Tpry << yval << "\t" << (twoEkiny / DOFy) << "\n";
-
-         if(_universalSphericalGeometry)
+         string vzpryname(prefix);
+         string Tpryname(prefix);
+         string rhpryname(prefix);
+         rhpryname += ".rhpr";
+         vzpryname += ".vRpr";
+         Tpryname += ".Tpr";
+         if(this->_universalSphericalGeometry)
          {
-            vzpry << yval << "\t" << (velocitysumy[1] / Ny) << "\n";
+            if(asp == 0)
+            {
+               rhpryname += "phi.";
+               vzpryname += "phi.";
+               Tpryname += "phi.";
+            }
+            else if(asp == 1)
+            {
+               rhpryname += "R.";
+               vzpryname += "R.";
+               Tpryname += "R.";
+            }
+            else
+            {
+               rhpryname += "psi.";
+               vzpryname += "psi.";
+               Tpryname += "psi.";
+            }
          }
          else
          {
-            double vvdir = 0.0;
-            for(unsigned d = 0; d < 3; d++)
+            if(asp == 0)
             {
-               double vd = velocitysumy[d] / Ny;
-               vvdir += vd*vd;
+               rhpryname += "x.";
+               vzpryname += "x.";
+               Tpryname += "x.";
             }
-            vzpry << yval << "\t" << (velocitysumy[2] / Ny) << "\t" << sqrt(vvdir) << "\n";
+            else if(asp == 1)
+            {
+               rhpryname += "y.";
+               vzpryname += "y.";
+               Tpryname += "y.";
+            }
+            else
+            {
+               rhpryname += "z.";
+               vzpryname += "z.";
+               Tpryname += "z.";
+            }
          }
-      }
-      else
-      {
-         rhpry << yval << "\t0.000\t" << DOFy << "\n";
+
+         rhpryname += ((cid%10) + '0');
+         vzpryname += ((cid%10) + '0');
+         Tpryname += ((cid%10) + '0');
+         ofstream rhpry(rhpryname.c_str());
+         ofstream vzpry(vzpryname.c_str());
+         ofstream Tpry(Tpryname.c_str());
+         if (!(vzpry && Tpry && rhpry))
+         {
+            return;
+         }
+         rhpry.precision(6);
+         vzpry.precision(6);
+         Tpry.precision(8);
+
+         if(this->_universalSphericalGeometry)
+         {
+            rhpry << "# coord\trho\ttotal DOF\n# \n";
+            vzpry << "# coord\tv_R\n# \n";
+            Tpry << "# coord\t2Ekin/#DOF\n# \n";
+         }
+         else
+         {
+            rhpry << "# coord\trho\ttotal DOF\n# \n";
+            vzpry << "# coord\tv_z\tv\n# \n";
+            Tpry << "# coord\t2Ekin/#DOF\n# \n";
+         }
+   
+         double layerVolume;
+         if(_universalSphericalGeometry)
+         {
+            layerVolume = 4.0*PI*_universalR3max / (3.0*this->_universalNProfileUnits[asp]);
+         }
+         else
+         {
+            layerVolume = this->_globalLength[0] * this->_globalLength[1] * this->_globalLength[2]
+                           / this->_universalNProfileUnits[asp];
+         }
+         for(unsigned y = 0; y < this->_universalNProfileUnits[asp]; y++)
+         {
+            double yval = (y + 0.5) / this->_universalInvProfileUnit[asp];
+            if((_universalSphericalGeometry) && (asp == 1)) yval = pow(yval, 1.0/3.0);
+    
+            long double Ny = 0.0;
+            long double DOFy = 0.0;
+            long double twoEkiny = 0.0;
+            long double velocitysumy[3];
+            for(unsigned d = 0; d < 3; d++) velocitysumy[d] = 0.0;
+            for(unsigned x = 0; x < this->_universalNProfileUnits[aspx]; x++)
+            {
+               for(unsigned z = 0; z < this->_universalNProfileUnits[aspz]; z++)
+               {
+                  unsigned unID = x * IDweight[aspx] + y * IDweight[aspy]
+                                                     + z * IDweight[aspz];
+                  Ny += this->_globalNProfile[cid][unID];
+                  DOFy += this->_globalDOFProfile[cid][unID];
+                  twoEkiny += this->_globalKineticProfile[cid][unID];
+                  for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][cid][unID];
+               }
+            }
+      
+            if(Ny >= 7.0)
+            {
+               rhpry << yval << "\t" << (Ny / (layerVolume * this->_globalAccumulatedDatasets))
+                     << "\t" << DOFy << "\n";
+               Tpry << yval << "\t" << (twoEkiny / DOFy) << "\n";
+   
+               if(_universalSphericalGeometry)
+               {
+                  vzpry << yval << "\t" << (velocitysumy[1] / Ny) << "\n";
+               }
+               else
+               {
+                  double vvdir = 0.0;
+                  for(unsigned d = 0; d < 3; d++)
+                  {
+                     double vd = velocitysumy[d] / Ny;
+                     vvdir += vd*vd;
+                  }
+                  vzpry << yval << "\t" << (velocitysumy[2] / Ny) << "\t" << sqrt(vvdir) << "\n";
+               }
+            }
+            else
+            {
+               rhpry << yval << "\t0.000\t" << DOFy << "\n";
+            }
+         }
+   
+         rhpry.close();
+         vzpry.close();
+         Tpry.close();
       }
    }
-
-   rhpry.close();
-   vzpry.close();
-   Tpry.close();
 }
 
 void Domain::resetProfile()
@@ -1311,17 +1377,25 @@ void Domain::resetProfile()
                                                      * this->_universalNProfileUnits[2];
    for(unsigned unID = 0; unID < unIDs; unID++)
    {
-      this->_localNProfile[unID] = 0.0;
-      this->_globalNProfile[unID] = 0.0;
-      for(int d=0; d<3; d++)
+      for( map<unsigned, bool>::iterator pcit = _universalProfiledComponents.begin();
+           pcit != _universalProfiledComponents.end();
+           pcit++ )
       {
-         this->_localvProfile[d][unID] = 0.0;
-         this->_globalvProfile[d][unID] = 0.0;
+         if(!pcit->second) continue;
+         unsigned cid = pcit->first;
+
+         this->_localNProfile[cid][unID] = 0.0;
+         this->_globalNProfile[cid][unID] = 0.0;
+         for(int d=0; d<3; d++)
+         {
+            this->_localvProfile[d][cid][unID] = 0.0;
+            this->_globalvProfile[d][cid][unID] = 0.0;
+         }
+         this->_localDOFProfile[cid][unID] = 0.0;
+         this->_globalDOFProfile[cid][unID] = 0.0;
+         this->_localKineticProfile[cid][unID] = 0.0;
+         this->_globalKineticProfile[cid][unID] = 0.0;
       }
-      this->_localDOFProfile[unID] = 0.0;
-      this->_globalDOFProfile[unID] = 0.0;
-      this->_localKineticProfile[unID] = 0.0;
-      this->_globalKineticProfile[unID] = 0.0;
    }
    this->_globalAccumulatedDatasets = 0;
 }
@@ -1645,6 +1719,9 @@ void Domain::readPhaseSpaceHeader(
   double xi,eta;
   unsigned long i;
 
+  for(int d=0; d < 3; d++) _universalOffset[d] = 0.0;
+  this->_universalUseOffset = false;
+
   // When the last header element is reached, "header" is set to false
   bool header = true;
   
@@ -1662,6 +1739,11 @@ void Domain::readPhaseSpaceHeader(
     if((token == "currentTime") || (token == "t"))
     {
       _phaseSpaceFileStream >> _currentTime;
+    }
+    if((token == "Offset") || (token == "O"))
+    {
+      _universalUseOffset = true;
+      _phaseSpaceFileStream >> _universalOffset[0] >> _universalOffset[1] >> _universalOffset[2];
     }
     else if((token == "Temperature") || (token == "T"))
     {
@@ -1960,7 +2042,22 @@ unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molec
       else
         _phaseSpaceFileStream >> id >> componentid >> x >> y >> z >> vx >> vy >> vz
               >> q0 >> q1 >> q2 >> q3 >> Dx >> Dy >> Dz;
-      if((x<0.0 || x>=_globalLength[0] || y<0.0 || y>=_globalLength[1] || z<0.0 || z>=_globalLength[2]) && _localRank == 0) {
+
+      if(this->_universalUseOffset)
+      {
+         x += this->_universalOffset[0];
+         while(x < 0.0) x += this->_globalLength[0];
+         while(x > this->_globalLength[0]) x -= this->_globalLength[0];
+
+         y += this->_universalOffset[1];
+         while(y < 0.0) y += this->_globalLength[1];
+         while(y > this->_globalLength[1]) y -= this->_globalLength[1];
+
+         z += this->_universalOffset[2];
+         while(z < 0.0) z += this->_globalLength[2];
+         while(z > this->_globalLength[0]) z -= this->_globalLength[2];
+      }
+      else if((x<0.0 || x>=_globalLength[0] || y<0.0 || y>=_globalLength[1] || z<0.0 || z>=_globalLength[2]) && _localRank == 0) {
         cerr << endl << id << ": Molecule " << x << ";" << y << ";" << z << " out of box! " << flush;
       }
       // if(_localRank==0) cout << "processing molecule " << id << ".\n";

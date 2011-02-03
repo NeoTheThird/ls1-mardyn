@@ -15,8 +15,10 @@ md_io::ResultWriter::ResultWriter(unsigned wF, string outputPrefix)
 
 md_io::ResultWriter::~ResultWriter(){}
 
-void md_io::ResultWriter::initOutput(datastructures::ParticleContainer<Molecule>* particleContainer,
-                         parallel::DomainDecompBase* domainDecomp, Domain* domain){
+void md_io::ResultWriter::initOutput(
+   datastructures::ParticleContainer<Molecule>* particleContainer,
+   parallel::DomainDecompBase* domainDecomp, Domain* domain, unsigned coord
+){
    
   // initialize result file
   string resultfile(_outputPrefix+".res");
