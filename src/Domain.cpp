@@ -16,6 +16,7 @@
 using namespace std;
 
 #define PI 3.1415926535897
+#define PIHALF 1.570796326794
 
 utils::Log Domain::_log("Domain");
 
@@ -1109,55 +1110,64 @@ void Domain::considerComponentInProfile(int cid)
    this->_universalProfiledComponents[cid] = true;
 }
 
-void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
+int Domain::unID(double qx, double qy, double qz)
 {
-   int cid;
    int xun, yun, zun, unID;
    double xr, yr, zr;
+
+   if(this->_universalSphericalGeometry)
+   {
+      xr = qx - this->_universalCentre[0];
+      yr = qy - this->_universalCentre[1];
+      zr = qz - this->_universalCentre[2];
+      double xr2yr2 = xr*xr + yr*yr;
+      double R2 = xr2yr2 + zr*zr;
+      double R1 = sqrt(R2);
+      double phi = asin(zr/R1);
+      double psi = acos(yr / sqrt(xr2yr2)) * ((xr >= 0.0)? 1.0: -1.0);
+      // cout << "\t\t" << phi << "\t" << R1 << "\t" << psi << "\t\t(" << thismol->r(0) << " / " << thismol->r(1) << " / " << thismol->r(2) << ")\t(" << xr << ", " << yr << ", " << zr << ").\n";
+      if(psi < 0.0) psi += 2.0*PI;
+
+      xun = (int)floor( (phi+PIHALF) * this->_universalInvProfileUnit[0] );
+      yun = (int)floor( R1*R2 * this->_universalInvProfileUnit[1] );
+      zun = (int)floor( psi * this->_universalInvProfileUnit[2] );
+   }
+   else
+   {
+      xun = (int)floor(qx * this->_universalInvProfileUnit[0]);
+      yun = (int)floor(qy * this->_universalInvProfileUnit[1]);
+      zun = (int)floor(qz * this->_universalInvProfileUnit[2]);
+   }
+
+   if((xun >= 0) && (yun >= 0) && (zun >= 0) &&
+      (xun < (int)_universalNProfileUnits[0]) && (yun < (int)_universalNProfileUnits[1]) && (zun < (int)_universalNProfileUnits[2]))
+   {
+      unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
+           + yun * this->_universalNProfileUnits[2] + zun;
+   }
+   else if(!this->_universalSphericalGeometry || ((yun >= 0) && (yun < (int)_universalNProfileUnits[1])))
+   {
+      cout << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
+      cout << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
+      exit(707);
+   }
+   return unID;
+}
+
+void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
+{
+   int cid, unID;
    double mv2, Iw2;
-   double pihalf = asin(1.0);
    
    for(Molecule* thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
    {
       cid = thismol->componentid();
       if(this->_universalProfiledComponents[cid])
       {
-         if(this->_universalSphericalGeometry)
-         {
-            xr = thismol->r(0) - this->_universalCentre[0];
-            yr = thismol->r(1) - this->_universalCentre[1];
-            zr = thismol->r(2) - this->_universalCentre[2];
-            double xr2yr2 = xr*xr + yr*yr;
-            double R2 = xr2yr2 + zr*zr;
-            double R1 = sqrt(R2);
-            double phi = asin(zr/R1);
-            double psi = acos(yr / sqrt(xr2yr2)) * ((xr >= 0.0)? 1.0: -1.0);
-            // cout << "\t\t" << phi << "\t" << R1 << "\t" << psi << "\t\t(" << thismol->r(0) << " / " << thismol->r(1) << " / " << thismol->r(2) << ")\t(" << xr << ", " << yr << ", " << zr << ").\n";
-            if(psi < 0.0) psi += 2.0*PI;
-
-            xun = (int)floor( (phi+pihalf) * this->_universalInvProfileUnit[0] );
-            yun = (int)floor( R1*R2 * this->_universalInvProfileUnit[1] );
-            zun = (int)floor( psi * this->_universalInvProfileUnit[2] );
-         }
-         else
-         {
-            xun = (int)floor(thismol->r(0) * this->_universalInvProfileUnit[0]);
-            yun = (int)floor(thismol->r(1) * this->_universalInvProfileUnit[1]);
-            zun = (int)floor(thismol->r(2) * this->_universalInvProfileUnit[2]);
-         }
-
-         if((xun >= 0) && (yun >= 0) && (zun >= 0) &&
-            (xun < (int)_universalNProfileUnits[0]) && (yun < (int)_universalNProfileUnits[1]) && (zun < (int)_universalNProfileUnits[2]))
-         {
-            unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
-                   + yun * this->_universalNProfileUnits[2] + zun;
+            unID = this->unID(thismol->r(0), thismol->r(1), thismol->r(2));
 
             this->_localNProfile[cid][unID] += 1.0;
-            if(this->_universalSphericalGeometry)
-            {
-               _localvProfile[1][cid][unID] += xr*thismol->v(0) + yr*thismol->v(1) + zr*thismol->v(2);
-            }
-            else
+            if(!this->_universalSphericalGeometry)
             {
                for(int d=0; d<3; d++) this->_localvProfile[d][cid][unID] += thismol->v(d);
             }
@@ -1168,13 +1178,6 @@ void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
             Iw2 = 0.0;
             thismol->calculate_mv2_Iw2(mv2, Iw2);
             this->_localKineticProfile[cid][unID] += mv2+Iw2;
-         }
-         else if(!this->_universalSphericalGeometry || ((yun >= 0) && (yun < (int)_universalNProfileUnits[1])))
-         {
-            cout << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
-            cout << "Coordinates (" << thismol->r(0) << " / " << thismol->r(1) << " / " << thismol->r(2) << ").\n";
-            exit(707);
-         }
       }
    }
    // exit(808);
@@ -1198,10 +1201,38 @@ void Domain::collectProfile(parallel::DomainDecompBase* domainDecomp)
          for(int d=0; d<3; d++) this->_globalvProfile[d][cid][unID] = (double)this->_localvProfile[d][cid][unID];
          this->_globalDOFProfile[cid][unID] = (double)this->_localDOFProfile[cid][unID];
          this->_globalKineticProfile[cid][unID] = (double)this->_localKineticProfile[cid][unID];
+#ifdef GRANDCANONICAL
+         this->_globalWidomProfile[cid][unID] = (double)this->_localWidomProfile[cid][unID];
+         this->_globalWidomInstances[cid][unID] = (double)this->_localWidomInstances[cid][unID];
+         this->_globalWidomProfileTloc[cid][unID] = (double)this->_localWidomProfileTloc[cid][unID];
+         this->_globalWidomInstancesTloc[cid][unID] = (double)this->_localWidomInstancesTloc[cid][unID];
+#endif
    
          domainDecomp->reducevalues(&(this->_globalNProfile[cid][unID]), &(this->_globalvProfile[0][cid][unID]));
          domainDecomp->reducevalues(&(this->_globalvProfile[1][cid][unID]), &(this->_globalvProfile[2][cid][unID]));
          domainDecomp->reducevalues(&(this->_globalDOFProfile[cid][unID]), &(this->_globalKineticProfile[cid][unID]));
+#ifdef GRANDCANONICAL
+         domainDecomp->reducevalues(&(this->_globalWidomProfile[cid][unID]), &(this->_globalWidomInstances[cid][unID]));
+         domainDecomp->reducevalues(&(this->_globalWidomProfileTloc[cid][unID]), &(this->_globalWidomInstancesTloc[cid][unID]));
+#endif
+
+         /*
+          * construct and broadcast the temperature profile
+          */
+         double Tun = 0.0;
+         if((!this->_localRank) && (_globalDOFProfile[cid][unID] >= 2401.0))
+         {
+            double twoEkin = this->_globalKineticProfile[cid][unID];
+
+            double vvNN = 0.0;
+            for(unsigned d = 0; d < 3; d++)
+               vvNN += _globalvProfile[d][cid][unID] * _globalvProfile[d][cid][unID];
+            double twoEkindir = _universalProfiledComponentMass[cid] * vvNN / _globalNProfile[cid][unID];
+
+            Tun = (twoEkin - twoEkindir) / _globalDOFProfile[cid][unID];
+         }
+         domainDecomp->doBroadcast(&Tun);
+         this->_universalTProfile[cid][unID] = Tun; 
       }
    }
 }
@@ -1231,28 +1262,43 @@ void Domain::outputProfile(const char* prefix)
          string vzpryname(prefix);
          string Tpryname(prefix);
          string rhpryname(prefix);
+#ifdef GRANDCANONICAL
+         string upryname(prefix);
+#endif
          rhpryname += ".rhpr";
          vzpryname += ".vRpr";
          Tpryname += ".Tpr";
+#ifdef GRANDCANONICAL
+         upryname += ".upr";
+#endif
          if(this->_universalSphericalGeometry)
          {
             if(asp == 0)
             {
                rhpryname += "phi.";
-               vzpryname += "phi.";
+               // vzpryname += "phi.";
                Tpryname += "phi.";
+#ifdef GRANDCANONICAL
+               upryname += "phi.";
+#endif
             }
             else if(asp == 1)
             {
                rhpryname += "R.";
-               vzpryname += "R.";
+               // vzpryname += "R.";
                Tpryname += "R.";
+#ifdef GRANDCANONICAL
+               upryname += "R.";
+#endif
             }
             else
             {
                rhpryname += "psi.";
-               vzpryname += "psi.";
+               // vzpryname += "psi.";
                Tpryname += "psi.";
+#ifdef GRANDCANONICAL
+               upryname += "psi.";
+#endif
             }
          }
          else
@@ -1262,47 +1308,70 @@ void Domain::outputProfile(const char* prefix)
                rhpryname += "x.";
                vzpryname += "x.";
                Tpryname += "x.";
+#ifdef GRANDCANONICAL
+               upryname += "x.";
+#endif
             }
             else if(asp == 1)
             {
                rhpryname += "y.";
                vzpryname += "y.";
                Tpryname += "y.";
+#ifdef GRANDCANONICAL
+               upryname += "y.";
+#endif
             }
             else
             {
                rhpryname += "z.";
                vzpryname += "z.";
                Tpryname += "z.";
+#ifdef GRANDCANONICAL
+               upryname += "z.";
+#endif
             }
          }
 
          rhpryname += ((cid%10) + '0');
          vzpryname += ((cid%10) + '0');
          Tpryname += ((cid%10) + '0');
-         ofstream rhpry(rhpryname.c_str());
-         ofstream vzpry(vzpryname.c_str());
-         ofstream Tpry(Tpryname.c_str());
-         if (!(vzpry && Tpry && rhpry))
+#ifdef GRANDCANONICAL
+         upryname += ((cid%10) + '0');
+#endif
+         ofstream* rhpry = new ofstream(rhpryname.c_str());
+         ofstream* vzpry;
+         if(!this->_universalSphericalGeometry) vzpry = new ofstream(vzpryname.c_str());
+         ofstream* Tpry = new ofstream(Tpryname.c_str());
+#ifdef GRANDCANONICAL
+         ofstream* upry = new ofstream(upryname.c_str());
+#endif
+         if (!(*Tpry && *rhpry))
          {
             return;
          }
-         rhpry.precision(6);
-         vzpry.precision(6);
-         Tpry.precision(8);
+         rhpry->precision(6);
+         if(!this->_universalSphericalGeometry) vzpry->precision(6);
+         Tpry->precision(8);
+#ifdef GRANDCANONICAL
+         upry->precision(7);
+#endif
 
+         *rhpry << "# coord\trho\ttotal DOF\n# \n";
          if(this->_universalSphericalGeometry)
          {
-            rhpry << "# coord\trho\ttotal DOF\n# \n";
-            vzpry << "# coord\tv_R\n# \n";
-            Tpry << "# coord\t2Ekin/#DOF\n# \n";
+            // *vzpry << "# coord\tv_R\n# \n";
          }
          else
          {
-            rhpry << "# coord\trho\ttotal DOF\n# \n";
-            vzpry << "# coord\tv_z\tv\n# \n";
-            Tpry << "# coord\t2Ekin/#DOF\n# \n";
+            *vzpry << "# coord\tv_z\tv\n# \n";
          }
+         *Tpry << "# coord\t2Ekin/#DOF\t2Ekin/3N (dir.)\tT\n# \n";
+#ifdef GRANDCANONICAL
+         double mu_id_glob = _globalTemperatureMap[0] * log(_globalDecisiveDensity[cid]);
+         *upry << "# coord\t\tmu_res(T_loc)\tmu_res(T = " << _globalTemperatureMap[0]
+               << "\t\tmu_id(rho_loc, T_loc)\tmu_id(global)\t\tmu(rho_loc, T_loc)\tmu(mu_id = "
+               << mu_id_glob << ")\t\tinstances(local)\tinstances(global)\n";
+#endif
    
          double layerVolume;
          if(_universalSphericalGeometry)
@@ -1322,7 +1391,14 @@ void Domain::outputProfile(const char* prefix)
             long double Ny = 0.0;
             long double DOFy = 0.0;
             long double twoEkiny = 0.0;
+            long double twoEkindiry = 0.0;
             long double velocitysumy[3];
+#ifdef GRANDCANONICAL
+            long double widomSigExpy = 0.0;
+            long double widomInstancesy = 0.0;
+            long double widomSigExpyTloc = 0.0;
+            long double widomInstancesyTloc = 0.0;
+#endif
             for(unsigned d = 0; d < 3; d++) velocitysumy[d] = 0.0;
             for(unsigned x = 0; x < this->_universalNProfileUnits[aspx]; x++)
             {
@@ -1333,19 +1409,27 @@ void Domain::outputProfile(const char* prefix)
                   Ny += this->_globalNProfile[cid][unID];
                   DOFy += this->_globalDOFProfile[cid][unID];
                   twoEkiny += this->_globalKineticProfile[cid][unID];
-                  for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][cid][unID];
+                  for(unsigned d = 0; d < 3; d++)
+                  {
+                     velocitysumy[d] += this->_globalvProfile[d][cid][unID];
+                  }
+#ifdef GRANDCANONICAL
+                  widomSigExpy += this->_globalWidomProfile[cid][unID];
+                  widomInstancesy += this->_globalWidomInstances[cid][unID];
+                  widomSigExpyTloc += this->_globalWidomProfileTloc[cid][unID];
+                  widomInstancesyTloc += this->_globalWidomInstancesTloc[cid][unID];
+#endif
                }
             }
       
-            if(Ny >= 7.0)
+            double rho_loc = Ny / (layerVolume * this->_globalAccumulatedDatasets);
+            if(Ny >= 49.0)
             {
-               rhpry << yval << "\t" << (Ny / (layerVolume * this->_globalAccumulatedDatasets))
-                     << "\t" << DOFy << "\n";
-               Tpry << yval << "\t" << (twoEkiny / DOFy) << "\n";
+               *rhpry << yval << "\t" << rho_loc << "\t" << DOFy << "\n";
    
                if(_universalSphericalGeometry)
                {
-                  vzpry << yval << "\t" << (velocitysumy[1] / Ny) << "\n";
+                  // *vzpry << yval << "\t" << (velocitysumy[1] / Ny) << "\n";
                }
                else
                {
@@ -1355,21 +1439,74 @@ void Domain::outputProfile(const char* prefix)
                      double vd = velocitysumy[d] / Ny;
                      vvdir += vd*vd;
                   }
-                  vzpry << yval << "\t" << (velocitysumy[2] / Ny) << "\t" << sqrt(vvdir) << "\n";
+                  *vzpry << yval << "\t" << (velocitysumy[2] / Ny) << "\t" << sqrt(vvdir) << "\n";
+                  twoEkindiry = Ny * _universalProfiledComponentMass[cid] * vvdir;
                }
-            }
-            else
-            {
-               rhpry << yval << "\t0.000\t" << DOFy << "\n";
+
+               *Tpry << yval << "\t" << (twoEkiny / DOFy) << "\t"
+                     << (twoEkindiry / (3.0*Ny)) << "\t" << ((twoEkiny - twoEkindiry) / DOFy) << "\n";
+
+#ifdef GRANDCANONICAL
+               if(widomInstancesy >= 2401.0)
+               {
+                  double mu_res_glob = -log(widomSigExpy / widomInstancesy)*_globalTemperatureMap[0];
+
+                  double mu_loc = 0.0;
+                  double mu_id_loc = 0.0;
+                  double mu_res_loc = 0.0;
+                  if(Ny >= 49.0)
+                  {
+                     double Tloc = (twoEkiny - twoEkindiry) / DOFy;
+                     mu_id_loc = Tloc * log(rho_loc * _universalLambda[cid]*_universalLambda[cid]*_universalLambda[cid]);
+                     if(widomInstancesyTloc >= 2401.0)
+                     {
+                        mu_res_loc = -log(widomSigExpyTloc / widomInstancesyTloc)*Tloc;
+                        mu_loc = mu_id_loc + mu_res_loc;
+                     }
+                  }
+               
+                  *upry << yval << "\t\t" << mu_res_loc << "\t" << mu_res_glob << "\t\t"
+                        << mu_id_loc << "\t" << mu_id_glob << "\t\t"
+                        << mu_loc << "\t" << mu_res_glob + mu_id_glob << "\t\t"
+                        << widomInstancesy << "\t" << widomInstancesyTloc << "\n";
+               }
+#endif
             }
          }
    
-         rhpry.close();
-         vzpry.close();
-         Tpry.close();
+         rhpry->close();
+         delete rhpry;
+         if(!this->_universalSphericalGeometry)
+         {
+            vzpry->close();
+            delete vzpry;
+         }
+         Tpry->close();
+         delete Tpry;
+#ifdef GRANDCANONICAL
+         upry->close();
+         delete upry;
+#endif
       }
    }
 }
+
+#ifdef GRANDCANONICAL
+void Domain::submitDU(unsigned cid, double DU, double* r)
+{
+   int unID = this->unID(r[0], r[1], r[2]);
+
+   _localWidomProfile[cid][unID] += exp(-DU / _globalTemperatureMap[0]);
+   _localWidomInstances[cid][unID] += 1.0;
+
+   double Tloc = _universalTProfile[cid][unID];
+   if(Tloc != 0.0)
+   {
+      _localWidomProfileTloc[cid][unID] += exp(-DU/Tloc);
+      _localWidomInstancesTloc[cid][unID] += 1.0;
+   }
+}
+#endif
 
 void Domain::resetProfile()
 {
@@ -1395,6 +1532,17 @@ void Domain::resetProfile()
          this->_globalDOFProfile[cid][unID] = 0.0;
          this->_localKineticProfile[cid][unID] = 0.0;
          this->_globalKineticProfile[cid][unID] = 0.0;
+#ifdef GRANDCANONICAL
+         this->_localWidomProfile[cid][unID] = 0.0;
+         this->_globalWidomProfile[cid][unID] = 0.0;
+         this->_localWidomInstances[cid][unID] = 0.0;
+         this->_globalWidomInstances[cid][unID] = 0.0;
+         this->_localWidomProfileTloc[cid][unID] = 0.0;
+         this->_globalWidomProfileTloc[cid][unID] = 0.0;
+         this->_localWidomInstancesTloc[cid][unID] = 0.0;
+         this->_globalWidomInstancesTloc[cid][unID] = 0.0;
+#endif
+         // no need to reset the global temperature profile ...
       }
    }
    this->_globalAccumulatedDatasets = 0;
@@ -1931,6 +2079,7 @@ void Domain::readPhaseSpaceHeader(
         if(IDummy1>0.) _components[i].setI11(IDummy1);
         if(IDummy2>0.) _components[i].setI22(IDummy2);
         if(IDummy3>0.) _components[i].setI33(IDummy3);
+        this->setProfiledComponentMass(i, _components[i].m());
       }
       _mixcoeff.clear();
       for(i=0;i<numcomponents-1;++i)

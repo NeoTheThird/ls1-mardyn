@@ -1,6 +1,6 @@
 /*
  * Martin Horsch, ls1 project moderated by Martin Bernreuther
- * (C)2009 GNU General Public License
+ * (C)2011 GNU General Public License
  */
 #ifndef GRANDCANONICAL_H
 #define GRANDCANONICAL_H
@@ -92,6 +92,13 @@ class ensemble::ChemicalPotential
    int getComponentID() { return this->componentid; }
    int rank() { return this->ownrank; }
 
+   void disableWidom() { this->widom = false; }
+   void enableWidom() { this->widom = true; }
+   bool isWidom() { return this->widom; }
+
+   double getLambda() { return this->lambda; }
+   float getDensityCoefficient() { return this->decisive_density; }
+
  private:
    int ownrank;  // only for debugging purposes (indicate rank in console output)
 
@@ -122,6 +129,12 @@ class ensemble::ChemicalPotential
    bool restrictedControlVolume;
    double control_bottom[3];
    double control_top[3];
+
+   float decisive_density;
+
+   double lambda;
+
+   bool widom;  // Widom method -> determine mu by test insertions which are all rejected
 
    list<Molecule> reservoir;
 };

@@ -193,6 +193,11 @@ void parallel::DomainDecompDummy::broadcastVelocitySum(
 }
 #endif
 
+void parallel::DomainDecompDummy::doBroadcast(double* v)
+{
+   // NIL
+}
+
 void parallel::DomainDecompDummy::triple(double* p)
 {
    // NIL

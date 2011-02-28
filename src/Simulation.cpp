@@ -87,6 +87,7 @@ Simulation::Simulation(int argc, char **argv){
 #ifdef GRANDCANONICAL
   this->_initGrandCanonical = 10000;
   this->h = 0;
+  bool widom = false;
 #endif
   this->_initStatistics = 20000;
   this->_doAlignCentre = false;
@@ -554,6 +555,10 @@ Simulation::Simulation(int argc, char **argv){
     {
        inputfilestream >> this->h;
     }
+    else if(token == "Widom")
+    {
+       widom = true;
+    }
 #else
     else if(token == "NVE")
     {
@@ -607,6 +612,7 @@ Simulation::Simulation(int argc, char **argv){
   std::list< ensemble::ChemicalPotential >::iterator cpit;
   for(cpit = this->_lmu.begin(); cpit != this->_lmu.end(); cpit++)
   {
+     if(widom) cpit->enableWidom();
      cpit->setIncrement(idi);
      double tmp_molecularMass = _domain->getComponents()[
         cpit->getComponentID()
@@ -866,8 +872,10 @@ void Simulation::simulate()
 		     << "): test deletions and insertions\n";
 #endif
              }
+             this->_domain->setLambda(cpit->getComponentID(), cpit->getLambda());
+             this->_domain->setDensityCoefficient(cpit->getComponentID(), cpit->getDensityCoefficient());
              this->_moleculeContainer->grandcanonicalStep(
-	        &(*cpit), this->_domain->T(0)
+	        &(*cpit), this->_domain->T(0), this->_domain
              );
 	     cpit->assertSynchronization(this->_domainDecomposition);
 	     

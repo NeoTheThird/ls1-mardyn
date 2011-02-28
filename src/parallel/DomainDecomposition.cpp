@@ -511,6 +511,11 @@ void parallel::DomainDecomposition::broadcastVelocitySum(
 }
 #endif
 
+void parallel::DomainDecomposition::doBroadcast(double* v)
+{
+   MPI_Bcast(v, 1, MPI_LONG_DOUBLE, 0, comm_topology);
+}
+
 #ifdef GRANDCANONICAL
 unsigned parallel::DomainDecomposition::Ndistribution(unsigned localN, float* minrnd, float* maxrnd)
 {

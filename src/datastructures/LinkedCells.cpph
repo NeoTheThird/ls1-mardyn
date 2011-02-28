@@ -6,6 +6,7 @@
 #ifdef GRANDCANONICAL
 #include "parallel/DomainDecompBase.h"
 #include "ensemble/GrandCanonical.h"
+#include "Domain.h"
 #endif
 
 #include <cmath>
@@ -1015,7 +1016,8 @@ template<class ParticleType>
 void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
 (
    ensemble::ChemicalPotential* mu,
-   double T
+   double T,
+   Domain* domain
 )
 {
    bool accept = true;
@@ -1098,6 +1100,7 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
          unsigned long cellid = this->getCellIndexOfMolecule(m);
          this->_cells[cellid].addParticle(m);
          DeltaUpot = getEnergy(m);
+         domain->submitDU(mu->getComponentID(), DeltaUpot, ins);
          accept = mu->decideInsertion(DeltaUpot/T);
 
 #ifndef NDEBUG
@@ -1133,3 +1136,4 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
    }
 }
 #endif
+

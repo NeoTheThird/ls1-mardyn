@@ -1,6 +1,6 @@
 /*
  * Martin Horsch, LS1/Mardyn project moderated by Martin Bernreuther
- * (C)2009 GNU General Public License
+ * (C)2011 GNU General Public License
  */
 #include "GrandCanonical.h"
 
@@ -64,6 +64,9 @@ ensemble::ChemicalPotential::ChemicalPotential()
    this->remainingDecisions = list<float>(); 
    this->reservoir = list<Molecule>();
    this->id_increment = 1;
+   this->lambda = 1.0;
+
+   this->widom = false;
 }
 
 void ensemble::ChemicalPotential::setSubdomain(int rank, double x0, double x1, double y0, double y1, double z0, double z1)
@@ -145,30 +148,34 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
    cout << "Rank " << ownrank << " requests the molecule distribution.\n";
 #endif
    this->globalN = comm->Ndistribution(localN, &minrnd, &maxrnd);
+   this->decisive_density = (float)globalN/globalReducedVolume;
 #ifndef NDEBUG
    cout << "rank " << ownrank << " believes N(" << componentid << ")=" << globalN << ", rho=" << globalN/globalV
-        << ", the decisive density quotient equals " << (float)globalN/globalReducedVolume << "\n";
+        << ", the decisive density quotient equals " << this->decisive_density << "\n";
 #endif
 
-   // construct deletions
+   // construct deletions (disabled for Widom test particle method)
    //
    float sel, dec;
    unsigned localIndex;
-   for(unsigned i=0; i < this->instances; i++)
+   if(!this->widom)
    {
-      sel = this->rnd.rnd_muVT();
-      dec = this->rnd.rnd_muVT();
-#ifndef NDEBUG
-      // if(!ownrank) cout << "global index " << sel << " chosen for deletion.\n";
-#endif
-      if((sel >= minrnd) && (sel < maxrnd))
+      for(unsigned i=0; i < this->instances; i++)
       {
-         localIndex = (unsigned)floor(localN*(sel-minrnd)/(maxrnd-minrnd));
+         sel = this->rnd.rnd_muVT();
+         dec = this->rnd.rnd_muVT();
 #ifndef NDEBUG
-         cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
+         // if(!ownrank) cout << "global index " << sel << " chosen for deletion.\n";
 #endif
-         this->remainingDeletions.push_back(localIndex);
-         this->remainingDecisions.push_back(dec);
+         if((sel >= minrnd) && (sel < maxrnd))
+         {
+            localIndex = (unsigned)floor(localN*(sel-minrnd)/(maxrnd-minrnd));
+#ifndef NDEBUG
+            cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
+#endif
+            this->remainingDeletions.push_back(localIndex);
+            this->remainingDecisions.push_back(dec);
+         }
       }
    }
 
@@ -211,7 +218,7 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
 
 bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* minco, double* maxco)
 {
-   if(this->remainingDeletions.empty()) return false;
+   if(this->remainingDeletions.empty()) return false;  // always empty for Widom
    if(cell->getNumberOfParticles() == 0) return false;
    
    unsigned idx = *this->remainingDeletions.begin();
@@ -295,6 +302,7 @@ unsigned long ensemble::ChemicalPotential::getInsertion(double* ins)
 
 bool ensemble::ChemicalPotential::decideDeletion(double deltaUTilde)
 {
+   assert(!this->widom);  // the Widom test particle method should never call decideDeletion ...
    if(this->remainingDecisions.empty())
    {
       cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
@@ -302,7 +310,7 @@ bool ensemble::ChemicalPotential::decideDeletion(double deltaUTilde)
    }
    float dec = *this->remainingDecisions.begin();
    this->remainingDecisions.erase(this->remainingDecisions.begin());
-   float acc = ((float)(this->globalN)) * exp(-muTilde-deltaUTilde) / this->globalReducedVolume;
+   float acc = this->decisive_density * exp(-muTilde-deltaUTilde);
    bool ans;
    if(dec < 0.000001) ans = true;
    else if(dec > 0.999999) ans = false;
@@ -324,28 +332,27 @@ bool ensemble::ChemicalPotential::decideInsertion(double deltaUTilde)
       cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
       exit(1);
    }
-   float dec = *this->remainingDecisions.begin();
-   this->remainingDecisions.erase(this->remainingDecisions.begin());
-   double acc = this->globalReducedVolume * exp(muTilde - deltaUTilde) / (1.0 + (double)(this->globalN));
    bool ans;
-   if(dec < 0.000001) ans = true;
-   else if(dec > 0.999999) ans = false;
-   else ans = (acc > dec);
-   // ans = (acc > 1.0e-05)? (acc > dec): false;
-#ifndef NDEBUG
-   // cout << "rank " << ownrank << (ans? " accepted ": " rejected ")
-   //      << "insertion with deltaUtilde = " << deltaUTilde
-   //      << " (P = " << ((acc > 1.0)? 1.0: acc) << ").\n"; // \\ //
-#endif
-   if(ans) this->globalN += (2*ownrank + 1);  // estimate, the precise value is communicated later
+   if(this->widom) ans = false;  // the Widom method does not actually insert any particles ...
+   else
+   {
+      float dec = *this->remainingDecisions.begin();
+      double acc = this->globalReducedVolume * exp(muTilde - deltaUTilde) / (1.0 + (double)(this->globalN));
+      if(dec < 0.000001) ans = true;
+      else if(dec > 0.999999) ans = false;
+      else ans = (acc > dec);
+      if(ans) this->globalN += (2*ownrank + 1);  // estimate, the precise value is communicated later
+   }
+   this->remainingDecisions.erase(this->remainingDecisions.begin());
    return ans;
 }
 
 void ensemble::ChemicalPotential::submitTemperature(double T)
 {
    this->muTilde = this->mu / T;
-   double lambda = 0.39894228 * h / sqrt(molecularMass*T);
+   this->lambda = 0.39894228 * h / sqrt(molecularMass*T);
    globalReducedVolume = globalV / (lambda*lambda*lambda);
+   this->decisive_density = (float)globalN/globalReducedVolume;
    double doOutput = this->rnd.rnd_muVT();
 #ifdef NDEBUG
    if(ownrank) return;
@@ -400,3 +407,4 @@ Molecule ensemble::ChemicalPotential::loadMolecule()
       return tmp;
 }
 #endif
+

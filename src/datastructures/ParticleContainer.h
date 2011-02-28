@@ -26,6 +26,8 @@ namespace parallel {
   class DomainDecompBase;
 }
 
+class Domain;
+
 using namespace std;
 
 //! @brief This Interface is used to get access to particles and pairs of particles
@@ -158,7 +160,7 @@ class datastructures::ParticleContainer {
     virtual int grandcanonicalBalance(parallel::DomainDecompBase* comm) = 0;
     virtual void grandcanonicalStep
     (
-       ensemble::ChemicalPotential* mu, double T
+       ensemble::ChemicalPotential* mu, double T, Domain* domain
     ) = 0;
 #endif
 

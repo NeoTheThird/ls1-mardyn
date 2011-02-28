@@ -375,6 +375,7 @@ class Domain{
     double getMissingVelocity(unsigned cosetid, unsigned d);
     double getCosetN(unsigned cosetid) { return this->_globalN[cosetid]; }
 
+    int unID(double qx, double qy, double qz);
     void setupProfile(unsigned xun, unsigned yun, unsigned zun);
     void considerComponentInProfile(int cid); 
     void recordProfile(datastructures::ParticleContainer<Molecule>* molCont);
@@ -439,6 +440,13 @@ class Domain{
 
 #ifdef GRANDCANONICAL
    void evaluateRho(unsigned long localN, parallel::DomainDecompBase* comm);
+
+   void submitDU(unsigned cid, double DU, double* r);
+   void setLambda(unsigned cid, double lambda) { _universalLambda[cid] = lambda; }
+   void setDensityCoefficient(unsigned cid, float coeff) { _globalDecisiveDensity[cid] = coeff; }
+#endif
+#ifdef COMPLEX_POTENTIAL_SET
+   void setProfiledComponentMass(unsigned cid, double m) { _universalProfiledComponentMass[cid] = m; }
 #endif
 
    void init_cv(unsigned N, double U, double UU)
@@ -585,6 +593,20 @@ class Domain{
     unsigned _globalAccumulatedDatasets;
     //! which components should be considered?
     map<unsigned, bool> _universalProfiledComponents;
+    map<unsigned, double> _universalProfiledComponentMass;  // set from outside
+    map< unsigned, map<unsigned, double> > _universalTProfile;  // based on the preceding profile
+#ifdef GRANDCANONICAL
+    map< unsigned, map<unsigned, long double> > _localWidomProfile;  // submit individually
+    map< unsigned, map<unsigned, double> > _globalWidomProfile;
+    map< unsigned, map<unsigned, long double> > _localWidomProfileTloc;  // submit individually
+    map< unsigned, map<unsigned, double> > _globalWidomProfileTloc;
+    map< unsigned, map<unsigned, long double> > _localWidomInstances;  // submit individually
+    map< unsigned, map<unsigned, double> > _globalWidomInstances;
+    map< unsigned, map<unsigned, long double> > _localWidomInstancesTloc;  // submit individually
+    map< unsigned, map<unsigned, double> > _globalWidomInstancesTloc;
+    map< unsigned, double > _universalLambda;  // set from outside
+    map< unsigned, float > _globalDecisiveDensity;  // set from outside
+#endif
 
     bool _universalSphericalGeometry;
     double _universalR3max;

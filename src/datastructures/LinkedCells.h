@@ -216,7 +216,7 @@ class datastructures::LinkedCells: public datastructures::ParticleContainer<Part
     double getEnergy(ParticleType* m1);
     int localGrandcanonicalBalance() { return this->_localInsertionsMinusDeletions; }
     int grandcanonicalBalance(parallel::DomainDecompBase* comm);
-    void grandcanonicalStep(ensemble::ChemicalPotential* mu, double T);
+    void grandcanonicalStep(ensemble::ChemicalPotential* mu, double T, Domain* domain);
 #endif
     
   private:

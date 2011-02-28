@@ -140,6 +140,7 @@ class parallel::DomainDecomposition: public parallel::DomainDecompBase{
      map<unsigned, long double>* velocitySum
   );
 #endif
+  virtual void doBroadcast(double* v);
 
 #ifdef GRANDCANONICAL
   //! returns total number of molecules
