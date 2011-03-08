@@ -9,13 +9,7 @@
 #include "utils/Logger.h"
 #include "utils/FileUtils.h"
 
-#include "Domain.h"
-#include "parallel/DomainDecompBase.h"
-#include "parallel/DomainDecompDummy.h"
-
-#ifdef PARALLEL
-#include "parallel/DomainDecomposition.h"
-#endif
+Log::Logger* test_log;
 
 #ifdef UNIT_TESTS
   #ifdef USE_CPPUNIT
@@ -28,10 +22,23 @@
   #endif
 #endif
 
-bool runTests() {
+
+bool runTests(Log::logLevel testLogLevel, std::string& testDataDirectory) {
+	Log::logLevel globalLogLevel = Log::global_log->get_log_level();
+
+	test_log = new Log::Logger(testLogLevel);
+	if (testLogLevel > Log::Info) {
+		Log::global_log->set_log_level(Log::Debug);
+	} else {
+		Log::global_log->set_log_level(Log::Warning);
+	}
+
+	setTestDataDirectory(testDataDirectory);
+
+	bool testresult;
 
 #ifdef UNIT_TESTS
-	Log::global_log->info() << "Running unit tests!" << std::endl;
+	test_log->info() << "Running unit tests!" << std::endl;
 #ifdef USE_CPPUNIT
 	CppUnit::TestFactoryRegistry &registry = CppUnit::TestFactoryRegistry::getRegistry();
 	CppUnit::TextUi::TestRunner runner;
@@ -39,20 +46,20 @@ bool runTests() {
 	runner.run();
 
 	const CppUnit::TestResultCollector& collector = runner.result();
-	bool testresult = collector.testFailuresTotal() != 0;
-	return testresult;
+	testresult = collector.testFailuresTotal() != 0;
 #else
 	tarch::tests::TestCaseRegistry& registry = tarch::tests::TestCaseRegistry::getInstance();
 	tarch::tests::TestCase& testCases = registry.getTestCaseCollection();
 	testCases.run();
-	bool testresult = testCases.getNumberOfErrors() != 0;
-	return testresult;
+	testresult = testCases.getNumberOfErrors() != 0;
 #endif
 #else
-	Log::global_log->error() << std::endl << "Running unit tests demanded, but programme compiled without -DCPPUNIT_TESTS!" << std::endl << std::endl;
-	return true;
+	test_log->error() << std::endl << "Running unit tests demanded, but programme compiled without -DCPPUNIT_TESTS!" << std::endl << std::endl;
+	testresult = true;
 #endif
 
+	Log::global_log->set_log_level(globalLogLevel);
+	return testresult;
 }
 
 void setTestDataDirectory(std::string& testDataDirectory) {
@@ -66,46 +73,14 @@ void setTestDataDirectory(std::string& testDataDirectory) {
 
 std::string utils::Test::testDataDirectory("");
 
-utils::Test::Test() : _rank(0), _domain(NULL), _domainDecomposition(NULL) { }
+utils::Test::Test() { }
 
-utils::Test::~Test() {
-	if (_domain != NULL) {
-		Log::global_log->warning() << "TestCase did not free it' ressources!" << std::endl;
-		delete _domain;
-	}
-
-	if (_domainDecomposition != NULL) {
-		Log::global_log->warning() << "TestCase did not free it' ressources!" << std::endl;
-		delete _domainDecomposition;
-	}
-}
-
-void utils::Test::setUp() {
-	_rank = 0;
-	#ifdef PARALLEL
-		MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &_rank) );
-	#endif
-	_domain = new Domain(_rank, NULL);
-
-	#ifdef PARALLEL
-	_domainDecomposition = new DomainDecomposition();
-	#else
-	_domainDecomposition = new DomainDecompDummy();
-	#endif
-}
-
-
-void utils::Test::tearDown() {
-	delete _domain;
-	_domain = NULL;
-	delete _domainDecomposition;
-	_domainDecomposition = NULL;
-}
+utils::Test::~Test() { }
 
 
 void utils::Test::setTestDataDirectory(std::string& testDataDir) {
 	if (!fileExists(testDataDir.c_str())) {
-		Log::global_log->error() << "Directory " << testDataDirectory << " for test input data does not exits!" << std::endl;
+		test_log->error() << "Directory " << testDataDirectory << " for test input data does not exits!" << std::endl;
 		exit(-1);
 	}
 	testDataDirectory = testDataDir;
@@ -116,18 +91,10 @@ std::string utils::Test::getTestDataFilename(const std::string& file) {
 	std::string fullPath = testDataDirectory + file;
 
 	if (!fileExists(fullPath.c_str())) {
-		Log::global_log->error() << "File " << testDataDirectory << " for test input data does not exits!" << std::endl;
+		test_log->error() << "File " << testDataDirectory << " for test input data does not exits!" << std::endl;
 		exit(-1);
 	}
 	return fullPath;
-}
-
-
-ParticleContainer* utils::Test::initializeFromFile(
-		ParticleContainerFactory::type type, const char* fileName, double cutoff) {
-
-	return ParticleContainerFactory::createInitializedParticleContainer(
-			type, _domain, _domainDecomposition, cutoff, getTestDataFilename(fileName));
 }
 
 #endif

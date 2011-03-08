@@ -199,9 +199,12 @@ void LinkedCells::addParticle(Molecule& particle) {
 }
 
 
+/**
+ * @todo replace this by a call to component->getNumMolecules() !?
+ */
 unsigned LinkedCells::countParticles(int cid) {
 	unsigned N = 0;
-	std::list<Molecule*>::iterator molIter1;
+	std::vector<Molecule*>::iterator molIter1;
 	for (unsigned i = 0; i < _cells.size(); i++) {
 		Cell& currentCell = _cells[i];
 		if( !currentCell.isHaloCell() ) {
@@ -214,6 +217,9 @@ unsigned LinkedCells::countParticles(int cid) {
 	return N;
 }
 
+/**
+ * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
+ */
 unsigned LinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
 	int minIndex[3];
 	int maxIndex[3];
@@ -236,7 +242,7 @@ unsigned LinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
 
 	unsigned N = 0;
 	int cix[3];
-	std::list<Molecule*>::iterator molIter1;
+	std::vector<Molecule*>::iterator molIter1;
 	bool individualCheck;
 	int cellid;
 
@@ -370,7 +376,7 @@ void LinkedCells::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
 		exit(1);
 	}
 
-	std::list<Molecule*>::iterator particleIter;
+	std::vector<Molecule*>::iterator particleIter;
 	vector<unsigned long>::iterator cellIndexIter;
 
 	// loop over all halo cells
@@ -392,7 +398,7 @@ void LinkedCells::getRegion(double lowCorner[3], double highCorner[3], list<Mole
 	int startIndex[3];
 	int stopIndex[3];
 	int globalCellIndex;
-	std::list<Molecule*>::iterator particleIter;
+	std::vector<Molecule*>::iterator particleIter;
 
 	for (int dim = 0; dim < 3; dim++) {
 		if (lowCorner[dim] < this->_boundingBoxMax[dim] && highCorner[dim] > this->_boundingBoxMin[dim]) {
@@ -553,7 +559,7 @@ void LinkedCells::deleteMolecule(unsigned long molid, double x, double y, double
 double LinkedCells::getEnergy(Molecule* m1) {
 	double u = 0.0;
 
-	std::list<Molecule*>::iterator molIter2;
+	std::vector<Molecule*>::iterator molIter2;
 	vector<unsigned long>::iterator neighbourOffsetsIter;
 
 	// sqare of the cutoffradius
@@ -576,7 +582,7 @@ double LinkedCells::getEnergy(Molecule* m1) {
 		dd = (*molIter2)->dist2(*m1, distanceVector);
 		if (dd > cutoffRadiusSquare)
 			continue;
-		u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
+		u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
 	}
 
 	// backward and forward neighbours
@@ -590,7 +596,7 @@ double LinkedCells::getEnergy(Molecule* m1) {
 			dd = (*molIter2)->dist2(*m1, distanceVector);
 			if (dd > cutoffRadiusSquare)
 				continue;
-			u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, 2, dd, (dd < LJCutoffRadiusSquare));
+			u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
 		}
 	}
 	return u;
