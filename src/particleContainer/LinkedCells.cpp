@@ -479,6 +479,8 @@ void LinkedCells::calculateNeighbourIndices() {
 	double xDistanceSquare;
 	double yDistanceSquare;
 	double zDistanceSquare;
+	int maxNeighbourOffset = 0;
+	int minNeighbourOffset = 0;
 	double cutoffRadiusSquare = pow(_cutoffRadius, 2);
 	for (int zIndex = -_haloWidthInNumCells[2]; zIndex <= _haloWidthInNumCells[2]; zIndex++) {
 		// The distance in one dimension is the width of a cell multiplied with the number
@@ -508,15 +510,27 @@ void LinkedCells::calculateNeighbourIndices() {
 					long offset = cellIndexOf3DIndex(xIndex, yIndex, zIndex);
 					if (offset > 0) {
 						_forwardNeighbourOffsets.push_back(offset);
+						if (offset > maxNeighbourOffset) {
+							maxNeighbourOffset = offset;
+						}
 					}
 					if (offset < 0) {
 						_backwardNeighbourOffsets.push_back(offset);
+						if (offset < minNeighbourOffset) {
+							minNeighbourOffset = offset;
+						}
 					}
 				}
 			}
 		}
 	}
-	_blockTraverse.assignOffsets(_forwardNeighbourOffsets, _backwardNeighbourOffsets);
+
+	#ifndef NDEBUG
+	global_log->info() << "Neighbour offsets are bounded by "
+	<< minNeighbourOffset << ", " << maxNeighbourOffset << endl;
+#endif
+	_blockTraverse.assignOffsets(_forwardNeighbourOffsets,
+			_backwardNeighbourOffsets, maxNeighbourOffset, minNeighbourOffset);
 }
 
 unsigned long LinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {

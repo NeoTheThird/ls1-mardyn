@@ -77,7 +77,8 @@ public:
 	//! @brief assign new (forward|backward)NeighbourOffsets
 	//!
 	//! Assign the same forwardNeighbourOffsets and backwardNeighbourOffsets to ALL cells of the container.
-	void assignOffsets(std::vector<unsigned long>& forwardNeighbourOffsets, std::vector<unsigned long>& backwardNeighbourOffsets);
+	void assignOffsets(std::vector<unsigned long>& forwardNeighbourOffsets, std::vector<unsigned long>& backwardNeighbourOffsets,
+			int maxNeighbourOffset, int minNeighbourOffset);
 
 private:
 	//####################################
@@ -104,6 +105,9 @@ private:
 	std::vector<std::vector<unsigned long> >* _forwardNeighbourOffsets;
 	//! Neighbours that come in the total ordering before a cell
 	std::vector<std::vector<unsigned long> >* _backwardNeighbourOffsets;
+
+	int _maxNeighbourOffset;
+	int _minNeighbourOffset;
 
 	//! If true, _(forward|backward)NeighbourOffsets are allocated and must be free'd
 	bool _allocatedOffsets;

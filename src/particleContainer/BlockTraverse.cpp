@@ -81,9 +81,12 @@ BlockTraverse::~BlockTraverse() {
 	}
 }
 
-void BlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets) {
+void BlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
+		int maxNeighbourOffset, int minNeighbourOffset) {
 	_forwardNeighbourOffsets->assign(_cells.size(), forwardNeighbourOffsets);
 	_backwardNeighbourOffsets->assign(_cells.size(), backwardNeighbourOffsets);
+	_maxNeighbourOffset = maxNeighbourOffset;
+	_minNeighbourOffset = minNeighbourOffset;
 }
 
 void BlockTraverse::traversePairs() {

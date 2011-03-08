@@ -20,9 +20,10 @@
 #ifndef PARTICLECONTAINER_H_
 #define PARTICLECONTAINER_H_
 
+#include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
+
 #include <list>
 
-class ParticlePairsHandler;
 class ParticleContainer;
 class DomainDecompBase;
 class Domain;

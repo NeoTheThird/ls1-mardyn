@@ -20,7 +20,12 @@
 #ifndef PARTICLEPAIRSHANDLER_H_
 #define PARTICLEPAIRSHANDLER_H_
 
+#include "molecules/Molecule.h"
+#include "molecules/CachingMolecule.h"
+
 class RDF;
+
+typedef Molecule HandlerMoleculeType;
 
 typedef enum {
     MOLECULE_MOLECULE = 0,      /**< molecule molecule */
@@ -78,9 +83,9 @@ public:
 	//! @param distanceVector[3] distance between the two particles
 	//! @param pairType describes whether the pair is a original pair(0) or a duplicated pair(1)
 	//!                 for details about pair types see comments on traversePairs() in ParticleContainer
-	virtual double processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], PairType pairType, double dd, bool calculateLJ) = 0;
-	virtual void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType) = 0;
-	virtual void processTersoffAtom(Molecule& particle1, double params[15], double delta_r) = 0;
+	virtual double processPair(HandlerMoleculeType& particle1, HandlerMoleculeType& particle2, double distanceVector[3], PairType  pairType, double dd, bool calculateLJ) = 0;
+	virtual void preprocessTersoffPair(HandlerMoleculeType& particle1, HandlerMoleculeType& particle2, bool pairType) = 0;
+	virtual void processTersoffAtom(HandlerMoleculeType& particle1, double params[15], double delta_r) = 0;
 
 	/**
 	 * @todo it is not clean to have particleHandlers need to know about the rdf.
