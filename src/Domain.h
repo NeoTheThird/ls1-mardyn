@@ -1,5 +1,5 @@
 /*************************************************************************
- * Copyright (C) 2010 by Martin Bernreuther <bernreuther@hlrs.de> et al. *
+ * Copyright (C) 2011 by Martin Bernreuther <bernreuther@hlrs.de> et al. *
  *                                                                       *
  * This program is free software; you can redistribute it and/or modify  *
  * it under the terms of the GNU General Public License as published by  *
@@ -30,12 +30,6 @@
  */
 #define VERSION 20100321  /**< checkpoint file version */
 
-/* I set this to 0 as I think we don't need one more counter.
- * The existing fields (e.g. Simulation::_initStatistics) should offer enough
- * flexibility...
- * TODO: delete RDF_MINIMAL_OUTPUT_STEPS?!
- * */
-#define RDF_MINIMAL_OUTPUT_STEPS 0
 #define MIN_BETA 0.9  /**< minimal scaling factor before an explosion is detected */
 #define KINLIMIT_PER_T 10.0
 
@@ -46,7 +40,7 @@ class DomainDecompBase;
 class PressureGradient;
 
 //! @brief This class is used to read in the phasespace and to handle macroscopic values
-//! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
+//! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2011)
 //!
 //! This class is responsible for all macroscopic values.
 //! It is important to differentiate between local and global version of those values
@@ -86,11 +80,8 @@ public:
 	//! less distance than the given cutoff radius, an error is made
 	//! By calculating approximations for the neglected pairs, the
 	//! error can be reduced.
-	//! The way the cutoff correction works is essentially explained
-	//! in the lecture notes "Molekulare Thermodynamik" by Vrabec for
-	//! the LJ potential, and it is analogous for electrostatics.
-	//! Probably all books on molecular simulation explain that method,
-	//! e.g. have a look at Allen/Tildesley.
+	//! The way the cutoff correction works is probably explained
+	//! by all books on molecular simulation, e.g. Allen/Tildesley [1].
 	//!
 	//! The idea is that for radii above the cutoff radius, the
 	//! radial distribution function is assumed to be exactly one, so
@@ -106,6 +97,8 @@ public:
 	//! If ions appear, so that the net charge of a molecule is distinct
 	//! from zero, the far field terms become much more complicated, and
 	//! THAT IS NOT IMPLEMENTED AT PRESENT.
+	//!
+	//! [1] Computer Simulation of Liquids (1989), Clarendon, Oxford.
 	//!
 	//! @param cutoffRadius cutoff radius for electrostatics
 	//! @param cutoffRadiusLJ cutoff radius for the LJ potential
