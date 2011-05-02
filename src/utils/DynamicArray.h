@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdlib>
+#include <cassert>
 #include <iostream>
 
 namespace utils {
@@ -121,6 +122,13 @@ public:
 		reallocate(size);
 	}
 
+	//! copy construct a DynamicArray from another. The content is copied.
+	DynamicArray(const DynamicArray& other)
+		: _start(NULL), _finish(NULL), _endOfStorage(NULL), _capacityIncrement(other._capacityIncrement) {
+		reallocate(other.size());
+		insert(end(), other.begin(), other.end());
+	}
+
 
 	virtual ~DynamicArray() {
 		// call the destructors for elements stored
@@ -129,7 +137,11 @@ public:
 		}
 
 		// free buffer
-		operator delete(_start);
+		if (copyconstruct) {
+			operator delete(_start);
+		} else {
+			free(_start);
+		}
 	}
 
 
@@ -168,7 +180,6 @@ public:
 			size_t newCapacity = (capacity() * _capacityIncrement) > capacity()+1 ? (capacity() * _capacityIncrement) : capacity()+1;
 			reallocate(newCapacity);
 		}
-
 		new (_finish) T(data);
 		++_finish;
 	}
@@ -196,8 +207,13 @@ public:
 	 * at the position of the element deleted.
 	 */
 	iterator& erase(iterator& position) {
-		--_finish;
-		*position._current = *_finish;
+		if (_finish > _start) {
+			--_finish;
+			*position._current = *_finish;
+		} else {
+			assert(_finish == _start);
+			assert(_finish == position._current);
+		}
 		_finish->~T();
 
 		if (shrink && size() < capacity() / _capacityIncrement) {
@@ -207,6 +223,31 @@ public:
 		}
 
 		return position;
+	}
+
+	/**
+	 * @note This method should acutally be called append. For compatibility reasons
+	 * 		 however I call it insert. Elements are always appended at the end.
+	 *
+	 * @param first / last: Iterators specifying a range of elements. Inserts the elements
+	 *                      in the range [first,last). Notice that the range includes all
+	 *                      the elements between first and last, including the element pointed
+	 *                      by first but not the one pointed by last.
+	 */
+	void insert(const iterator& position, const iterator& first, const iterator& last) {
+		if (copyconstruct) {
+			T* elementToCopy = first._current;
+			while (elementToCopy < last._current) {
+				push_back(*elementToCopy);
+				elementToCopy++;
+			}
+		} else {
+			size_t sizeDelta = last._current - first._current;
+			if (size() + sizeDelta > capacity()) {
+				reallocate(size() + sizeDelta);
+			}
+			memcpy(_finish, first._current, sizeDelta * sizeof (T));
+		}
 	}
 
 	//! @return an iterator pointing to the first element.
@@ -248,7 +289,6 @@ private:
 
 	//! perform the reallocation if the capacity should be in- or decreased.
 	void reallocate(size_t newSize) {
-
 		T* _newStart;
 		size_t numElements = size();
 
