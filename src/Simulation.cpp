@@ -32,6 +32,7 @@
 #include "Domain.h"
 #include "molecules/Molecule.h"
 #include "particleContainer/LinkedCells.h"
+#include "particleContainer/ResortedLinkedCells.h"
 #include "particleContainer/AdaptiveSubCells.h"
 #include "parallel/DomainDecompBase.h"
 
@@ -297,8 +298,10 @@ void Simulation::initConfigXML(const string& inputfilename) {
 				//creates a new Adaptive SubCells datastructure
 				if (_LJCutoffRadius == 0.0)
 					_LJCutoffRadius = _cutoffRadius;
-				_moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				_moleculeContainer = NULL;
+				/*new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, _particlePairsHandler);
+				        */
 			}
 		}
 		inp.changecurrentnode("..");
@@ -522,7 +525,22 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					_LJCutoffRadius = this->_cutoffRadius;
 				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
-			} else if (token == "AdaptiveSubCells") {
+			} else if (token == "ResortedLinkedCells") {
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new ResortedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+			}
+
+			/*else if (token == "AdaptiveSubCells") {
 				double bBoxMin[3];
 				double bBoxMax[3];
 				for (int i = 0; i < 3; i++) {
@@ -534,7 +552,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					_LJCutoffRadius = _cutoffRadius;
 				_moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, _particlePairsHandler);
-			}
+			}*/
 		} else if (token == "output") {
 			inputfilestream >> token;
 			if (token == "ResultWriter") {
