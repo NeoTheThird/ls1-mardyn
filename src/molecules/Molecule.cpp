@@ -127,6 +127,90 @@ Molecule::Molecule(const Molecule& m) {
 	fixedy = m.fixedy;
 }
 
+
+Molecule& Molecule::operator=(const Molecule& rhs) {
+	_id = rhs._id;
+	_componentid = rhs._componentid;
+	_r[0] = rhs._r[0];
+	_r[1] = rhs._r[1];
+	_r[2] = rhs._r[2];
+	_v[0] = rhs._v[0];
+	_v[1] = rhs._v[1];
+	_v[2] = rhs._v[2];
+	_q = rhs._q;
+	_D[0] = rhs._D[0];
+	_D[1] = rhs._D[1];
+	_D[2] = rhs._D[2];
+	_F[0] = rhs._F[0];
+	_F[1] = rhs._F[1];
+	_F[2] = rhs._F[2];
+	_M[0] = rhs._M[0];
+	_M[1] = rhs._M[1];
+	_M[2] = rhs._M[2];
+
+	_ljcenters = rhs._ljcenters;
+	_charges = rhs._charges;
+	_dipoles = rhs._dipoles;
+	_quadrupoles = rhs._quadrupoles;
+	if (!rhs._tersoff) {
+		global_log->warning() << "Tersoff vector null pointer detected for Molecule " << _id << endl;
+	}
+	_tersoff = rhs._tersoff;
+	_m = rhs._m;
+	_I[0] = rhs._I[0];
+	_I[1] = rhs._I[1];
+	_I[2] = rhs._I[2];
+	_invI[0] = rhs._invI[0];
+	_invI[1] = rhs._invI[1];
+	_invI[2] = rhs._invI[2];
+
+	_numsites = rhs._numsites;
+	_numorientedsites = rhs._numorientedsites;
+	assert(_numsites);
+
+	if (_sites_d) {
+		delete[] _sites_d;
+	}
+
+	_sites_d = new double[_numsites*3];
+	assert(_sites_d);
+	//for(unsigned int i=0;i<_numsites*3;++i) _sites_d[i]=m._sites_d[i]; // not necessary -> cache only
+	_ljcenters_d = &(_sites_d[0]);
+	_charges_d = &(_ljcenters_d[numLJcenters()*3]);
+	_dipoles_d = &(_charges_d[numCharges()*3]);
+	_quadrupoles_d = &(_dipoles_d[numDipoles()*3]);
+	_tersoff_d = &(_quadrupoles_d[numQuadrupoles()*3]);
+
+	if (_osites_e) {
+		delete[] _osites_e;
+	}
+
+	_osites_e = new double[_numorientedsites*3];
+	assert(_osites_e);
+	//for(unsigned int i=0;i<_numorientedsites*3;++i) _osites_e[i]=m._osites_e[i]; // not necessary -> cache only
+	_dipoles_e = &(_osites_e[0]);
+	_quadrupoles_e = &(_dipoles_e[numDipoles()*3]);
+
+	if (_sites_F) {
+		delete[] _sites_F;
+	}
+
+	_sites_F = new double[_numsites*3];
+	assert(_sites_F);
+	//for(unsigned int i=0;i<_numsites*3;++i) _sites_F[i]=m._sites_F[i]; // not necessary -> cache only
+	_ljcenters_F = &(_sites_F[0]);
+	_charges_F = &(_ljcenters_F[numLJcenters()*3]);
+	_dipoles_F = &(_charges_F[numCharges()*3]);
+	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
+	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
+	_numTersoffNeighbours = 0;
+	fixedx = rhs.fixedx;
+	fixedy = rhs.fixedy;
+	return *this;
+}
+
+
+
 void Molecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	assert(_m);
 	double dt_halve = .5 * dt;
@@ -453,7 +537,13 @@ bool Molecule::isLessThan(const Molecule& m2) const {
 			else if (_r[0] > m2.r(0))
 				return false;
 			else {
-				global_log->error() << "LinkedCells::isFirstParticle: both Particles have the same position" << endl;
+				std::stringstream msg;
+				msg << "LinkedCells::isFirstParticle: both Particles have the same position" << endl;
+				msg << "m1:" << endl;
+				this->write(msg);
+				msg << "m2:" << endl;
+				m2.write(msg);
+				global_log->error() << msg.str();
 				exit(1);
 			}
 		}

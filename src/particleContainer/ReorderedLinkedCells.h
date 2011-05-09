@@ -17,11 +17,11 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef RESORTEDLINKEDCELLS_H_
-#define RESORTEDLINKEDCELLS_H_
+#ifndef REORDEREDLINKEDCELLS_H_
+#define REORDEREDLINKEDCELLS_H_
 
 #include "particleContainer/ParticleContainer.h"
-#include "ResortedBlockTraverse.h"
+#include "ReorderedBlockTraverse.h"
 
 #include <vector>
 
@@ -57,7 +57,7 @@ class DomainDecompBase;
 //! - boundary
 //! - inner
 
-class ResortedLinkedCells : public ParticleContainer {
+class ReorderedLinkedCells : public ParticleContainer {
 public:
 	//! @brief initialize the Linked Cell datastructure
 	//!
@@ -94,14 +94,14 @@ public:
 	//!        ==> cells have to be larger: cellsPerDimension = phasespacelength/celllength = 100/celllength = 66 cells \n
 	//!        ==> celllength = 100/66 = 1.5152
 	//! @param partPairsHandler specified concrete action to be done for each pair
-	ResortedLinkedCells(
+	ReorderedLinkedCells(
 		 double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 		 double tersoffCutoffRadius, double cellsInCutoffRadius,
 		 ParticlePairsHandler* partPairsHandler
 	);
 
 	//! Destructor
-	~ResortedLinkedCells();
+	~ReorderedLinkedCells();
 
 	// documentation see father class (ParticleContainer.h)
 	void rebuild(double bBoxMin[3], double bBoxMax[3]);
@@ -304,9 +304,9 @@ private:
 	//! should be set to true.
 	bool _cellsValid;
 
-	ResortedBlockTraverse _blockTraverse;
+	ReorderedBlockTraverse _blockTraverse;
 
 
 };
 
-#endif /*RESORTEDLINKEDCELLS_H_*/
+#endif /*REORDEREDLINKEDCELLS_H_*/

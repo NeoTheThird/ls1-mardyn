@@ -17,13 +17,13 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "particleContainer/ResortedLinkedCells.h"
+#include "particleContainer/BlockedReorderedLinkedCells.h"
 
 #include <cmath>
 
 #include "molecules/potforce.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
-#include "Cell.h"
+#include "BlockedCell.h"
 #include "molecules/Molecule.h"
 #include "parallel/DomainDecompBase.h"
 #include "ensemble/GrandCanonical.h"
@@ -38,7 +38,7 @@ using Log::global_log;
 //################################################
 
 
-ResortedLinkedCells::ResortedLinkedCells(
+BlockedReorderedLinkedCells::BlockedReorderedLinkedCells(
 		double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 		double tersoffCutoffRadius, double cellsInCutoffRadius,
 		ParticlePairsHandler* partPairsHandler
@@ -81,7 +81,7 @@ ResortedLinkedCells::ResortedLinkedCells(
 	if (_boxWidthInNumCells[0] < _haloWidthInNumCells[0] ||
 	    _boxWidthInNumCells[1] < _haloWidthInNumCells[1] ||
 	    _boxWidthInNumCells[2] < _haloWidthInNumCells[2]) {
-		global_log->error() << "ResortedLinkedCells (constructor): bounding box too small for calculated cell length" << endl;
+		global_log->error() << "BlockedReorderedLinkedCells (constructor): bounding box too small for calculated cell length" << endl;
 		global_log->error() << "_cellsPerDimension" << _cellsPerDimension[0] << " / " << _cellsPerDimension[1] << " / " << _cellsPerDimension[2] << endl;
 		global_log->error() << "_haloWidthInNumCells" << _haloWidthInNumCells[0] << " / " << _haloWidthInNumCells[1] << " / " << _haloWidthInNumCells[2] << endl;
 		exit(5);
@@ -94,10 +94,10 @@ ResortedLinkedCells::ResortedLinkedCells(
 }
 
 
-ResortedLinkedCells::~ResortedLinkedCells() {
+BlockedReorderedLinkedCells::~BlockedReorderedLinkedCells() {
 }
 
-void ResortedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
+void BlockedReorderedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
 	for (int i = 0; i < 3; i++) {
 		this->_boundingBoxMin[i] = bBoxMin[i];
 		this->_boundingBoxMax[i] = bBoxMax[i];
@@ -110,7 +110,7 @@ void ResortedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
 		    + 2 * _haloWidthInNumCells[dim];
 		// in each dimension at least one layer of (inner+boundary) cells necessary
 		if (_cellsPerDimension[dim] == 2 * _haloWidthInNumCells[dim]) {
-			global_log->error() << "ResortedLinkedCells::rebuild: region to small" << endl;
+			global_log->error() << "BlockedReorderedLinkedCells::rebuild: region to small" << endl;
 			exit(1);
 		}
 		numberOfCells *= _cellsPerDimension[dim];
@@ -130,7 +130,7 @@ void ResortedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
 	if (_cellsPerDimension[0] < 3*_haloWidthInNumCells[0] ||
 	    _cellsPerDimension[1] < 3*_haloWidthInNumCells[1] ||
 	    _cellsPerDimension[2] < 3*_haloWidthInNumCells[2]) {
-		global_log->error() << "ResortedLinkedCells (rebuild): bounding box too small for calculated cell Length" << endl;
+		global_log->error() << "BlockedReorderedLinkedCells (rebuild): bounding box too small for calculated cell Length" << endl;
 		global_log->error() << "cellsPerDimension" << _cellsPerDimension[0] << " / " << _cellsPerDimension[1] << " / " << _cellsPerDimension[2] << endl;
 		global_log->error() << "_haloWidthInNumCells" << _haloWidthInNumCells[0] << " / " << _haloWidthInNumCells[1] << " / " << _haloWidthInNumCells[2] << endl;
 		exit(5);
@@ -140,66 +140,74 @@ void ResortedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
 	calculateNeighbourIndices();
 
 	// delete all Particles which are outside of the halo region
-	std::list<Molecule>::iterator particleIterator = _particles.begin();
 	bool erase_mol;
-	while (particleIterator != _particles.end()) {
-		erase_mol = false;
-		for (unsigned short d = 0; d < 3; ++d) {
-			const double& rd = particleIterator->r(d);
-			// The molecules has to be within the domain of the process
-			// If it is outside in at least one dimension, it has to be
-			// erased /
-			if (rd < this->_haloBoundingBoxMin[d] || rd >= this->_haloBoundingBoxMax[d])
-				erase_mol = true;
-		}
-		if (erase_mol) {
-			particleIterator = _particles.erase(particleIterator);
-		}
-		else {
-			particleIterator++;
+	for (int i = 0; i < _cells.size(); i++) {
+		utils::DynamicArray<Molecule, true, false>::iterator molIter =
+				_cells[i].getParticles().begin();
+		while (molIter != _cells[i].getParticles().end()) {
+			erase_mol = false;
+			for (unsigned short d = 0; d < 3; ++d) {
+				const double& rd = molIter->r(d);
+				// The molecules has to be within the domain of the process
+				// If it is outside in at least one dimension, it has to be
+				// erased /
+				if (rd < this->_haloBoundingBoxMin[d] || rd >= this->_haloBoundingBoxMax[d])
+					erase_mol = true;
+			}
+			if (erase_mol) {
+				molIter = _cells[i].deleteMolecule(molIter);
+			} else {
+				++molIter;
+			}
 		}
 	}
+
 	_cellsValid = false;
 }
 
-void ResortedLinkedCells::update() {
-	// clear all Cells
-	std::vector<Cell>::iterator celliter;
-	for (celliter = (_cells).begin(); celliter != (_cells).end(); ++celliter) {
-		(*celliter).removeAllParticles();
+void BlockedReorderedLinkedCells::update() {
+
+	unsigned long index;
+	int counter = 0;
+
+	for (unsigned i = 0; i < _cells.size(); i++) {
+			BlockedCell& currentCell = _cells[i];
+			utils::DynamicArray<Molecule, true, false>& molecules = currentCell.getParticles();
+			utils::DynamicArray<Molecule, true, false>::iterator moleculeIterator = molecules.begin();
+
+			while (moleculeIterator != molecules.end()) {
+				index = getCellIndexOfMolecule(moleculeIterator.operator ->());
+				if (index != i) {
+					counter++;
+					global_log->debug() << "moving particle " << moleculeIterator->id() << " from cell " << i << " to " << index << endl;
+					_cells[index].addParticle(*moleculeIterator);
+					moleculeIterator = molecules.erase(moleculeIterator);
+				} else {
+					++moleculeIterator;
+				}
+			}
 	}
 
-	std::list<Molecule>::iterator pos;
-	for (pos = _particles.begin(); pos != _particles.end(); ++pos) {
-		// determine the cell into which the particle belongs
-		Molecule &m = *pos;
-		unsigned long index = getCellIndexOfMolecule(&m);
-		_cells[index].addParticle(&(*pos));
-	}
+	global_log->debug() << "BlockedReorderedLinkedCell update moved " << counter << " particle(s)." << endl;
 	_cellsValid = true;
 }
 
-void ResortedLinkedCells::addParticle(Molecule& particle) {
+void BlockedReorderedLinkedCells::addParticle(Molecule& particle) {
 
 	double x = particle.r(0);
 	double y = particle.r(1);
 	double z = particle.r(2);
 
 	if ( ( x >= _haloBoundingBoxMin[0]) && (x < _haloBoundingBoxMax[0]) &&
-	     ( y >= _haloBoundingBoxMin[1]) && (y < _haloBoundingBoxMax[1]) &&
-	     ( z >= _haloBoundingBoxMin[2]) && (z < _haloBoundingBoxMax[2]) ) {
+			( y >= _haloBoundingBoxMin[1]) && (y < _haloBoundingBoxMax[1]) &&
+			( z >= _haloBoundingBoxMin[2]) && (z < _haloBoundingBoxMax[2]) ) {
 
-		_particles.push_front( particle );
-		/* TODO: Have a closer look onto this check as there is no warning or error message.
-		 *
-		 * I (WE) guess this should be a performance optimization: the particle is added into this
-		 * container anyway, it is just not sorted into the cells. But as the container is not valid,
-		 * update() has to be called anyway.
-		 */
-		if (_cellsValid) {
-			int cellIndex = getCellIndexOfMolecule(&particle);
-			_cells[cellIndex].addParticle(&(_particles.front()));
+		int cellIndex = getCellIndexOfMolecule(&particle);
+		if (cellIndex < (int) 0 || cellIndex >= (int) _cells.size()) {
+			global_log->error() << "BlockedReorderedLinkedCells::addParticle(): INDEX ERROR " << endl;
+			exit(1);
 		}
+		_cells[cellIndex].addParticle(particle);
 	}
 }
 
@@ -207,11 +215,18 @@ void ResortedLinkedCells::addParticle(Molecule& particle) {
 /**
  * @todo replace this by a call to component->getNumMolecules() !?
  */
-unsigned ResortedLinkedCells::countParticles(int cid) {
-	unsigned N = 0;
+unsigned BlockedReorderedLinkedCells::countParticles(int cid) {
+	// I won't implement redundant stuff right now...
+	#ifndef NDEBUG
+		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
+		exit(-1);
+	#endif
+		return 0;
+
+/*	unsigned N = 0;
 	std::vector<Molecule*>::iterator molIter1;
 	for (unsigned i = 0; i < _cells.size(); i++) {
-		Cell& currentCell = _cells[i];
+		BlockedCell& currentCell = _cells[i];
 		if( !currentCell.isHaloCell() ) {
 			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
 				if ((*molIter1)->componentid() == cid)
@@ -220,13 +235,20 @@ unsigned ResortedLinkedCells::countParticles(int cid) {
 		}
 	}
 	return N;
+*/
 }
 
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned ResortedLinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
-	int minIndex[3];
+unsigned BlockedReorderedLinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
+	#ifndef NDEBUG
+		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
+		exit(-1);
+	#endif
+	return 0;
+
+/*	int minIndex[3];
 	int maxIndex[3];
 	for (int d = 0; d < 3; d++) {
 		if (cbottom[d] < this->_haloBoundingBoxMin[d])
@@ -288,68 +310,91 @@ unsigned ResortedLinkedCells::countParticles(int cid, double* cbottom, double* c
 	}
 
 	return N;
+	*/
 }
 
-void ResortedLinkedCells::traversePairs() {
+void BlockedReorderedLinkedCells::traversePairs() {
 	if (_cellsValid == false) {
-		global_log->error() << "Cell structure in ResortedLinkedCells (traversePairs) invalid, call update first" << endl;
+		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
 	_blockTraverse.traversePairs();
 }
 
-unsigned long ResortedLinkedCells::getNumberOfParticles() {
-	return _particles.size();
+unsigned long BlockedReorderedLinkedCells::getNumberOfParticles() {
+	unsigned long size = 0;
+	for (unsigned int i = 0; i < _cells.size(); i++) {
+		size += _cells[i].getMoleculeCount();
+	}
+
+	return size;
 }
 
-Molecule* ResortedLinkedCells::begin() {
-	_particleIter = _particles.begin();
-	if (_particleIter != _particles.end()) {
-		return &(*_particleIter);
-	}
-	else {
-		return NULL;
-	}
-}
+Molecule* BlockedReorderedLinkedCells::begin() {
+	_cellIteratorIndex = 0;
+	_moleculeIteratorIndex = 0;
 
-Molecule* ResortedLinkedCells::next() {
-	_particleIter++;
-	if (_particleIter != _particles.end()) {
-		return &(*_particleIter);
+	while (_cellIteratorIndex < _cells.size()) {
+		if (_cells[_cellIteratorIndex].getMoleculeCount() > 0) {
+			return &(_cells[_cellIteratorIndex].getParticles()[0]);
+		}
+		_cellIteratorIndex++;
 	}
-	else {
-		return NULL;
-	}
-}
-
-Molecule* ResortedLinkedCells::end() {
 	return NULL;
 }
 
-Molecule* ResortedLinkedCells::deleteCurrent() {
-	_particleIter = _particles.erase(_particleIter);
+Molecule* BlockedReorderedLinkedCells::next() {
+	++_moleculeIteratorIndex;
+	if (_moleculeIteratorIndex < _cells[_cellIteratorIndex].getMoleculeCount()) {
+		return &(_cells[_cellIteratorIndex].getParticles()[_moleculeIteratorIndex]);
+	}
+	else {
+		++_cellIteratorIndex;
+		_moleculeIteratorIndex = 0;
+		while (_cellIteratorIndex < _cells.size()) {
+			if (_cells[_cellIteratorIndex].getMoleculeCount() > 0) {
+				return &(_cells[_cellIteratorIndex].getParticles()[0]);
+			}
+			++_cellIteratorIndex;
+		}
+	}
+	return NULL;
+}
+
+Molecule* BlockedReorderedLinkedCells::end() {
+	return NULL;
+}
+
+Molecule* BlockedReorderedLinkedCells::deleteCurrent() {
+#ifndef NDEBUG
+	global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+	return NULL;
+
+	/*_particleIter = _particles.erase(_particleIter);
 	if (_particleIter != _particles.end()) {
 		return &(*_particleIter);
 	}
 	else {
 		return NULL;
-	}
+	}*/
 }
 
-void ResortedLinkedCells::deleteOuterParticles() {
+void BlockedReorderedLinkedCells::deleteOuterParticles() {
 	if (_cellsValid == false) {
-		global_log->error() << "Cell structure in ResortedLinkedCells (deleteOuterParticles) invalid, call update first" << endl;
+		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (deleteOuterParticles) invalid, call update first" << endl;
 		exit(1);
 	}
 
 	vector<unsigned long>::iterator cellIndexIter;
 	//std::list<Molecule*>::iterator molIter1;
 	for (cellIndexIter = _haloCellIndices.begin(); cellIndexIter != _haloCellIndices.end(); cellIndexIter++) {
-		Cell& currentCell = _cells[*cellIndexIter];
+		BlockedCell& currentCell = _cells[*cellIndexIter];
 		currentCell.removeAllParticles();
 	}
 
-	std::list<Molecule>::iterator particleIterator = _particles.begin();
+	/*std::list<Molecule>::iterator particleIterator = _particles.begin();
 	bool erase_mol;
 	while (particleIterator != _particles.end()) {
 		erase_mol = false;
@@ -367,17 +412,22 @@ void ResortedLinkedCells::deleteOuterParticles() {
 		else {
 			particleIterator++;
 		}
-	}
+	} */
 }
 
-double ResortedLinkedCells::get_halo_L(int index) const {
+double BlockedReorderedLinkedCells::get_halo_L(int index) const {
 	return _haloLength[index];
 }
 
 
-void ResortedLinkedCells::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
-	if (_cellsValid == false) {
-		global_log->error() << "Cell structure in ResortedLinkedCells (getHaloParticles) invalid, call update first" << endl;
+void BlockedReorderedLinkedCells::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
+#ifndef NDEBUG
+	global_log->error() << "TODO: method getHaloParticles is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+
+/*	if (_cellsValid == false) {
+		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (getHaloParticles) invalid, call update first" << endl;
 		exit(1);
 	}
 
@@ -386,24 +436,24 @@ void ResortedLinkedCells::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
 
 	// loop over all halo cells
 	for (cellIndexIter = _haloCellIndices.begin(); cellIndexIter != _haloCellIndices.end(); cellIndexIter++) {
-		Cell& currentCell = _cells[*cellIndexIter];
+		BlockedCell& currentCell = _cells[*cellIndexIter];
 		// loop over all molecules in the cell
 		for (particleIter = currentCell.getParticlePointers().begin(); particleIter != currentCell.getParticlePointers().end(); particleIter++) {
 			haloParticlePtrs.push_back(*particleIter);
 		}
 	}
+	*/
 }
 
-void ResortedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], list<Molecule*> &particlePtrs) {
+void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], list<Molecule*> &particlePtrs) {
 	if (_cellsValid == false) {
-		global_log->error() << "Cell structure in ResortedLinkedCells (getRegion) invalid, call update first" << endl;
+		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (getRegion) invalid, call update first" << endl;
 		exit(1);
 	}
 
 	int startIndex[3];
 	int stopIndex[3];
 	int globalCellIndex;
-	std::vector<Molecule*>::iterator particleIter;
 
 	for (int dim = 0; dim < 3; dim++) {
 		if (lowCorner[dim] < this->_boundingBoxMax[dim] && highCorner[dim] > this->_boundingBoxMin[dim]) {
@@ -429,11 +479,12 @@ void ResortedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], l
 				globalCellIndex = (iz * _cellsPerDimension[1] + iy) * _cellsPerDimension[0] + ix;
 				// loop over all subcells (either 1 or 8)
 				// traverse all molecules in the current cell
-				for (particleIter = _cells[globalCellIndex].getParticlePointers().begin(); particleIter != _cells[globalCellIndex].getParticlePointers().end(); particleIter++) {
-					if ((*particleIter)->r(0) >= lowCorner[0] && (*particleIter)->r(0) < highCorner[0] &&
-					    (*particleIter)->r(1) >= lowCorner[1] && (*particleIter)->r(1) < highCorner[1] &&
-					    (*particleIter)->r(2) >= lowCorner[2] && (*particleIter)->r(2) < highCorner[2]) {
-						particlePtrs.push_back(*particleIter);
+				utils::DynamicArray<Molecule, true, false> particles = _cells[globalCellIndex].getParticles();
+				for (int i = 0; i < particles.size(); i++) {
+					if (particles[i].r(0) >= lowCorner[0] && particles[i].r(0) < highCorner[0] &&
+						particles[i].r(1) >= lowCorner[1] && particles[i].r(1) < highCorner[1] &&
+						particles[i].r(2) >= lowCorner[2] && particles[i].r(2) < highCorner[2]) {
+						particlePtrs.push_back(&(particles[i]));
 					}
 				}
 			}
@@ -446,7 +497,7 @@ void ResortedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], l
 //################################################
 
 
-void ResortedLinkedCells::initializeCells() {
+void BlockedReorderedLinkedCells::initializeCells() {
 	_innerCellIndices.clear();
 	_boundaryCellIndices.clear();
 	_haloCellIndices.clear();
@@ -478,7 +529,7 @@ void ResortedLinkedCells::initializeCells() {
 	}
 }
 
-void ResortedLinkedCells::calculateNeighbourIndices() {
+void BlockedReorderedLinkedCells::calculateNeighbourIndices() {
 	_forwardNeighbourOffsets.clear();
 	_backwardNeighbourOffsets.clear();
 	double xDistanceSquare;
@@ -538,7 +589,7 @@ void ResortedLinkedCells::calculateNeighbourIndices() {
 			_backwardNeighbourOffsets, maxNeighbourOffset, minNeighbourOffset);
 }
 
-unsigned long ResortedLinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {
+unsigned long BlockedReorderedLinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {
 	int cellIndex[3]; // 3D Cell index
 
 	for (int dim = 0; dim < 3; dim++) {
@@ -551,12 +602,12 @@ unsigned long ResortedLinkedCells::getCellIndexOfMolecule(Molecule* molecule) co
 	return this->cellIndexOf3DIndex( cellIndex[0], cellIndex[1], cellIndex[2] );
 }
 
-unsigned long ResortedLinkedCells::cellIndexOf3DIndex(int xIndex, int yIndex, int zIndex) const {
+unsigned long BlockedReorderedLinkedCells::cellIndexOf3DIndex(int xIndex, int yIndex, int zIndex) const {
 	return (zIndex * _cellsPerDimension[1] + yIndex) * _cellsPerDimension[0] + xIndex;
 }
 
 
-void ResortedLinkedCells::deleteMolecule(unsigned long molid, double x, double y, double z) {
+void BlockedReorderedLinkedCells::deleteMolecule(unsigned long molid, double x, double y, double z) {
 
 	int ix = (int) floor((x - this->_haloBoundingBoxMin[0]) / this->_cellLength[0]);
 	int iy = (int) floor((y - this->_haloBoundingBoxMin[1]) / this->_cellLength[1]);
@@ -575,8 +626,13 @@ void ResortedLinkedCells::deleteMolecule(unsigned long molid, double x, double y
 	}
 }
 
-double ResortedLinkedCells::getEnergy(Molecule* m1) {
-	double u = 0.0;
+double BlockedReorderedLinkedCells::getEnergy(Molecule* m1) {
+#ifndef NDEBUG
+	global_log->error() << "TODO: getEnergy() method is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+
+/*	double u = 0.0;
 
 	std::vector<Molecule*>::iterator molIter2;
 	vector<unsigned long>::iterator neighbourOffsetsIter;
@@ -588,7 +644,7 @@ double ResortedLinkedCells::getEnergy(Molecule* m1) {
 	double distanceVector[3];
 
 	unsigned long cellIndex = getCellIndexOfMolecule(m1);
-	Cell& currentCell = _cells[cellIndex];
+	BlockedCell& currentCell = _cells[cellIndex];
 
 	if (m1->numTersoff() > 0) {
 		global_log->error() << "The grand canonical ensemble is not implemented for solids." << endl;
@@ -619,9 +675,10 @@ double ResortedLinkedCells::getEnergy(Molecule* m1) {
 		}
 	}
 	return u;
+	*/
 }
 
-int ResortedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
+int BlockedReorderedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
 	comm->collCommInit(1);
 	comm->collCommAppendInt(this->_localInsertionsMinusDeletions);
 	comm->collCommAllreduceSum();
@@ -630,8 +687,13 @@ int ResortedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
 	return universalInsertionsMinusDeletions;
 }
 
-void ResortedLinkedCells::grandcanonicalStep(ChemicalPotential* mu, double T) {
-	bool accept = true;
+void BlockedReorderedLinkedCells::grandcanonicalStep(ChemicalPotential* mu, double T) {
+#ifndef NDEBUG
+	global_log->error() << "TODO: this method is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+
+/*	bool accept = true;
 	double DeltaUpot;
 	Molecule* m;
 
@@ -733,4 +795,5 @@ void ResortedLinkedCells::grandcanonicalStep(ChemicalPotential* mu, double T) {
 		m->check(m->id());
 #endif
 	}
+	*/
 }

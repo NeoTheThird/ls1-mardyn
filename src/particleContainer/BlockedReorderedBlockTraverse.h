@@ -17,14 +17,14 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef RESORTEDBLOCKTRAVERSE_H_
-#define RESORTEDBLOCKTRAVERSE_H_
+#ifndef BLOCKEDREORDEREDBLOCKTRAVERSE_H_
+#define BLOCKEDREORDEREDBLOCKTRAVERSE_H_
 
 #include <vector>
 
 class ParticleContainer;
 class ParticlePairsHandler;
-class Cell;
+class BlockedCell;
 
 //! @brief BlockTraverse datastructure
 //! @author Johannes Weißl
@@ -35,14 +35,14 @@ class Cell;
 //! - offsets (NeighbourOffsets equal for every cell <-> different for every cell)
 //! This class contains a generic traversePairs() method and all needed member variables. There are two
 //! constructors to deal with the different datastructures for the offsets in LinkedCells and AdaptiveSubCells.
-class ResortedBlockTraverse {
+class BlockedReorderedBlockTraverse {
 public:
 	//! @brief initialize BlockTraverse structure
 	//!
 	//! Use this initializer if there already is vector of vectors for the neighbourOffsets.
 	//! A BlockTraverse structure created this way doesn't need to be updated using assignOffsets().
-	ResortedBlockTraverse(
-            ParticleContainer* moleculeContainer, std::vector<Cell>& cells,
+	BlockedReorderedBlockTraverse(
+            ParticleContainer* moleculeContainer, std::vector<BlockedCell>& cells,
             std::vector<unsigned long>& innerCellIndices,
             std::vector<unsigned long>& boundaryCellIndices,
             std::vector<unsigned long>& haloCellIndices,
@@ -53,13 +53,13 @@ public:
 	//! @brief initialize BlockTraverse structure
 	//!
 	//! _(forward|backward)NeighbourOffsets members are newly allocated and must be kept updated using the assignOffsets() method.
-	ResortedBlockTraverse(
-	    ParticleContainer* moleculeContainer, std::vector<Cell>& cells,
+	BlockedReorderedBlockTraverse(
+	    ParticleContainer* moleculeContainer, std::vector<BlockedCell>& cells,
 	    std::vector<unsigned long>& innerCellIndices, std::vector<unsigned long>& boundaryCellIndices, std::vector<unsigned long>& haloCellIndices
 	);
 
 	//! Destructor
-	~ResortedBlockTraverse();
+	~BlockedReorderedBlockTraverse();
 
 	//! @brief calculate the forces between the molecules.
 	//!
@@ -92,7 +92,7 @@ private:
 	ParticlePairsHandler* _particlePairsHandler;
 
 	//! Vector containing all cells (including halo)
-	std::vector<Cell>& _cells;
+	std::vector<BlockedCell>& _cells;
 
 	//! Vector containing the indices (for the cells vector) of all inner cells (without boundary)
 	std::vector<unsigned long>& _innerCellIndices;
@@ -113,4 +113,4 @@ private:
 	bool _allocatedOffsets;
 };
 
-#endif /*RESORTEDBLOCKTRAVERSE_H_*/
+#endif /*BLOCKEDREORDEREDBLOCKTRAVERSE_H_*/

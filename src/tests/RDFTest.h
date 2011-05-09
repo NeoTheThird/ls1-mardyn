@@ -15,6 +15,8 @@ class RDFTest : public utils::TestWithSimulationSetup {
 
 	TEST_SUITE(RDFTest);
 	TEST_METHOD(testRDFCountSequential12_LinkedCell);
+	TEST_METHOD(testRDFCountSequential12_ReorderedLinkedCell);
+	TEST_METHOD(testRDFCountSequential12_BlockedReorderedLinkedCell);
 	TEST_METHOD(testRDFCountSequential12_AdaptiveCell);
 	TEST_METHOD(testRDFCountLinkedCell);
 	TEST_METHOD(testRDFCountAdaptiveCell);
@@ -45,6 +47,10 @@ public:
 	 * to bin 83 (count = 4).
 	 */
 	void testRDFCountSequential12_LinkedCell();
+
+	void testRDFCountSequential12_ReorderedLinkedCell();
+
+	void testRDFCountSequential12_BlockedReorderedLinkedCell();
 
 	void testRDFCountSequential12_AdaptiveCell();
 

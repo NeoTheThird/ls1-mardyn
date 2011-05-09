@@ -1,0 +1,16 @@
+
+Konvertierung der Moleküle templatisiert:
+- ungleicher Typ: Konstruktor mittels getter
+- gleicher Typ: Umsetzen des Pointers? (jeweils anderen Pointer auf NULL?!)
+
+Wiederbenutzung Puffer:
+- gleicher Typ
+- ungleicher Typ -> Puffer von außen reingeben? 
+  -> add - Methode aufrufen; 
+  -> beim Löschen: - alle Partikel durchlaufen und konvertieren
+                   - dann clear() aufrufen, 
+
+Wie verwenden wir den Puffer im Fall des gleichen Typs? Puffer reingeben, aber nicht verwenden
+-> unschön, da Parameter nicht benutzt wird
+-> Vorschlag: Klasse "BufferManager" gibt Speicher raus und auch wieder frei, wird 
+              nur aufgerufen, wenn nötig (d.h. im Fall dass Konvertierung nötig ist).

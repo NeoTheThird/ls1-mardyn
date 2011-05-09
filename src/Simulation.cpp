@@ -32,7 +32,8 @@
 #include "Domain.h"
 #include "molecules/Molecule.h"
 #include "particleContainer/LinkedCells.h"
-#include "particleContainer/ResortedLinkedCells.h"
+#include "particleContainer/ReorderedLinkedCells.h"
+#include "particleContainer/BlockedReorderedLinkedCells.h"
 #include "particleContainer/AdaptiveSubCells.h"
 #include "parallel/DomainDecompBase.h"
 
@@ -526,7 +527,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					_LJCutoffRadius = this->_cutoffRadius;
 				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
-			} else if (token == "ResortedLinkedCells") {
+				global_log->info() << "PARTICLE CONTAINER is LinkedCells" << endl;
+			} else if (token == "ReorderedLinkedCells") {
 				int cellsInCutoffRadius;
 				inputfilestream >> cellsInCutoffRadius;
 				double bBoxMin[3];
@@ -537,8 +539,24 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				}
 				if (this->_LJCutoffRadius == 0.0)
 					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new ResortedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				_moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+				global_log->info() << "PARTICLE CONTAINER is ReorderedLinkedCells" << endl;
+				global_log->warning() << "XXX Using this container is highly experimental, the implementation is EVIL!!!" << endl;
+			} else if (token == "BlockedReorderedLinkedCells") {
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells" << endl;
 			}
 
 			/*else if (token == "AdaptiveSubCells") {

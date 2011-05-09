@@ -59,6 +59,9 @@ public:
 		assert(_sites_F); delete[] _sites_F;
 	}
 
+	Molecule& operator=(const Molecule& rhs);
+
+
 	/** get the ID */
 	unsigned long id() const { return _id; }
 	void setid(unsigned long id) { this->_id = id; }

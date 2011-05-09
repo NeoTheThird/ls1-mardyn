@@ -314,6 +314,12 @@ private:
 		_finish = &_newStart[numElements];
 		_start = _newStart;
 		_endOfStorage = &_start[newSize];
+
+//		std::cout << "XXXXXXXXXXXXX" << std::endl;
+//		std::cout << "DynamicArray reallocated to newsize=" << newSize << std::endl;
+//		std::cout << "size="<< size() << " Capacity="<< capacity() << " _start=" << _start << " finish=" << _finish << " endOfStorage=" << _endOfStorage << std::endl;
+//		std::cout << "XXXXXXXXXXXXX" << std::endl;
+
 	}
 
 

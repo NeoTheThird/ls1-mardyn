@@ -42,14 +42,37 @@ void RDFTest::testRDFCountSequential12_LinkedCell() {
 }
 
 
+void RDFTest::testRDFCountSequential12_ReorderedLinkedCell() {
+	delete _domainDecomposition;
+	// will be freed by the tearDown()-method.
+	_domainDecomposition = new DomainDecompDummy();
+
+	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::ReorderedLinkedCell, "1clj-regular-2x2x3.inp", 1.8);
+	testRDFCountSequential12(moleculeContainer);
+	delete moleculeContainer;
+}
+
+
+void RDFTest::testRDFCountSequential12_BlockedReorderedLinkedCell() {
+	delete _domainDecomposition;
+	// will be freed by the tearDown()-method.
+	_domainDecomposition = new DomainDecompDummy();
+
+	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::BlockedReorderedLinkedCell, "1clj-regular-2x2x3.inp", 1.8);
+	testRDFCountSequential12(moleculeContainer);
+	delete moleculeContainer;
+}
+
+
 void RDFTest::testRDFCountSequential12_AdaptiveCell() {
 	delete _domainDecomposition;
 	// will be freed by the tearDown()-method.
 	_domainDecomposition = new DomainDecompDummy();
 
-	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-2x2x3.inp", 1.8);
-	testRDFCountSequential12(moleculeContainer);
-	delete moleculeContainer;
+	//ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-2x2x3.inp", 1.8);
+	//testRDFCountSequential12(moleculeContainer);
+	//delete moleculeContainer;
+	ASSERT_FAIL("IMPLEMENT THIS Test again!");
 }
 
 void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
@@ -85,6 +108,8 @@ void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
 
 	// now the same with halo particles present.
 	_domainDecomposition->exchangeMolecules(moleculeContainer, _domain->getComponents(), _domain);
+	moleculeContainer->update();
+
 	moleculeContainer->traversePairs();
 	rdf.collectRDF(_domainDecomposition);
 	rdf.accumulateRDF();
@@ -103,7 +128,9 @@ void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
 			ASSERT_EQUAL(8ul, rdf._globalDistribution[0][0][i]);
 			ASSERT_EQUAL(16ul, rdf._globalAccumulatedDistribution[0][0][i]);
 		} else {
-			ASSERT_EQUAL(0ul, rdf._globalDistribution[0][0][i]);
+			std::stringstream msg;
+			msg << "i=" << i;
+			ASSERT_EQUAL_MSG(msg.str(), 0ul, rdf._globalDistribution[0][0][i]);
 			ASSERT_EQUAL(0ul, rdf._globalAccumulatedDistribution[0][0][i]);
 		}
 	}
@@ -117,9 +144,10 @@ void RDFTest::testRDFCountLinkedCell() {
 }
 
 void RDFTest::testRDFCountAdaptiveCell() {
-	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.8);
-	testRDFCount(moleculeContainer);
-	delete moleculeContainer;
+	//ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.8);
+	//testRDFCount(moleculeContainer);
+	//delete moleculeContainer;
+	ASSERT_FAIL("IMPLEMENT THIS Test again!");
 }
 
 void RDFTest::testRDFCount(ParticleContainer* moleculeContainer) {

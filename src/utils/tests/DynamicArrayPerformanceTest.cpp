@@ -65,7 +65,7 @@ void utils::DynamicArrayPerformanceTest::testPushObjectWithPtrRealloc() {
 template <class object, bool copyconstruct, bool shrink>
 void utils::DynamicArrayPerformanceTest::testPush(double factor, double capacityIncrement) {
 
-	int numObjects = 5000000;
+	int numObjects = 3000000;
 	Timer vectorTimer;
 	Timer stdvectorTimer;
 
@@ -101,7 +101,7 @@ template <class object, bool copyconstruct, bool shrink>
 void utils::DynamicArrayPerformanceTest::testPushPop(double factor, double capacityIncrement) {
 
 	int numIterations = 2;
-	int numObjects = 1000000;
+	int numObjects = 700000;
 	Timer vectorTimer;
 	Timer stdvectorTimer;
 

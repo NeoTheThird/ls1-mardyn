@@ -17,10 +17,10 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "ResortedBlockTraverse.h"
+#include "BlockedReorderedBlockTraverse.h"
 #include "molecules/Molecule.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
-#include "Cell.h"
+#include "BlockedCell.h"
 #include "particleContainer/ParticleContainer.h"
 #include "utils/Logger.h"
 
@@ -35,9 +35,9 @@ using Log::global_log;
 //################################################
 
 
-ResortedBlockTraverse::ResortedBlockTraverse(
+BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
 		ParticleContainer* moleculeContainer,
-		vector<Cell>& cells, 
+		vector<BlockedCell>& cells,
         vector<unsigned long>& innerCellIndices, 
         vector<unsigned long>& boundaryCellIndices,
         vector<unsigned long>& haloCellIndices,
@@ -54,9 +54,9 @@ ResortedBlockTraverse::ResortedBlockTraverse(
 			_allocatedOffsets(false) {
 }
 
-ResortedBlockTraverse::ResortedBlockTraverse(
+BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
 		ParticleContainer* moleculeContainer,
-		vector<Cell>& cells, 
+		vector<BlockedCell>& cells,
         vector<unsigned long>& innerCellIndices, 
         vector<unsigned long>& boundaryCellIndices, 
         vector<unsigned long>& haloCellIndices
@@ -74,14 +74,14 @@ ResortedBlockTraverse::ResortedBlockTraverse(
 	_backwardNeighbourOffsets = new vector<vector<unsigned long> >;
 }
 
-ResortedBlockTraverse::~ResortedBlockTraverse() {
+BlockedReorderedBlockTraverse::~BlockedReorderedBlockTraverse() {
 	if (_allocatedOffsets) {
 		delete _forwardNeighbourOffsets;
 		delete _backwardNeighbourOffsets;
 	}
 }
 
-void ResortedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
+void BlockedReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
 		int maxNeighbourOffset, int minNeighbourOffset) {
 	_forwardNeighbourOffsets->assign(_cells.size(), forwardNeighbourOffsets);
 	_backwardNeighbourOffsets->assign(_cells.size(), backwardNeighbourOffsets);
@@ -89,7 +89,7 @@ void ResortedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbou
 	_minNeighbourOffset = minNeighbourOffset;
 }
 
-void ResortedBlockTraverse::traversePairs() {
+void BlockedReorderedBlockTraverse::traversePairs() {
 
 	_particlePairsHandler = _moleculeContainer->getPairHandler();
 	double _cutoffRadius = _moleculeContainer->getCutoff();
@@ -103,9 +103,9 @@ void ResortedBlockTraverse::traversePairs() {
 	// XXX comment
 	double distanceVector[3];
 	// loop over all cells
-	vector<Cell>::iterator cellIter;
-	vector<Molecule*>::iterator molIter1;
-	vector<Molecule*>::iterator molIter2;
+	vector<BlockedCell>::iterator cellIter;
+	utils::DynamicArray<Molecule, true, false>::iterator molIter1;
+	utils::DynamicArray<Molecule, true, false>::iterator molIter2;
 
 #ifndef NDEBUG
 	// reset forces and momenta to zero
@@ -116,12 +116,12 @@ void ResortedBlockTraverse::traversePairs() {
 
         // TODO: check if the reset is done twice as leaving this part has no difference on the result.
         //Molecule *moleculePtr;
-        for (cellIter = _cells.begin(); cellIter != _cells.end(); ++cellIter) {
-        	for (molIter1 = cellIter->getParticlePointers().begin(); molIter1 != cellIter->getParticlePointers().end(); molIter1++) {
-        		Molecule& molecule1 = **molIter1;
-        		molecule1.setF(zeroVec);
-        		molecule1.setM(zeroVec);
-        		molecule1.clearTersoffNeighbourList();
+        for (size_t i = 0; i < _cells.size(); i++) {
+        	utils::DynamicArray<Molecule, true, false>& particles = _cells[i].getParticles();
+        	for (size_t j = 0; j < particles.size(); j++) {
+        		particles[j].setF(zeroVec);
+        		particles[j].setM(zeroVec);
+        		particles[j].clearTersoffNeighbourList();
         	}
         }
 	}
@@ -136,24 +136,24 @@ void ResortedBlockTraverse::traversePairs() {
 	double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * _tersoffCutoffRadius;
 
 #ifndef NDEBUG
-	global_log->debug() << "ResortedBlockTraversal: Processing pairs and preprocessing Tersoff pairs." << endl;
+	global_log->debug() << "ReorderedBlockTraversal: Processing pairs and preprocessing Tersoff pairs." << endl;
 #endif
 
 	// loop over all inner cells and calculate forces to forward neighbours
 	//for (cellIndexIter = _innerCellIndices.begin(); cellIndexIter != _innerCellIndices.end(); cellIndexIter++) {
 	for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++) {
-		Cell& currentCell = _cells[cellIndex];
+		BlockedCell& currentCell = _cells[cellIndex];
+		utils::DynamicArray<Molecule, true, false>& currentCellParticles = currentCell.getParticles();
+		int currentParticleCount = currentCellParticles.size();
 
 		// forces between molecules in the cell
 		if (currentCell.isInnerCell()) {
-			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+			for (int i = 0; i < currentParticleCount; i++) {
+				Molecule& molecule1 = currentCellParticles[i];
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
-				molIter2 = molIter1;
-				molIter2++; // no self interaction
 
-				for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+				for (int j = i+1; j < currentParticleCount; j++) {
+					Molecule& molecule2 = currentCellParticles[j];
 					assert(&molecule1 != &molecule2);
 					double dd = molecule2.dist2(molecule1, distanceVector);
 
@@ -168,15 +168,17 @@ void ResortedBlockTraverse::traversePairs() {
 
 			// loop over all neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				Cell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				utils::DynamicArray<Molecule, true, false>& neighbourCellParticles = neighbourCell.getParticles();
+				int neighbourParticleCount = neighbourCellParticles.size();
 
 				// loop over all particles in the cell
-				for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-					Molecule& molecule1 = **molIter1;
+				for (int i = 0; i < currentParticleCount; i++) {
+					Molecule& molecule1 = currentCellParticles[i];
 					unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
-					for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-						Molecule& molecule2 = **molIter2;
+					for (int j = 0; j < neighbourParticleCount; j++) {
+						Molecule& molecule2 = neighbourCellParticles[j];
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
 							_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
@@ -192,16 +194,14 @@ void ResortedBlockTraverse::traversePairs() {
 
 	// loop over halo cells and detect Tersoff neighbours within the halo
 	// this is relevant for the angle summation
-
 		if (currentCell.isHaloCell()) {
-			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+			for (int i = 0; i < currentParticleCount; i++ ) {
+				Molecule& molecule1 = currentCellParticles[i];
 				if (molecule1.numTersoff() == 0)
 					continue;
-				molIter2 = molIter1;
-				molIter2++;
-				for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+
+				for (int j = i+1; j < currentParticleCount; j++) {
+					Molecule& molecule2 = currentCellParticles[j];
 					assert(&molecule1 != &molecule2);
 					if (molecule2.numTersoff() > 0) {
 						double dd = molecule2.dist2(molecule1, distanceVector);
@@ -211,14 +211,18 @@ void ResortedBlockTraverse::traversePairs() {
 				}
 
 				for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-					int j = cellIndex + *neighbourOffsetsIter;
-					if ((j < 0) || (j >= (int) (_cells.size())))
+					int neighbourCellIndex = cellIndex + *neighbourOffsetsIter;
+					if ((neighbourCellIndex < 0) || (neighbourCellIndex >= (int) (_cells.size())))
 						continue;
-					Cell& neighbourCell = _cells[j];
+
+					BlockedCell& neighbourCell = _cells[neighbourCellIndex];
 					if (!neighbourCell.isHaloCell())
 						continue;
-					for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-						Molecule& molecule2 = **molIter2;
+
+					utils::DynamicArray<Molecule, true, false>& neighbourCellParticles = neighbourCell.getParticles();
+					int neighbourParticleCount = neighbourCellParticles.size();
+					for (int j = 0; j < neighbourParticleCount; j++) {
+						Molecule& molecule2 = neighbourCellParticles[j];
 						if (molecule2.numTersoff() == 0)
 							continue;
 						double dd = molecule2.dist2(molecule1, distanceVector);
@@ -231,13 +235,12 @@ void ResortedBlockTraverse::traversePairs() {
 
 	// loop over all boundary cells and calculate forces to forward and backward neighbours
 		if (currentCell.isBoundaryCell()) {
-			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+			for (int i = 0; i < currentParticleCount; i++) {
+				Molecule& molecule1 = currentCellParticles[i];
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
-				molIter2 = molIter1;
-				molIter2++;
-				for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+
+				for (int j = i+1; j < currentParticleCount; j++) {
+					Molecule& molecule2 = currentCellParticles[j];
 					assert(&molecule1 != &molecule2);
 
 					double dd = molecule2.dist2(molecule1, distanceVector);
@@ -252,15 +255,17 @@ void ResortedBlockTraverse::traversePairs() {
 
 			// loop over all forward neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				Cell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				utils::DynamicArray<Molecule, true, false>& neighbourCellParticles = neighbourCell.getParticles();
+				int neighbourParticleCount = neighbourCellParticles.size();
 
 				// loop over all particles in the cell
-				for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-					Molecule& molecule1 = **molIter1;
+				for (int i = 0; i < currentParticleCount; i++ ) {
+					Molecule& molecule1 = currentCellParticles[i];
 					unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
-					for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-						Molecule& molecule2 = **molIter2;
+					for (int j = 0; j < neighbourParticleCount; j++) {
+						Molecule& molecule2 = neighbourCellParticles[j];
 
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
@@ -281,16 +286,18 @@ void ResortedBlockTraverse::traversePairs() {
 			// loop over all backward neighbours. calculate only forces
 			// to neighbour cells in the halo region, all others already have been calculated
 			for (neighbourOffsetsIter = backwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != backwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				Cell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				utils::DynamicArray<Molecule, true, false>& neighbourCellParticles = neighbourCell.getParticles();
+				int neighbourParticleCount = neighbourCellParticles.size();
 
 				if (neighbourCell.isHaloCell()) {
 					// loop over all particles in the cell
-					for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-						Molecule& molecule1 = **molIter1;
+					for (int i = 0; i < currentParticleCount; i++) {
+						Molecule& molecule1 = currentCellParticles[i];
 						unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
-						for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-							Molecule& molecule2 = **molIter2;
+						for (int j = 0; j < neighbourParticleCount; j++) {
+							Molecule& molecule2 = neighbourCellParticles[j];
 
 							double dd = molecule2.dist2(molecule1, distanceVector);
 							if (dd < cutoffRadiusSquare) {
@@ -314,8 +321,8 @@ void ResortedBlockTraverse::traversePairs() {
 		bool knowparams = false;
 
 		if (currentCell.isInnerCell() || currentCell.isBoundaryCell()) {
-			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+			for (int i = 0; i < currentParticleCount; i++) {
+				Molecule& molecule1 = currentCellParticles[i];
 
 				if (molecule1.numTersoff() == 0)
 					continue;

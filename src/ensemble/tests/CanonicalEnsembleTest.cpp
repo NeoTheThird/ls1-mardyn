@@ -31,7 +31,8 @@ void CanonicalEnsembleTest::UpdateNumMoleculesSequential() {
 	_domainDecomposition = new DomainDecompDummy();
 
 	// the halo is cleared for freshly initialized particle containers.
-	ParticleContainer* container = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.0);
+	ParticleContainer* container = initializeFromFile(ParticleContainerFactory::LinkedCell, "1clj-regular-12x12x12.inp", 1.0);
+//	ParticleContainer* container = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.0);
 	vector<Component>& components(_domain->getComponents());
 	CanonicalEnsemble ensemble(container, &components);
 

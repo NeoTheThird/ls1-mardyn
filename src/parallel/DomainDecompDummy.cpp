@@ -35,6 +35,8 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 	double low_limit; // particles below this limit have to be copied or moved to the lower process
 	double high_limit; // particles above(or equal) this limit have to be copied or moved to the higher process
 
+	std::vector<Molecule> moleculesToAdd;
+
 	for (unsigned short d = 0; d < 3; ++d) {
 		phaseSpaceSize[d] = rmax[d] - rmin[d];
 		// set limits (outside "inner" region)
@@ -62,7 +64,10 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 				                       currentMolecule->v(0),currentMolecule->v(1),currentMolecule->v(2),
 				                       currentMolecule->q().qw(),currentMolecule->q().qx(),currentMolecule->q().qy(),currentMolecule->q().qz(),
 				                       currentMolecule->D(0),currentMolecule->D(1),currentMolecule->D(2), &components);
-				moleculeContainer->addParticle(m1);
+
+				//moleculeContainer->addParticle(m1);
+				moleculesToAdd.push_back(m1);
+
 				currentMolecule = moleculeContainer->next();
 			}
 			else if (rd >= high_limit) {
@@ -80,13 +85,21 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 				                       currentMolecule->v(0),currentMolecule->v(1),currentMolecule->v(2),
 				                       currentMolecule->q().qw(),currentMolecule->q().qx(),currentMolecule->q().qy(),currentMolecule->q().qz(),
 				                       currentMolecule->D(0),currentMolecule->D(1),currentMolecule->D(2), &components);
-				moleculeContainer->addParticle(m1);
+
+				//moleculeContainer->addParticle(m1);
+				moleculesToAdd.push_back(m1);
+
 				currentMolecule = moleculeContainer->next();
 			}
 			else
 				currentMolecule = moleculeContainer->next();
 		}
 	}
+
+	for (int i =  0; i < moleculesToAdd.size(); i++) {
+		moleculeContainer->addParticle(moleculesToAdd[i]);
+	}
+
 }
 
 void DomainDecompDummy::balanceAndExchange(bool balance, ParticleContainer* moleculeContainer, const vector<Component>& components, Domain* domain) {
