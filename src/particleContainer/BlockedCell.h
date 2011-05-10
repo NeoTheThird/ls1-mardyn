@@ -2,7 +2,7 @@
 #define CELL_H_
 
 #include "utils/DynamicArray.h"
-
+#include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 
 #include "Simulation.h"

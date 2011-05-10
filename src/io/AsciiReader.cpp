@@ -2,7 +2,7 @@
 
 #include "particleContainer/ParticleContainer.h"
 #include "parallel/DomainDecompBase.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "ensemble/GrandCanonical.h"
 #include "ensemble/PressureGradient.h"
 #include "Domain.h"

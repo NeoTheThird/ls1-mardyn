@@ -1,7 +1,7 @@
 #include "ensemble/CanonicalEnsemble.h"
 #include "utils/Logger.h"
 #include "particleContainer/ParticleContainer.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "molecules/Component.h"
 #ifdef PARALLEL
 #include "parallel/CollectiveCommunication.h"

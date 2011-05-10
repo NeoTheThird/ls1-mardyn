@@ -7,7 +7,7 @@
 
 #include "ParticleContainerTest.h"
 #include "particleContainer/ParticleContainer.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 ParticleContainerTest::ParticleContainerTest() {
 	Component dummyComponent(0);

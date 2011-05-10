@@ -3,7 +3,6 @@
 #include "particleContainer/ParticleContainer.h"
 
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
-#include "molecules/Molecule.h"
 
 
 using namespace std;

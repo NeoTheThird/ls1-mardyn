@@ -18,7 +18,7 @@
  ***************************************************************************/
 
 #include "BlockTraverse.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "Cell.h"
 #include "particleContainer/ParticleContainer.h"

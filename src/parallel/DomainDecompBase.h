@@ -1,11 +1,13 @@
 #ifndef DOMAINDECOMPBASE_H_
 #define DOMAINDECOMPBASE_H_
 
+#include "molecules/MoleculeTypes.h"
+
 #include <vector>
 #include <iostream>
 #include <map>
 
-class Molecule;
+
 class Component;
 class Domain;
 class ParticleContainer;

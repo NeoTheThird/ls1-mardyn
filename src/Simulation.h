@@ -32,6 +32,8 @@ class PressureGradient;
 //! Reference to the global simulation object 
 #define _simulation (*global_simulation)
 
+#include "molecules/MoleculeTypes.h"
+
 #include <list>
 #include <vector>
 #include <string>
@@ -48,7 +50,6 @@ class Integrator;
 class OutputBase;
 class DomainDecompBase;
 class InputBase;
-class Molecule;
 class Timer;
 class RDF;
 

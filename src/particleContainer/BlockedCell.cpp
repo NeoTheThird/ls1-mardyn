@@ -1,5 +1,5 @@
 #include "particleContainer/BlockedCell.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 using namespace std;
 

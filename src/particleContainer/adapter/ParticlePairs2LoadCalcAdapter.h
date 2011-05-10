@@ -54,7 +54,7 @@ public:
 	//! For all pairs, the force between the two Molecules has to be calculated
 	//! and stored in the molecules. For original pairs(pairType 0), the contributions
 	//! to the macroscopic values have to be collected
-	double processPair(Molecule& particle1, Molecule& particle2, double distanceVector[3], PairType pairType, double dd, bool calculateLJ) {
+	double processPair(HandlerMoleculeType& particle1, HandlerMoleculeType& particle2, double distanceVector[3], PairType pairType, double dd, bool calculateLJ) {
 		if (pairType == MOLECULE_MOLECULE) {
 			int cellIndex[3]; // 3D Cell index (local)
 			int globalCellIdx[3]; // 3D Cell index (global)
@@ -74,13 +74,13 @@ public:
 	//! to the macroscopic values have to be collected
 	//!
 	//! @brief register Tersoff neighbours
-	void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType) {
+	void preprocessTersoffPair(HandlerMoleculeType& particle1, HandlerMoleculeType& particle2, bool pairType) {
 		return;
 	}
 
 	//! @brief process Tersoff interaction
 	//!
-	void processTersoffAtom(Molecule& particle1, double params[15], double delta_r) {
+	void processTersoffAtom(HandlerMoleculeType& particle1, double params[15], double delta_r) {
 		return;
 	}
 

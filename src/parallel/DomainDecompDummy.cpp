@@ -1,6 +1,6 @@
 #include "parallel/DomainDecompDummy.h"
 
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "particleContainer/ParticleContainer.h"
 #include "Domain.h"
 

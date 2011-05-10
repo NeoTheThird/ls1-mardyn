@@ -6,7 +6,7 @@
  */
 
 #include "MoleculeTest.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 TEST_SUITE_REGISTRATION(MoleculeTest);
 

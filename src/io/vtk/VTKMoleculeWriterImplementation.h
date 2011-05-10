@@ -8,11 +8,11 @@
 #ifndef VTKMOLECULEWRITERIMPLEMENTATION_H_
 #define VTKMOLECULEWRITERIMPLEMENTATION_H_
 
+#include "molecules/MoleculeTypes.h"
 
 #include <string>
 #include <vector>
 
-class Molecule;
 class VTKFile_t;
 
 /**

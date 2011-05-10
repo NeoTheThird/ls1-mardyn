@@ -9,7 +9,7 @@
 #include "parallel/DomainDecompBase.h"
 #include "particleContainer/LinkedCells.h"
 #include "particleContainer/Cell.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "utils/Logger.h"
 
 using namespace std;

@@ -16,8 +16,8 @@
  * Foundation, 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.   *
  *************************************************************************/
 
-#ifndef MOLECULE_H_
-#define MOLECULE_H_
+#ifndef BASICMOLECULE_H_
+#define BASICMOLECULE_H_
 
 /*
  * maximal size of the Tersoff neighbour list
@@ -37,29 +37,29 @@ class Domain;
 
 //! @brief Molecule modeled as LJ sphere with point polarities + Tersoff potential
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
-class Molecule {
+class BasicMolecule {
 
 public:
 	// TODO Correct this constructor: the components vector is optional,
 	// but if it is left away, all pointer data is not initialized (which is not
 	// neccessarily bad), but then assertions fail (e.g. in the destructor) and we can't
 	// use it's instances.
-	Molecule(unsigned long id = 0, int componentid = 0,
+	BasicMolecule(unsigned long id = 0, int componentid = 0,
 	         double rx = 0., double ry = 0., double rz = 0.,
 	         double vx = 0., double vy = 0., double vz = 0.,
 	         double q0 = 0., double q1 = 0., double q2 = 0., double q3 = 0.,
 	         double Dx = 0., double Dy = 0., double Dz = 0.,
 	         const std::vector<Component>* components = NULL
 	);
-	Molecule(const Molecule& m);
+	BasicMolecule(const BasicMolecule& m);
 
-	~Molecule() {
+	~BasicMolecule() {
 		assert(_sites_d); delete[] _sites_d;
 		assert(_osites_e); delete[] _osites_e;
 		assert(_sites_F); delete[] _sites_F;
 	}
 
-	Molecule& operator=(const Molecule& rhs);
+	BasicMolecule& operator=(const BasicMolecule& rhs);
 
 
 	/** get the ID */
@@ -119,7 +119,7 @@ public:
 	 *
 	 *  \param molecule2 molecule to which the distance shall be calculated
 	 */
-	double dist2(const Molecule& molecule2, double dr[3]) const {
+	double dist2(const BasicMolecule& molecule2, double dr[3]) const {
 		double d2 = 0.;
 		for (unsigned short d = 0; d < 3; d++) {
 			dr[d] = molecule2._r[d] - _r[d];
@@ -201,9 +201,9 @@ public:
 	void write(std::ostream& ostrm) const;
 
 	inline unsigned getCurTN() { return this->_numTersoffNeighbours; }
-	inline Molecule* getTersoffNeighbour(unsigned i) { return this->_Tersoff_neighbours_first[i]; }
+	inline BasicMolecule* getTersoffNeighbour(unsigned i) { return this->_Tersoff_neighbours_first[i]; }
 	inline void clearTersoffNeighbourList() { this->_numTersoffNeighbours = 0; }
-	void addTersoffNeighbour(Molecule* m, bool pairType);
+	void addTersoffNeighbour(BasicMolecule* m, bool pairType);
 	double tersoffParameters(double params[15]); //returns delta_r
 
 	// clear forces and moments
@@ -229,7 +229,7 @@ public:
 	//! determined from the cell structure. But for pairs on different procs, the
 	//! corresponding cell discretisations might be different as well, and therefore
 	//! the cell structure must not be used to determine the order.
-	bool isLessThan(const Molecule& m2) const;
+	bool isLessThan(const BasicMolecule& m2) const;
 
 private:
 
@@ -267,7 +267,7 @@ private:
 	double *_ljcenters_F, *_charges_F, *_dipoles_F,
 	       *_quadrupoles_F, *_tersoff_F;
 
-	Molecule* _Tersoff_neighbours_first[MAX_TERSOFF_NEIGHBOURS];
+	BasicMolecule* _Tersoff_neighbours_first[MAX_TERSOFF_NEIGHBOURS];
 	bool _Tersoff_neighbours_second[MAX_TERSOFF_NEIGHBOURS];
 	int _numTersoffNeighbours;
 	double fixedx, fixedy;
@@ -277,4 +277,4 @@ private:
 
 };
 
-#endif /*MOLECULE_H_*/
+#endif /*BASICMOLECULE_H_*/

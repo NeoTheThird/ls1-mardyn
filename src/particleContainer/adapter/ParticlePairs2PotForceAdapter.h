@@ -81,7 +81,7 @@ public:
      *
      * @return                interaction energy
      */
-	double processPair(Molecule& molecule1, Molecule& molecule2, double distanceVector[3], PairType pairType, double dd, bool calculateLJ = true) {
+	double processPair(HandlerMoleculeType& molecule1, HandlerMoleculeType& molecule2, double distanceVector[3], PairType pairType, double dd, bool calculateLJ = true) {
 		ParaStrm& params = _domain.getComp2Params()(molecule1.componentid(), molecule2.componentid());
 		params.reset_read();
         switch (pairType) {
@@ -113,14 +113,14 @@ public:
 	//! to the macroscopic values have to be collected
 	//!
 	//! @brief register Tersoff neighbours
-	void preprocessTersoffPair(Molecule& particle1, Molecule& particle2, bool pairType) {
+	void preprocessTersoffPair(HandlerMoleculeType& particle1, HandlerMoleculeType& particle2, bool pairType) {
 		particle1.addTersoffNeighbour(&particle2, pairType);
 		particle2.addTersoffNeighbour(&particle1, pairType);
 	}
 
 	//! @brief process Tersoff interaction
 	//!
-	void processTersoffAtom(Molecule& particle1, double params[15], double delta_r) {
+	void processTersoffAtom(HandlerMoleculeType& particle1, double params[15], double delta_r) {
 		TersoffPotForce(&particle1, params, _upotTersoff, delta_r);
 	}
 

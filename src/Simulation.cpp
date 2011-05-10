@@ -30,7 +30,6 @@
 
 #include "Common.h"
 #include "Domain.h"
-#include "molecules/Molecule.h"
 #include "particleContainer/LinkedCells.h"
 #include "particleContainer/ReorderedLinkedCells.h"
 #include "particleContainer/BlockedReorderedLinkedCells.h"

@@ -20,12 +20,9 @@
 #ifndef PARTICLEPAIRSHANDLER_H_
 #define PARTICLEPAIRSHANDLER_H_
 
-#include "molecules/Molecule.h"
-#include "molecules/CachingMolecule.h"
+#include "molecules/MoleculeTypes.h"
 
 class RDF;
-
-typedef Molecule HandlerMoleculeType;
 
 typedef enum {
     MOLECULE_MOLECULE = 0,      /**< molecule molecule */

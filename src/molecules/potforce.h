@@ -19,8 +19,9 @@
 #ifndef POTFORCE_H_
 #define POTFORCE_H_
 
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "molecules/Comp2Param.h"
+
 
 /// helper function to calculate the distance between 2 sites
 inline void SiteSiteDistance(const double drm[3], const double ds1[3], const double ds2[3], double drs[3], double& dr2)
@@ -316,7 +317,7 @@ inline void PotForceChargeDipole(const double dr[3], const double& dr2,
 
     drm == distance FROM j TO i ... !!!
 */
-inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool calculateLJ)
+inline void PotForce(HandlerMoleculeType& mi, HandlerMoleculeType& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool calculateLJ)
 // ???better calc Virial, when molecule forces are calculated:
 //    summing up molecule virials instead of site virials???
 { // Force Calculation
@@ -545,7 +546,7 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 /*
  * calculates the LJ and electrostatic potential energy of the mi-mj interaction (no multi-body potentials are considered)
  */
-inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool calculateLJ)
+inline void FluidPot(HandlerMoleculeType& mi, HandlerMoleculeType& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, bool calculateLJ)
 {
 	double f[3];
 	double u;
@@ -697,13 +698,13 @@ inline void FluidPot(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
 //!
 //! drij should contain the distance from j to i.
 //!
-inline double Tersoffbij(Molecule* mi, Molecule* mj,
+inline double Tersoffbij(HandlerMoleculeType* mi, HandlerMoleculeType* mj,
                          double params[15], double drij[3], double drij1)
 {
 	double drik[3];
 	double zeta = 0.0;
 	unsigned i_curTN = mi->getCurTN();
-	Molecule* mk;
+	HandlerMoleculeType* mk;
 
 	for (unsigned nmk = 0; nmk < i_curTN; nmk++) {
 		mk = mi->getTersoffNeighbour(nmk);
@@ -735,7 +736,7 @@ inline double Tersoffbij(Molecule* mi, Molecule* mj,
 //!
 //! drij should contain the distance from j to i.
 //!
-inline double TersoffUIJplusUJI(Molecule* mi, Molecule* mj, double params[15],
+inline double TersoffUIJplusUJI(HandlerMoleculeType* mi, HandlerMoleculeType* mj, double params[15],
                                 double drij[3], double drij2, double& UpotTersoff)
 {
 	double Uij = 0.0;
@@ -764,7 +765,7 @@ inline double TersoffUIJplusUJI(Molecule* mi, Molecule* mj, double params[15],
 //!
 //! drij should contain the distance from j to i.
 //!
-inline double TersoffUIJattr(Molecule* mi, Molecule* mj,
+inline double TersoffUIJattr(HandlerMoleculeType* mi, HandlerMoleculeType* mj,
                              double params[15], double drij[3], double drij2)
 {
 	double drij1 = sqrt(drij2);
@@ -790,13 +791,13 @@ inline double TersoffUIJattr(Molecule* mi, Molecule* mj,
 //!
 //! used for computing the Tersoff potential based force on the atom
 //!
-inline double TersoffPotential(Molecule* mi, double params[15], double& UpotTersoff)
+inline double TersoffPotential(HandlerMoleculeType* mi, double params[15], double& UpotTersoff)
 {
 	double Ui = 0.0;
 
 	double distanceVector[3];
 	unsigned i_curTN = mi->getCurTN();
-	Molecule *mj, *mk;
+	HandlerMoleculeType *mj, *mk;
 
 	for (unsigned nmj = 0; nmj < i_curTN; nmj++) {
 		mj = mi->getTersoffNeighbour(nmj);
@@ -820,7 +821,7 @@ inline double TersoffPotential(Molecule* mi, double params[15], double& UpotTers
 
 	return Ui;
 }
-inline void TersoffPotForce(Molecule* mi, double params[15], double& UpotTersoff, double delta_r)
+inline void TersoffPotForce(HandlerMoleculeType* mi, double params[15], double& UpotTersoff, double delta_r)
 {
 	double f[3];
 	if (mi->numTersoff() == 0) return;

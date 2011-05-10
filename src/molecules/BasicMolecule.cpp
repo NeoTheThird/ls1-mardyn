@@ -20,7 +20,7 @@
  *   Due to copyleft all future versions of this program must be           *
  *   distributed as Free Software (e.g., using a BSD-like license).        *
  ***************************************************************************/
-#include "molecules/Molecule.h"
+#include "molecules/BasicMolecule.h"
 
 
 #include <cmath>
@@ -33,7 +33,7 @@ using namespace std;
 using Log::global_log;
 
 
-Molecule::Molecule(unsigned long id, int componentid,
+BasicMolecule::BasicMolecule(unsigned long id, int componentid,
 	                 double rx, double ry, double rz,
 	                 double vx, double vy, double vz,
 	                 double q0, double q1, double q2, double q3,
@@ -59,7 +59,7 @@ Molecule::Molecule(unsigned long id, int componentid,
 		setupCache(components);
 }
 
-Molecule::Molecule(const Molecule& m) {
+BasicMolecule::BasicMolecule(const BasicMolecule& m) {
 	_id = m._id;
 	_componentid = m._componentid;
 	_r[0] = m._r[0];
@@ -84,7 +84,7 @@ Molecule::Molecule(const Molecule& m) {
 	_dipoles = m._dipoles;
 	_quadrupoles = m._quadrupoles;
 	if (!m._tersoff) {
-		global_log->warning() << "Tersoff vector null pointer detected for Molecule " << _id << endl;
+		global_log->warning() << "Tersoff vector null pointer detected for BasicMolecule " << _id << endl;
 	}
 	_tersoff = m._tersoff;
 	_m = m._m;
@@ -128,7 +128,7 @@ Molecule::Molecule(const Molecule& m) {
 }
 
 
-Molecule& Molecule::operator=(const Molecule& rhs) {
+BasicMolecule& BasicMolecule::operator=(const BasicMolecule& rhs) {
 	_id = rhs._id;
 	_componentid = rhs._componentid;
 	_r[0] = rhs._r[0];
@@ -153,7 +153,7 @@ Molecule& Molecule::operator=(const Molecule& rhs) {
 	_dipoles = rhs._dipoles;
 	_quadrupoles = rhs._quadrupoles;
 	if (!rhs._tersoff) {
-		global_log->warning() << "Tersoff vector null pointer detected for Molecule " << _id << endl;
+		global_log->warning() << "Tersoff vector null pointer detected for BasicMolecule " << _id << endl;
 	}
 	_tersoff = rhs._tersoff;
 	_m = rhs._m;
@@ -211,7 +211,7 @@ Molecule& Molecule::operator=(const Molecule& rhs) {
 
 
 
-void Molecule::upd_preF(double dt, double vcorr, double Dcorr) {
+void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	assert(_m);
 	double dt_halve = .5 * dt;
 	double dtInv2m = dt_halve / _m;
@@ -244,7 +244,7 @@ void Molecule::upd_preF(double dt, double vcorr, double Dcorr) {
 
 }
 
-void Molecule::upd_cache() {
+void BasicMolecule::upd_cache() {
 	// update Cache (rotate sites and save relative positions)
 	unsigned int i;
 	unsigned int ns = numLJcenters();
@@ -276,7 +276,7 @@ void Molecule::upd_cache() {
 }
 
 
-void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
+void BasicMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
 
 	calcFM();
 
@@ -301,7 +301,7 @@ void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
 	sumIw2 += Iw2;
 }
 
-double Molecule::Urot() {
+double BasicMolecule::Urot() {
 	double w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
@@ -312,7 +312,7 @@ double Molecule::Urot() {
 	return 0.5 * Iw2;
 }
 
-void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2) {
+void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2) {
 	summv2 += _m * v2();
 	double w[3];
 	_q.rotate(_D, w);
@@ -324,7 +324,7 @@ void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2) {
 	sumIw2 += Iw2;
 }
 
-void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2, double offx, double offy, double offz) {
+void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2, double offx, double offy, double offz) {
 	double vcx = _v[0] - offx;
 	double vcy = _v[1] - offy;
 	double vcz = _v[2] - offz;
@@ -340,13 +340,13 @@ void Molecule::calculate_mv2_Iw2(double& summv2, double& sumIw2, double offx, do
 	sumIw2 += Iw2;
 }
 
-void Molecule::scale_v(double s, double offx, double offy, double offz) {
+void BasicMolecule::scale_v(double s, double offx, double offy, double offz) {
 	this->vsub(offx, offy, offz);
 	this->scale_v(s);
 	this->vadd(offx, offy, offz);
 }
 
-void Molecule::write(ostream& ostrm) const {
+void BasicMolecule::write(ostream& ostrm) const {
 	ostrm << _id << "\t" << (_componentid+1) << "\t"
 	      << _r[0] << " " << _r[1] << " " << _r[2] << "\t"
 	      << _v[0] << " " << _v[1] << " " << _v[2] << "\t"
@@ -355,8 +355,8 @@ void Molecule::write(ostream& ostrm) const {
 	      << endl;
 }
 
-void Molecule::addTersoffNeighbour(Molecule* m, bool pairType) {
-	// this->_Tersoff_neighbours.insert(pair<Molecule*, bool>(m, (pairType > 0)));
+void BasicMolecule::addTersoffNeighbour(BasicMolecule* m, bool pairType) {
+	// this->_Tersoff_neighbours.insert(pair<BasicMolecule*, bool>(m, (pairType > 0)));
 	for (int j = 0; j < _numTersoffNeighbours; j++) {
 		if (m->_id == _Tersoff_neighbours_first[j]->id()) {
 			this->_Tersoff_neighbours_first[j] = m;
@@ -369,12 +369,12 @@ void Molecule::addTersoffNeighbour(Molecule* m, bool pairType) {
 	this->_Tersoff_neighbours_second[_numTersoffNeighbours] = pairType;
 	this->_numTersoffNeighbours++;
 	if (_numTersoffNeighbours > MAX_TERSOFF_NEIGHBOURS) {
-		global_log->error() << "Tersoff neighbour list overflow: Molecule " << m->_id << " has more than " << MAX_TERSOFF_NEIGHBOURS << " Tersoff neighbours." << endl;
+		global_log->error() << "Tersoff neighbour list overflow: BasicMolecule " << m->_id << " has more than " << MAX_TERSOFF_NEIGHBOURS << " Tersoff neighbours." << endl;
 		exit(1);
 	}
 }
 
-double Molecule::tersoffParameters(double params[15]) //returns delta_r
+double BasicMolecule::tersoffParameters(double params[15]) //returns delta_r
 {
 	const Tersoff* t = &((*(this->_tersoff))[0]);
 	params[ 0] = t->R();
@@ -397,9 +397,9 @@ double Molecule::tersoffParameters(double params[15]) //returns delta_r
 }
 
 // private functions
-// these are only used when compiling molecule.cpp and therefore might be inlined without any problems
+// these are only used when compiling BasicMolecule.cpp and therefore might be inlined without any problems
 
-inline void Molecule::setupCache(const vector<Component>* components) {
+inline void BasicMolecule::setupCache(const vector<Component>* components) {
 	assert(components);
 	if (components->size() == 0)
 		return;
@@ -418,7 +418,7 @@ inline void Molecule::setupCache(const vector<Component>* components) {
 	_tersoff = &(*components)[_componentid].tersoff();
 #ifndef NDEBUG
 	if (!_tersoff) {
-		global_log->error() << "Tersoff vector null pointer detected for Molecule " << _id << endl;
+		global_log->error() << "Tersoff vector null pointer detected for BasicMolecule " << _id << endl;
 		exit(1);
 	}
 #endif
@@ -462,14 +462,14 @@ inline void Molecule::setupCache(const vector<Component>* components) {
 	this->clearFM();
 }
 
-inline void Molecule::clearFM() {
+inline void BasicMolecule::clearFM() {
 	for (unsigned int i = 0; i < _numsites * 3; ++i)
 		_sites_F[i] = 0.;
 	_F[0] = _F[1] = _F[2] = 0.;
 	_M[0] = _M[1] = _M[2] = 0.;
 }
 
-void Molecule::calcFM() {
+void BasicMolecule::calcFM() {
 	unsigned int ns = numSites();
 	for (unsigned int si = 0; si < ns; ++si) {
 		const double* Fsite = site_F(si);
@@ -504,7 +504,7 @@ void Molecule::calcFM() {
  * If that's not available (C99), compare the value with itself. If the value
  * is NaN, the comparison will evaluate to false (according to IEEE754 spec.)
  */
-void Molecule::check(unsigned long id) {
+void BasicMolecule::check(unsigned long id) {
 	assert(_id == id);
 	assert(_componentid >= 0);
 	assert(_m > 0.0);
@@ -521,7 +521,7 @@ void Molecule::check(unsigned long id) {
 	}
 }
 
-bool Molecule::isLessThan(const Molecule& m2) const {
+bool BasicMolecule::isLessThan(const BasicMolecule& m2) const {
 	if (_r[2] < m2.r(2))
 		return true;
 	else if (_r[2] > m2.r(2))
@@ -553,7 +553,7 @@ bool Molecule::isLessThan(const Molecule& m2) const {
 
 
 
-unsigned long Molecule::totalMemsize() const {
+unsigned long BasicMolecule::totalMemsize() const {
 	unsigned long size = sizeof (*this);
 
 	//_sites_d

@@ -8,7 +8,7 @@
 #include "VTKMoleculeWriterImplementationTest.h"
 #include "io/vtk/VTKMoleculeWriterImplementation.h"
 #include "utils/FileUtils.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include <vector>
 #ifdef PARALLEL
 #include <mpi.h>

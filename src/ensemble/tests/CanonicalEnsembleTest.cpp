@@ -8,7 +8,7 @@
 #include "CanonicalEnsembleTest.h"
 #include "ensemble/CanonicalEnsemble.h"
 #include "parallel/DomainDecompDummy.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "Domain.h"
 
 #include <vector>

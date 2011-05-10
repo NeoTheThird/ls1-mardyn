@@ -3,7 +3,7 @@
 #include "integrators/Leapfrog.h"
 #include "particleContainer/ParticleContainer.h"
 #include "Domain.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "ensemble/PressureGradient.h"
 #include "utils/Logger.h"
 

@@ -2,7 +2,7 @@
 
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "Cell.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "Domain.h"
 #include "ensemble/GrandCanonical.h"
 #include "parallel/DomainDecompBase.h"

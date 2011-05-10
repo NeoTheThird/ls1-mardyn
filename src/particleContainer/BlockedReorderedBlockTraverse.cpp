@@ -18,7 +18,7 @@
  ***************************************************************************/
 
 #include "BlockedReorderedBlockTraverse.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "BlockedCell.h"
 #include "particleContainer/ParticleContainer.h"

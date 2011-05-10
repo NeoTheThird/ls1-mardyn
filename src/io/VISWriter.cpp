@@ -3,7 +3,7 @@
 #include "io/VISWriter.h"
 #include "Common.h"
 #include "particleContainer/ParticleContainer.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 #include <iomanip>
 #include <fstream>

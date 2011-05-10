@@ -5,7 +5,7 @@
 #include "PressureGradient.h"
 #include "parallel/DomainDecompBase.h"
 #include "particleContainer/ParticleContainer.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 #include "utils/Logger.h"
 

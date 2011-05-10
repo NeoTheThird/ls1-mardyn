@@ -2,7 +2,7 @@
 
 #include "Domain.h"
 #include "parallel/DomainDecompBase.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "particleContainer/ParticleContainer.h"
 #include "ensemble/GrandCanonical.h"
 

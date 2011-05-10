@@ -6,7 +6,6 @@
  */
 
 #include "io/vtk/VTKMoleculeWriterImplementation.h"
-#include "molecules/Molecule.h"
 #include "io/vtk/vtk-punstructured.h"
 #include "utils/Logger.h"
 

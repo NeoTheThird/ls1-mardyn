@@ -21,6 +21,7 @@
 #define PARTICLECONTAINER_H_
 
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
+#include "molecules/MoleculeTypes.h"
 
 #include <list>
 
@@ -28,7 +29,6 @@ class ParticleContainer;
 class DomainDecompBase;
 class Domain;
 class ChemicalPotential;
-class Molecule;
 
 //! @brief This Interface is used to get access to particles and pairs of particles
 //! @author Martin Buchholz

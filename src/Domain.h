@@ -24,6 +24,7 @@
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
+#include "molecules/MoleculeTypes.h"
 
 /* 
  * TODO add comments for variables 
@@ -34,7 +35,6 @@
 #define KINLIMIT_PER_T 10.0
 
 
-class Molecule;
 class ParticleContainer;
 class DomainDecompBase; 
 class PressureGradient;

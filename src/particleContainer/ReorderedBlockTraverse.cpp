@@ -18,7 +18,6 @@
  ***************************************************************************/
 
 #include "ReorderedBlockTraverse.h"
-#include "molecules/Molecule.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "Cell.h"
 #include "particleContainer/ParticleContainer.h"

@@ -19,12 +19,11 @@
 #ifndef GRANDCANONICAL_H_
 #define GRANDCANONICAL_H_
 
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include <list>
 
 class DomainDecompBase;
 class ParticleContainer;
-class Molecule;
 
 typedef ParticleContainer TMoleculeContainer;
 

@@ -24,7 +24,7 @@
 #include "molecules/potforce.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "BlockedCell.h"
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 #include "parallel/DomainDecompBase.h"
 #include "ensemble/GrandCanonical.h"
 #include "Domain.h"

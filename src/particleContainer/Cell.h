@@ -1,9 +1,8 @@
 #ifndef CELL_H_
 #define CELL_H_
 
+#include "molecules/MoleculeTypes.h"
 #include <vector>
-
-class Molecule;
 
 //! @brief Cell data structure.
 //! @author Martin Buchholz
