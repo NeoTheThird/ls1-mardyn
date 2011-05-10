@@ -33,12 +33,14 @@ ParticleContainer* ParticleContainerFactory::createEmptyParticleContainer(type t
 	double cellsInCutoffRadius = 1.0;
 
 	if (type == LinkedCell) {
-		LinkedCells* container = new LinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
+		BlockedReorderedLinkedCells* container = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
 		                                        tersoffCutoffRadius, cellsInCutoffRadius, NULL);
+		global_log->warning() << "ParticleContainerFactory: Returning wrong thing: BlockedReorderedLinkedCells instead of LinkedCells!" << std::endl;
 		return container;
 	} else if (type == ReorderedLinkedCell) {
-		ReorderedLinkedCells* container = new ReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
+		BlockedReorderedLinkedCells* container = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
 				                                        tersoffCutoffRadius, cellsInCutoffRadius, NULL);
+		global_log->warning() << "ParticleContainerFactory: Returning wrong thing: BlockedReorderedLinkedCells instead of LinkedCells!" << std::endl;
 				return container;
 	} else if (type == BlockedReorderedLinkedCell) {
 		BlockedReorderedLinkedCells* container = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
@@ -69,9 +71,11 @@ ParticleContainer* ParticleContainerFactory::createInitializedParticleContainer(
 
 	ParticleContainer* moleculeContainer;
 	if (type == LinkedCell) {
-		moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		global_log->warning() << "ParticleContainerFactory: Returning wrong thing: BlockedReorderedLinkedCells instead of LinkedCells!" << std::endl;
 	} else if (type == ReorderedLinkedCell) {
-		moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		global_log->warning() << "ParticleContainerFactory: Returning wrong thing: BlockedReorderedLinkedCells instead of LinkedCells!" << std::endl;
 	} else if (type == BlockedReorderedLinkedCell) {
 		moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
 	} else if (type == AdaptiveSubCell) {

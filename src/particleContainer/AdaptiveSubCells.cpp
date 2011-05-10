@@ -337,6 +337,13 @@ void AdaptiveSubCells::traversePairs() {
 }
 
 double AdaptiveSubCells::getEnergy(Molecule* m1) {
+
+	if (IsSame<Molecule, HandlerMoleculeType>::Result::value) {
+		global_log->error() << "For this implementation, Molecule and MoleculeHandlerType have to be " <<
+				"Typedefs for the same class type!" << std::endl;
+		exit(-1);
+	}
+
 	double u = 0.0;
 	double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius;
 	double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
@@ -360,7 +367,9 @@ double AdaptiveSubCells::getEnergy(Molecule* m1) {
 		dd = (*molIter2)->dist2(*m1, distanceVector);
 		if (dd > cutoffRadiusSquare)
 			continue;
-		u += _particlePairsHandler->processPair(*m1, **molIter2, distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
+
+		// hack to make this thing compile if HandlerMoleculeType != Molecule
+		u += _particlePairsHandler->processPair(*reinterpret_cast<HandlerMoleculeType*>(m1), *reinterpret_cast<HandlerMoleculeType*>(*molIter2), distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
 	}
 
 	// loop over all forward neighbours

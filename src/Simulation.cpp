@@ -275,19 +275,19 @@ void Simulation::initConfigXML(const string& inputfilename) {
 		if (inp.getNodeValue("datastructure@type", datastructype)) {
 			global_log->info() << "datastructure to use:\t" << datastructype << endl;
 			if (datastructype == "LinkedCells") {
-				int cellsInCutoffRadius = 1;
-				inp.getNodeValue("datastructure/cellsInCutoffRadius", cellsInCutoffRadius);
-				global_log->info() << "LinkedCells cells in cutoff radius:\t" << cellsInCutoffRadius << endl;
-				double bBoxMin[3];
-				double bBoxMax[3];
-				for (int i = 0; i < 3; i++) {
-					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
-					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
-				}
-				if (this->_LJCutoffRadius == 0.0)
-					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
-				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+//				int cellsInCutoffRadius = 1;
+//				inp.getNodeValue("datastructure/cellsInCutoffRadius", cellsInCutoffRadius);
+//				global_log->info() << "LinkedCells cells in cutoff radius:\t" << cellsInCutoffRadius << endl;
+//				double bBoxMin[3];
+//				double bBoxMax[3];
+//				for (int i = 0; i < 3; i++) {
+//					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+//					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+//				}
+//				if (this->_LJCutoffRadius == 0.0)
+//					_LJCutoffRadius = this->_cutoffRadius;
+//				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+//				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
 			} else if (datastructype == "AdaptiveSubCells") {
 				double bBoxMin[3];
 				double bBoxMax[3];
@@ -514,32 +514,36 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> token;
 			if (token == "LinkedCells") {
 				_particleContainerType = LINKED_CELL;
-				int cellsInCutoffRadius;
-				inputfilestream >> cellsInCutoffRadius;
-				double bBoxMin[3];
-				double bBoxMax[3];
-				for (int i = 0; i < 3; i++) {
-					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
-					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
-				}
-				if (this->_LJCutoffRadius == 0.0)
-					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
-				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
-				global_log->info() << "PARTICLE CONTAINER is LinkedCells" << endl;
+//				int cellsInCutoffRadius;
+//				inputfilestream >> cellsInCutoffRadius;
+//				double bBoxMin[3];
+//				double bBoxMax[3];
+//				for (int i = 0; i < 3; i++) {
+//					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+//					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+//				}
+//				if (this->_LJCutoffRadius == 0.0)
+//					_LJCutoffRadius = this->_cutoffRadius;
+//				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+//				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+//				global_log->info() << "PARTICLE CONTAINER is LinkedCells" << endl;
+				global_log->error() << "Not implemented right now!" << endl;
+				return;
 			} else if (token == "ReorderedLinkedCells") {
-				int cellsInCutoffRadius;
-				inputfilestream >> cellsInCutoffRadius;
-				double bBoxMin[3];
-				double bBoxMax[3];
-				for (int i = 0; i < 3; i++) {
-					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
-					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
-				}
-				if (this->_LJCutoffRadius == 0.0)
-					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
-				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+//				int cellsInCutoffRadius;
+//				inputfilestream >> cellsInCutoffRadius;
+//				double bBoxMin[3];
+//				double bBoxMax[3];
+//				for (int i = 0; i < 3; i++) {
+//					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+//					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+//				}
+//				if (this->_LJCutoffRadius == 0.0)
+//					_LJCutoffRadius = this->_cutoffRadius;
+//				_moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+//				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+				global_log->error() << "Not implemented right now!" << endl;
+				return;
 				global_log->info() << "PARTICLE CONTAINER is ReorderedLinkedCells" << endl;
 				global_log->warning() << "XXX Using this container is highly experimental, the implementation is EVIL!!!" << endl;
 			} else if (token == "BlockedReorderedLinkedCells") {
@@ -617,7 +621,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				unsigned long writeFrequency = 0;
 				string outputPathAndPrefix;
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
-				_outputPlugins.push_back(new VTKMoleculeWriter(writeFrequency, outputPathAndPrefix));
+				//_outputPlugins.push_back(new VTKMoleculeWriter(writeFrequency, outputPathAndPrefix));
+				global_log->warning() << "VTKMoleculeWriter not supported at the moment!" << std::endl;
 				global_log->debug() << "VTKWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 #else
 				Log::global_log->error() << std::endl << "VKT-Plotting demanded, but programme compiled without -DVTK!" << std::endl << std::endl;
@@ -629,7 +634,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
 
 				if (_particleContainerType == LINKED_CELL) {
-					_outputPlugins.push_back(new VTKGridWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
+					//_outputPlugins.push_back(new VTKGridWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
+					global_log->warning() << "VTKGridWriter not supported at the moment!" << std::endl;
 					global_log->debug() << "VTKGridWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 				} else {
 					global_log->warning() << "VTKGridWriter only supported with LinkedCells!" << std::endl;
@@ -644,7 +650,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
 
 				if (_particleContainerType == LINKED_CELL) {
-					_outputPlugins.push_back(new StatisticsWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
+					//_outputPlugins.push_back(new StatisticsWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
+					global_log->warning() << "StatisticsWriter disabled at the moment!" << std::endl;
 					global_log->debug() << "StatisticsWriter " << writeFrequency << " '" << outputPathAndPrefix
 					        << "'.\n";
 				} else {
