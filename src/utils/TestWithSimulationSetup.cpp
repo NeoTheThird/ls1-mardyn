@@ -9,6 +9,7 @@
 #include "utils/Logger.h"
 
 #include "Domain.h"
+#include "Simulation.h"
 #include "parallel/DomainDecompBase.h"
 #include "parallel/DomainDecompDummy.h"
 
@@ -51,6 +52,10 @@ void utils::TestWithSimulationSetup::setUp() {
 	#else
 	_domainDecomposition = new DomainDecompDummy();
 	#endif
+
+	global_simulation = new Simulation();
+	global_simulation->setDomain(_domain);
+	global_simulation->setDomainDecomposition(_domainDecomposition);
 }
 
 

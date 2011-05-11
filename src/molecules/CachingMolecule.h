@@ -231,6 +231,13 @@ public:
 	//! the cell structure must not be used to determine the order.
 	bool isLessThan(const CachingMolecule& m2) const;
 
+	void toString(std::ostream& ostrm) const {
+		ostrm << "ID=" << _id << " cid=" << _componentid << std::endl;
+		ostrm << "r=" << _r[0] << "," << _r[1] << "," << _r[2] << " v=" << _v[0] << "," << _v[1] << "," << _v[2] << std::endl;
+		ostrm << "F=" << _F[0] << "," << _F[1] << "," << _F[2] << " M=" << _M[0] << "," << _M[1] << "," << _M[2] << std::endl;
+		ostrm << "D=" << _D[0] << "," << _D[1] << "," << _D[2] << "  q=" << _q.qw() << "," << _q.qx() << "," << _q.qy() << "," << _q.qz() << std::endl;
+	}
+
 private:
 
 	unsigned long _id; // IDentification number of that molecule

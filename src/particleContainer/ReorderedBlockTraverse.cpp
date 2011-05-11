@@ -90,6 +90,12 @@ void ReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbo
 
 void ReorderedBlockTraverse::traversePairs() {
 
+	if (!IsSame<Molecule, HandlerMoleculeType>::Result::value) {
+		global_log->error() << "For this implementation, Molecule and MoleculeHandlerType have to be " <<
+				"Typedefs for the same class type!" << std::endl;
+		exit(-1);
+	}
+
 	_particlePairsHandler = _moleculeContainer->getPairHandler();
 	double _cutoffRadius = _moleculeContainer->getCutoff();
 	double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
@@ -147,11 +153,11 @@ void ReorderedBlockTraverse::traversePairs() {
 		// forces between molecules in the cell
 		if (currentCell.isInnerCell()) {
 			for (int i = 0; i < currentParticleCount; i++) {
-				Molecule& molecule1 = *currentCellParticles[i];
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 				for (int j = i+1; j < currentParticleCount; j++) {
-					Molecule& molecule2 = *currentCellParticles[j];
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[j]);
 					assert(&molecule1 != &molecule2);
 					double dd = molecule2.dist2(molecule1, distanceVector);
 
@@ -172,11 +178,11 @@ void ReorderedBlockTraverse::traversePairs() {
 
 				// loop over all particles in the cell
 				for (int i = 0; i < currentParticleCount; i++) {
-					Molecule& molecule1 = *currentCellParticles[i];
+					HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 					unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 					for (int j = 0; j < neighbourParticleCount; j++) {
-						Molecule& molecule2 = *neighbourCellParticles[j];
+						HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(neighbourCellParticles[j]);
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
 							_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
@@ -194,12 +200,12 @@ void ReorderedBlockTraverse::traversePairs() {
 	// this is relevant for the angle summation
 		if (currentCell.isHaloCell()) {
 			for (int i = 0; i < currentParticleCount; i++) {
-				Molecule& molecule1 = *currentCellParticles[i];
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 				if (molecule1.numTersoff() == 0)
 					continue;
 
 				for (int j = i+1; j < currentParticleCount; j++) {
-					Molecule& molecule2 = *currentCellParticles[j];
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[j]);
 					assert(&molecule1 != &molecule2);
 					if (molecule2.numTersoff() > 0) {
 						double dd = molecule2.dist2(molecule1, distanceVector);
@@ -219,7 +225,7 @@ void ReorderedBlockTraverse::traversePairs() {
 					std::vector<Molecule*>& neighbourCellParticles = neighbourCell.getParticlePointers();
 					int neighbourParticleCount = neighbourCellParticles.size();
 					for (int j = 0; j < neighbourParticleCount; j++) {
-						Molecule& molecule2 = *neighbourCellParticles[j];
+						HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(neighbourCellParticles[j]);
 						if (molecule2.numTersoff() == 0)
 							continue;
 						double dd = molecule2.dist2(molecule1, distanceVector);
@@ -233,11 +239,11 @@ void ReorderedBlockTraverse::traversePairs() {
 	// loop over all boundary cells and calculate forces to forward and backward neighbours
 		if (currentCell.isBoundaryCell()) {
 			for (int i = 0; i < currentParticleCount; i++) {
-				Molecule& molecule1 = *currentCellParticles[i];
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 				for (int j = i+1; j < currentParticleCount; j++) {
-					Molecule& molecule2 = *currentCellParticles[j];
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[j]);
 					assert(&molecule1 != &molecule2);
 
 					double dd = molecule2.dist2(molecule1, distanceVector);
@@ -258,11 +264,11 @@ void ReorderedBlockTraverse::traversePairs() {
 
 				// loop over all particles in the cell
 				for (int i = 0; i < currentParticleCount; i++) {
-					Molecule& molecule1 = *currentCellParticles[i];
+					HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 					unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 					for (int j = 0; j < neighbourParticleCount; j++) {
-						Molecule& molecule2 = *neighbourCellParticles[j];
+						HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(neighbourCellParticles[j]);
 
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
@@ -290,11 +296,11 @@ void ReorderedBlockTraverse::traversePairs() {
 				if (neighbourCell.isHaloCell()) {
 					// loop over all particles in the cell
 					for (int i = 0; i < currentParticleCount; i++) {
-						Molecule& molecule1 = *currentCellParticles[i];
+						HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 						unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 						for (int j = 0; j < neighbourParticleCount; j++) {
-							Molecule& molecule2 = *neighbourCellParticles[j];
+							HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(neighbourCellParticles[j]);
 
 							double dd = molecule2.dist2(molecule1, distanceVector);
 							if (dd < cutoffRadiusSquare) {
@@ -319,7 +325,7 @@ void ReorderedBlockTraverse::traversePairs() {
 
 		if (currentCell.isInnerCell() || currentCell.isBoundaryCell()) {
 			for (int i = 0; i < currentParticleCount; i++) {
-				Molecule& molecule1 = *currentCellParticles[i];
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(currentCellParticles[i]);
 
 				if (molecule1.numTersoff() == 0)
 					continue;

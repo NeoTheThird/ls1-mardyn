@@ -12,7 +12,7 @@ BlockedCell::BlockedCell() :	_particles(NULL), _handlerParticles(NULL)
 	_currentMoleculeType = BasicMolecule;
 #endif
 	_particles = new utils::DynamicArray<Molecule, true, false>(2);
-	_handlerParticles = NULL; //_particles;
+	_handlerParticles = NULL;
 	//std::cout << "Constructor BlockedCell: _particles at " << _particles << std::endl;
 }
 
@@ -25,7 +25,7 @@ BlockedCell::BlockedCell(const BlockedCell& other) {
 	_currentMoleculeType = BasicMolecule;
 #endif
 	_particles = new utils::DynamicArray<Molecule, true, false>(*(other._particles));
-	_handlerParticles = NULL; //_particles;
+	_handlerParticles = NULL;
 	//std::cout << "CopyConstructor BlockedCell: _particles at " << _particles << std::endl;
 }
 

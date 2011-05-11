@@ -137,12 +137,34 @@ void BlockedReorderedBlockTraverse::traversePairs() {
 
 #ifndef NDEBUG
 	global_log->debug() << "ReorderedBlockTraversal: Processing pairs and preprocessing Tersoff pairs." << endl;
+	global_log->debug() << "_minNeighbourOffset=" << _minNeighbourOffset << "; _maxNeighbourOffset=" << _maxNeighbourOffset<< endl;
 #endif
+
+
+	// open the window of cells with cache activated
+	for (int cellIndex = 0; cellIndex < _maxNeighbourOffset; cellIndex++) {
+		_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
+		#ifndef NDEBUG
+		global_log->debug() << "Opened cached cells window for cell index=<< " << cellIndex
+				<< " size()="<<_cells[cellIndex].getMoleculeCount() << endl;
+		#endif
+	}
 
 	// loop over all inner cells and calculate forces to forward neighbours
 	//for (cellIndexIter = _innerCellIndices.begin(); cellIndexIter != _innerCellIndices.end(); cellIndexIter++) {
 	for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++) {
 		BlockedCell& currentCell = _cells[cellIndex];
+
+		// extend the window of cells with cache activated
+		if (cellIndex + _maxNeighbourOffset < _cells.size()) {
+			_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
+			#ifndef NDEBUG
+			global_log->debug() << "Opened cached cells window for cell index=" << (cellIndex + _maxNeighbourOffset)
+					<< " with size()="<< _cells[cellIndex + _maxNeighbourOffset].getMoleculeCount()
+					<< " currentCell " << cellIndex << endl;
+			#endif
+		}
+
 		utils::DynamicArray<HandlerMoleculeType, true, false>& currentCellParticles = currentCell.getHandlerTypeParticles();
 		int currentParticleCount = currentCellParticles.size();
 
@@ -334,7 +356,29 @@ void BlockedReorderedBlockTraverse::traversePairs() {
 				_particlePairsHandler->processTersoffAtom(molecule1, params, delta_r);
 			}
 		}
+
+		// narrow the window of cells with cache activated
+		if (cellIndex >= -_minNeighbourOffset) {
+#ifndef NDEBUG
+			global_log->debug() << "Narrowing cached cells window for cell index=" << (cellIndex + _minNeighbourOffset)
+					<< " with size()="<<_cells[cellIndex + _minNeighbourOffset].getMoleculeCount()
+					<< " currentCell " << cellIndex << endl;
+#endif
+//			if (applyForces)
+//				_cells[cellIndex + _minNeighbourOffset].applyForces();
+			_cells[cellIndex + _minNeighbourOffset].convertToMoleculeType<Molecule, HandlerMoleculeType>();
+		}
+
 	} // for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++)
+
+	// close the window of cells with cache activated
+	for (unsigned int cellIndex = _cells.size() + _minNeighbourOffset; cellIndex < _cells.size(); cellIndex++) {
+		_cells[cellIndex].convertToMoleculeType<Molecule, HandlerMoleculeType>();
+#ifndef NDEBUG
+			global_log->debug() << "Narrowing cached cells window for cell index=" << cellIndex
+					<< " size()="<<_cells[cellIndex].getMoleculeCount() << endl;
+#endif
+	}
 
 	_particlePairsHandler->finish();
 }

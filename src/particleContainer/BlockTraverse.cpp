@@ -91,6 +91,12 @@ void BlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets
 
 void BlockTraverse::traversePairs() {
 
+	if (!IsSame<Molecule, HandlerMoleculeType>::Result::value) {
+		global_log->error() << "For this implementation, Molecule and MoleculeHandlerType have to be " <<
+				"Typedefs for the same class type!" << std::endl;
+		exit(-1);
+	}
+
 	_particlePairsHandler = _moleculeContainer->getPairHandler();
 	double _cutoffRadius = _moleculeContainer->getCutoff();
 	double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
@@ -142,13 +148,13 @@ void BlockTraverse::traversePairs() {
 
 		// forces between molecules in the cell
 		for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-			Molecule& molecule1 = **molIter1;
+			HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 			unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 			molIter2 = molIter1;
 			molIter2++; // no self interaction
 
 			for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-				Molecule& molecule2 = **molIter2;
+				HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 				assert(&molecule1 != &molecule2);
 				double dd = molecule2.dist2(molecule1, distanceVector);
 
@@ -167,11 +173,11 @@ void BlockTraverse::traversePairs() {
 
 			// loop over all particles in the cell
 			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 				for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 					double dd = molecule2.dist2(molecule1, distanceVector);
 					if (dd < cutoffRadiusSquare) {
 						_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
@@ -192,13 +198,13 @@ void BlockTraverse::traversePairs() {
         Cell& currentCell = _cells[cellIndex];
 
 		for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-			Molecule& molecule1 = **molIter1;
+			HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 			if (molecule1.numTersoff() == 0)
 				continue;
 			molIter2 = molIter1;
 			molIter2++;
 			for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-				Molecule& molecule2 = **molIter2;
+				HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 				assert(&molecule1 != &molecule2);
 				if (molecule2.numTersoff() > 0) {
 					double dd = molecule2.dist2(molecule1, distanceVector);
@@ -215,7 +221,7 @@ void BlockTraverse::traversePairs() {
 				if (!neighbourCell.isHaloCell())
 					continue;
 				for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 					if (molecule2.numTersoff() == 0)
 						continue;
 					double dd = molecule2.dist2(molecule1, distanceVector);
@@ -233,12 +239,12 @@ void BlockTraverse::traversePairs() {
 
 		// forces between molecules in the cell
 		for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-			Molecule& molecule1 = **molIter1;
+			HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 			unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 			molIter2 = molIter1;
 			molIter2++;
 			for (; molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-				Molecule& molecule2 = **molIter2;
+				HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 				assert(&molecule1 != &molecule2);
 
 				double dd = molecule2.dist2(molecule1, distanceVector);
@@ -257,11 +263,11 @@ void BlockTraverse::traversePairs() {
 
 			// loop over all particles in the cell
 			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				Molecule& molecule1 = **molIter1;
+				HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 				unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 				for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-					Molecule& molecule2 = **molIter2;
+					HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 
 					double dd = molecule2.dist2(molecule1, distanceVector);
 					if (dd < cutoffRadiusSquare) {
@@ -287,11 +293,11 @@ void BlockTraverse::traversePairs() {
 			if (neighbourCell.isHaloCell()) {
 				// loop over all particles in the cell
 				for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-					Molecule& molecule1 = **molIter1;
+					HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 					unsigned int num_tersoff = molecule1.numTersoff(); // important for loop unswitching
 
 					for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-						Molecule& molecule2 = **molIter2;
+						HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(*molIter2);
 
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
@@ -321,7 +327,7 @@ void BlockTraverse::traversePairs() {
 
 		Cell& currentCell = _cells[*cellIndexIter];
 		for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-			Molecule& molecule1 = **molIter1;
+			HandlerMoleculeType& molecule1 = *reinterpret_cast<HandlerMoleculeType*>(*molIter1);
 
 			if (molecule1.numTersoff() == 0)
 				continue;

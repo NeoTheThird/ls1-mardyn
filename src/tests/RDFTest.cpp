@@ -69,10 +69,9 @@ void RDFTest::testRDFCountSequential12_AdaptiveCell() {
 	// will be freed by the tearDown()-method.
 	_domainDecomposition = new DomainDecompDummy();
 
-	//ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-2x2x3.inp", 1.8);
-	//testRDFCountSequential12(moleculeContainer);
-	//delete moleculeContainer;
-	ASSERT_FAIL("IMPLEMENT THIS Test again!");
+	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-2x2x3.inp", 1.8);
+	testRDFCountSequential12(moleculeContainer);
+	delete moleculeContainer;
 }
 
 void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
@@ -144,10 +143,9 @@ void RDFTest::testRDFCountLinkedCell() {
 }
 
 void RDFTest::testRDFCountAdaptiveCell() {
-	//ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.8);
-	//testRDFCount(moleculeContainer);
-	//delete moleculeContainer;
-	ASSERT_FAIL("IMPLEMENT THIS Test again!");
+	ParticleContainer* moleculeContainer = initializeFromFile(ParticleContainerFactory::AdaptiveSubCell, "1clj-regular-12x12x12.inp", 1.8);
+	testRDFCount(moleculeContainer);
+	delete moleculeContainer;
 }
 
 void RDFTest::testRDFCount(ParticleContainer* moleculeContainer) {

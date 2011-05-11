@@ -102,6 +102,8 @@ Simulation::Simulation(optparse::Values& options, vector<string>& args) :
 	}
 }
 
+Simulation::Simulation() {}
+
 Simulation::~Simulation() {
 	if (_rdf)
 		delete _rdf;
@@ -514,36 +516,32 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> token;
 			if (token == "LinkedCells") {
 				_particleContainerType = LINKED_CELL;
-//				int cellsInCutoffRadius;
-//				inputfilestream >> cellsInCutoffRadius;
-//				double bBoxMin[3];
-//				double bBoxMax[3];
-//				for (int i = 0; i < 3; i++) {
-//					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
-//					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
-//				}
-//				if (this->_LJCutoffRadius == 0.0)
-//					_LJCutoffRadius = this->_cutoffRadius;
-//				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
-//				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
-//				global_log->info() << "PARTICLE CONTAINER is LinkedCells" << endl;
-				global_log->error() << "Not implemented right now!" << endl;
-				return;
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
+				global_log->info() << "PARTICLE CONTAINER is LinkedCells" << endl;
 			} else if (token == "ReorderedLinkedCells") {
-//				int cellsInCutoffRadius;
-//				inputfilestream >> cellsInCutoffRadius;
-//				double bBoxMin[3];
-//				double bBoxMax[3];
-//				for (int i = 0; i < 3; i++) {
-//					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
-//					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
-//				}
-//				if (this->_LJCutoffRadius == 0.0)
-//					_LJCutoffRadius = this->_cutoffRadius;
-//				_moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
-//				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
-				global_log->error() << "Not implemented right now!" << endl;
-				return;
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius, _particlePairsHandler);
 				global_log->info() << "PARTICLE CONTAINER is ReorderedLinkedCells" << endl;
 				global_log->warning() << "XXX Using this container is highly experimental, the implementation is EVIL!!!" << endl;
 			} else if (token == "BlockedReorderedLinkedCells") {
@@ -562,7 +560,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells" << endl;
 			}
 
-			/*else if (token == "AdaptiveSubCells") {
+			else if (token == "AdaptiveSubCells") {
 				_particleContainerType = ADAPTIVE_LINKED_CELL;
 				double bBoxMin[3];
 				double bBoxMax[3];
@@ -575,7 +573,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					_LJCutoffRadius = _cutoffRadius;
 				_moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, _particlePairsHandler);
-			}*/
+			}
 		} else if (token == "output") {
 			inputfilestream >> token;
 			if (token == "ResultWriter") {
@@ -621,8 +619,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				unsigned long writeFrequency = 0;
 				string outputPathAndPrefix;
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
-				//_outputPlugins.push_back(new VTKMoleculeWriter(writeFrequency, outputPathAndPrefix));
-				global_log->warning() << "VTKMoleculeWriter not supported at the moment!" << std::endl;
+				_outputPlugins.push_back(new VTKMoleculeWriter(writeFrequency, outputPathAndPrefix));
 				global_log->debug() << "VTKWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 #else
 				Log::global_log->error() << std::endl << "VKT-Plotting demanded, but programme compiled without -DVTK!" << std::endl << std::endl;
@@ -634,8 +631,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
 
 				if (_particleContainerType == LINKED_CELL) {
-					//_outputPlugins.push_back(new VTKGridWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
-					global_log->warning() << "VTKGridWriter not supported at the moment!" << std::endl;
+					_outputPlugins.push_back(new VTKGridWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
 					global_log->debug() << "VTKGridWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 				} else {
 					global_log->warning() << "VTKGridWriter only supported with LinkedCells!" << std::endl;
@@ -650,8 +646,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
 
 				if (_particleContainerType == LINKED_CELL) {
-					//_outputPlugins.push_back(new StatisticsWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
-					global_log->warning() << "StatisticsWriter disabled at the moment!" << std::endl;
+					_outputPlugins.push_back(new StatisticsWriter(writeFrequency, outputPathAndPrefix, static_cast<LinkedCells&> (*_moleculeContainer)));
 					global_log->debug() << "StatisticsWriter " << writeFrequency << " '" << outputPathAndPrefix
 					        << "'.\n";
 				} else {
@@ -1008,6 +1003,22 @@ void Simulation::prepare_start() {
 //	}
 
 	global_log->info() << "System initialised\n" << endl;
+
+	// Print info about molecule size (should be actually done by the StatisticsWriter
+	std::vector<bool> count;
+	Molecule* tmpMolecule = _moleculeContainer->begin();
+	while (tmpMolecule !=  _moleculeContainer->end()) {
+		if (tmpMolecule->componentid() >= count.size()) {
+			count.resize(tmpMolecule->componentid()+1, false);
+		}
+
+		if (count[tmpMolecule->componentid()] == false) {
+			std::cout << "Molecule(cid=" << tmpMolecule->componentid() << ") " << tmpMolecule->totalMemsize() << endl;
+			count[tmpMolecule->componentid()] = true;
+		}
+		tmpMolecule =_moleculeContainer->next();
+	}
+
 }
 
 void Simulation::simulate() {

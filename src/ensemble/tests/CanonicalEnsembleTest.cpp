@@ -51,6 +51,7 @@ void CanonicalEnsembleTest::UpdateNumMoleculesSequential() {
 	// has the ensemble updated the count of particles per component right?
 	ASSERT_EQUAL(1729ul, components[0].getNumMolecules());
 
+	delete container;
 #endif
 }
 

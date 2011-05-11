@@ -104,6 +104,9 @@ public:
 	//! @param argv Pointer to the list of arguments, also needed for MPI
 	Simulation(optparse::Values& options, std::vector<std::string>& args);
 
+	//! should only be used for testing purposes
+	Simulation();
+
 	//! @brief destruct simulation object
 	//!
 	~Simulation();
@@ -269,6 +272,11 @@ public:
 	//! Thus, if temperature increase is to be avoided, the user should
 	//! set the "initCanonical" parameter to "0".
 	double Tfactor(unsigned long simstep);
+
+	//! should be used only for testing purposes.
+	void setDomain(Domain* domain) {
+		_domain = domain;
+	}
 
 private:
 

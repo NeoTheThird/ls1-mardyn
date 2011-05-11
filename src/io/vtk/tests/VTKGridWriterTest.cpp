@@ -71,5 +71,6 @@ void VTKGridWriterTest::testEmptyGrid() {
 	removeFile("VTKGridWriterTest_2.vtu");
 #endif
 
+	delete container;
 
 }
