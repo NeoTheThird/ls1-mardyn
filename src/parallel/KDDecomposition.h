@@ -6,10 +6,11 @@
 #include "DomainDecompBase.h"
 #include "parallel/CollectiveCommunication.h"
 
+#include "molecules/MoleculeTypes.h"
+
 #include <list>
 #include <mpi.h>
 
-class Molecule;
 class ParticleData;
 class KDNode;
 

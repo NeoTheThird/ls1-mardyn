@@ -1,7 +1,7 @@
 #ifndef PARTICLE_H_
 #define PARTICLE_H_
 
-#include "molecules/Molecule.h"
+#include "molecules/MoleculeTypes.h"
 
 #include <mpi.h>
 #include "utils/Logger.h"
