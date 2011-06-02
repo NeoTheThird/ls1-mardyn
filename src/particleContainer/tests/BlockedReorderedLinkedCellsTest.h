@@ -17,6 +17,7 @@ class BlockedReorderedLinkedCellsTest: public ParticleContainerTest {
 	TEST_METHOD(testInsertion);
 	TEST_METHOD(testMoleculeIteration);
 	TEST_METHOD(testUpdateAndDeleteOuterParticles);
+	TEST_METHOD(testLinearize);
 	TEST_SUITE_END();
 
 public:
@@ -45,6 +46,8 @@ public:
 		BlockedReorderedLinkedCells container(boundings_min, boundings_max, 2.5, 2.5, 2.5, 1, NULL);
 		this->ParticleContainerTest::testUpdateAndDeleteOuterParticles(&container);
 	}
+
+	void testLinearize();
 };
 
 #endif /* BLOCKEDREORDEREDLINKEDCELLSTEST_H_ */

@@ -157,13 +157,19 @@ void Leapfrog::accelerateInstantaneously(ParticleContainer* molCont, Domain* dom
 }
 
 void Leapfrog::init1D(unsigned zoscillator, ParticleContainer* molCont) {
-	Molecule* thismol;
+	global_log->error() << "Leapfrog::init1D not supported!" << std::endl;
+	exit(-5);
+/*	Molecule* thismol;
 	for (thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
 		if (!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->setXY();
+*/
 }
 
 void Leapfrog::zOscillation(unsigned zoscillator, ParticleContainer* molCont) {
-	Molecule* thismol;
+	global_log->error() << "Leapfrog::init1D not supported!" << std::endl;
+	exit(-5);
+/*	Molecule* thismol;
 	for (thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
 		if (!(thismol->id() % zoscillator) && thismol->numTersoff()) thismol->resetXY();
+*/
 }

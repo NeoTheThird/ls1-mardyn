@@ -29,6 +29,7 @@
 #include "molecules/Site.h"
 #include "molecules/Component.h"
 #include "integrators/Integrator.h"
+#include "utils/Logger.h"
 class Domain;
 
 #include <vector>
@@ -38,6 +39,8 @@ class Domain;
 //! @brief Molecule modeled as LJ sphere with point polarities + Tersoff potential
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
 class BasicMolecule {
+
+	typedef float fp_type;
 
 public:
 	// TODO Correct this constructor: the components vector is optional,
@@ -54,9 +57,9 @@ public:
 	BasicMolecule(const BasicMolecule& m);
 
 	~BasicMolecule() {
-		assert(_sites_d); delete[] _sites_d;
-		assert(_osites_e); delete[] _osites_e;
-		assert(_sites_F); delete[] _sites_F;
+	//	assert(_sites_d); delete[] _sites_d;
+	//	assert(_osites_e); delete[] _osites_e;
+	//	assert(_sites_F); delete[] _sites_F;
 	}
 
 	BasicMolecule& operator=(const BasicMolecule& rhs);
@@ -85,18 +88,18 @@ public:
 	/** get M */
 	double M(unsigned short d) const {return _M[d]; }
 
-	double Utrans() const { return .5*_m*(_v[0]*_v[0]+_v[1]*_v[1]+_v[2]*_v[2]); }
+	double Utrans() const { return .5* (*components)[_componentid].m() *(_v[0]*_v[0]+_v[1]*_v[1]+_v[2]*_v[2]); }
 	double Urot();
 
 	/** get number of sites */
-	unsigned int numSites() const { return _numsites; }
-	unsigned int numLJcenters() const { return _ljcenters->size(); }
-	unsigned int numCharges() const { return _charges->size(); }
-	unsigned int numDipoles() const { return _dipoles->size(); }
-	unsigned int numQuadrupoles() const { return _quadrupoles->size(); }
-	unsigned int numTersoff() const { assert(_tersoff); return _tersoff->size(); }
+	unsigned int numSites() const { return (*components)[_componentid].numSites(); }
+	unsigned int numLJcenters() const { return (*components)[_componentid].numLJcenters(); }
+	unsigned int numCharges() const { return (*components)[_componentid].numCharges(); }
+	unsigned int numDipoles() const { return (*components)[_componentid].numDipoles(); }
+	unsigned int numQuadrupoles() const { return (*components)[_componentid].numQuadrupoles(); }
+	unsigned int numTersoff() const { return (*components)[_componentid].numTersoff(); }
 
-	const double* site_d(unsigned int i) const { return &(_sites_d[3*i]); }
+/*	const double* site_d(unsigned int i) const { return &(_sites_d[3*i]); }
 	const double* site_F(unsigned int i) const { return &(_sites_F[3*i]); }
 	const double* ljcenter_d(unsigned int i) const { return &(_ljcenters_d[3*i]); }
 	const double* charge_d(unsigned int i) const { return &(_charges_d[3*i]); }
@@ -104,6 +107,7 @@ public:
 	const double* dipole_e(unsigned int i) const { return &(_dipoles_e[3*i]); }
 	const double* quadrupole_d(unsigned int i) const { return &(_quadrupoles_d[3*i]); }
 	const double* quadrupole_e(unsigned int i) const { return &(_quadrupoles_e[3*i]); }
+*/
 
 	/**
 	 * get the total object memory size, together with all its members
@@ -157,7 +161,8 @@ public:
 	void vsub(const double ax, const double ay, const double az) {
 		_v[0] -= ax; _v[1] -= ay; _v[2] -= az;
 	}
-	void setXY() { fixedx = _r[0]; fixedy = _r[1]; }
+
+	/*	void setXY() { fixedx = _r[0]; fixedy = _r[1]; }
 	void resetXY()
 	{
 		_v[0] = 0.0;
@@ -167,7 +172,8 @@ public:
 		_r[0] = fixedx;
 		_r[1] = fixedy;
 	}
-
+*/
+/*
 	void Fljcenteradd(unsigned int i, double a[])
 	{ double* Fsite=&(_ljcenters_F[3*i]); for(unsigned short d=0;d<3;++d) Fsite[d]+=a[d]; }
 	void Fljcentersub(unsigned int i, double a[])
@@ -186,6 +192,7 @@ public:
 	{ double* Fsite=&(_quadrupoles_F[3*i]); for(unsigned short d=0;d<3;++d) Fsite[d]-=a[d]; }
 	void Ftersoffadd(unsigned int i, double a[])
 	{ double* Fsite=&(_tersoff_F[3*i]); for(unsigned short d=0;d<3;++d) Fsite[d]+=a[d]; }
+*/
 
 	void upd_preF(double dt, double vcorr=1., double Dcorr=1.);
 	void upd_cache();
@@ -200,9 +207,9 @@ public:
 	/** write information to stream */
 	void write(std::ostream& ostrm) const;
 
-	inline unsigned getCurTN() { return this->_numTersoffNeighbours; }
-	inline BasicMolecule* getTersoffNeighbour(unsigned i) { return this->_Tersoff_neighbours_first[i]; }
-	inline void clearTersoffNeighbourList() { this->_numTersoffNeighbours = 0; }
+	inline unsigned getCurTN() { warn("getCurTN"); return 0; } //return this->_numTersoffNeighbours; }
+	inline BasicMolecule* getTersoffNeighbour(unsigned i) { warn("getTersoffNeighbour"); return NULL; }//return this->_Tersoff_neighbours_first[i]; }
+	inline void clearTersoffNeighbourList() { warn("clearTersoffNeighbourList"); }//this->_numTersoffNeighbours = 0; }
 	void addTersoffNeighbour(BasicMolecule* m, bool pairType);
 	double tersoffParameters(double params[15]); //returns delta_r
 
@@ -240,47 +247,63 @@ public:
 
 private:
 
-	unsigned long _id; // IDentification number of that molecule
+	static const std::vector<Component>* components;
+
+	unsigned int _id; // IDentification number of that molecule
 	int _componentid;  // IDentification number of its component type
-	double _r[3];  // position coordinates
-	double _F[3];  // forces
-	double _v[3];  // velocity
+	fp_type _r[3];  // position coordinates
+	fp_type _F[3];  // forces
+	fp_type _v[3];  // velocity
 	Quaternion _q; // angular orientation
-	double _M[3];  // torsional moment
+	fp_type _M[3];  // torsional moment
     // TODO: We should rename _D to _L with respect to the literature.
-	double _D[3];  // angular momentum; the angular velocity;
+	fp_type _D[3];  // angular momentum; the angular velocity;
 
-	const std::vector<LJcenter>* _ljcenters;
-	const std::vector<Charge>* _charges;
-	const std::vector<Dipole>* _dipoles;
-	const std::vector<Quadrupole>* _quadrupoles;
-	const std::vector<Tersoff>* _tersoff;
+//	const std::vector<LJcenter>* _ljcenters;
+//	const std::vector<Charge>* _charges;
+//	const std::vector<Dipole>* _dipoles;
+//	const std::vector<Quadrupole>* _quadrupoles;
+//	const std::vector<Tersoff>* _tersoff;
 
-	double _m; // total mass
-	double _I[3],_invI[3];  // moment of inertia for principal axes and it's inverse
-	std::size_t _numsites; // number of sites
-	std::size_t _numorientedsites; // number of oriented sites (subset of sites)
+	//double _m; // total mass
+	//double _I[3],_invI[3];  // moment of inertia for principal axes and it's inverse
+//	std::size_t _numsites; // number of sites
+//	std::size_t _numorientedsites; // number of oriented sites (subset of sites)
 	// global site coordinates relative to site origin
 	// row order: dx1,dy1,dz1,dx2,dy2,dz2,...
-	double *_sites_d;
-	double *_ljcenters_d, *_charges_d, *_dipoles_d,
-	       *_quadrupoles_d, *_tersoff_d;
+//	double *_sites_d;
+//	double *_ljcenters_d, *_charges_d, *_dipoles_d,
+//	       *_quadrupoles_d, *_tersoff_d;
 	// site orientation
-	double *_osites_e;
-	double *_dipoles_e, *_quadrupoles_e;
+//	double *_osites_e;
+//	double *_dipoles_e, *_quadrupoles_e;
 	// site Forces
 	// row order: Fx1,Fy1,Fz1,Fx2,Fy2,Fz2,...
-	double* _sites_F;
-	double *_ljcenters_F, *_charges_F, *_dipoles_F,
-	       *_quadrupoles_F, *_tersoff_F;
+//	double* _sites_F;
+//	double *_ljcenters_F, *_charges_F, *_dipoles_F,
+//	       *_quadrupoles_F, *_tersoff_F;
 
-	BasicMolecule* _Tersoff_neighbours_first[MAX_TERSOFF_NEIGHBOURS];
-	bool _Tersoff_neighbours_second[MAX_TERSOFF_NEIGHBOURS];
-	int _numTersoffNeighbours;
-	double fixedx, fixedy;
+	//BasicMolecule* _Tersoff_neighbours_first[MAX_TERSOFF_NEIGHBOURS];
+	//bool _Tersoff_neighbours_second[MAX_TERSOFF_NEIGHBOURS];
+	//int _numTersoffNeighbours;
+//	double fixedx, fixedy;
+
 
 	// setup cache values/properties
 	void setupCache(const std::vector<Component>* components);
+
+	void warn(const std::string& method) {
+#ifndef NDEBUG
+		static std::vector<std::string> warnings;
+		for (size_t i = 0; i < warnings.size(); i++) {
+			if (warnings[i] == method) {
+				return;
+			}
+			warnings.push_back(method);
+			Log::global_log->warning() << "Implement BasicMolecule::" << method << "!"<< std::endl;
+		}
+#endif
+	}
 
 };
 

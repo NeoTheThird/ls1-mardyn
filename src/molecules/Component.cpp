@@ -30,6 +30,7 @@ Component::Component(unsigned int id) {
 	_I[0] = _I[1] = _I[2] = _I[3] = _I[4] = _I[5] = 0.;
 	_rot_dof = 0;
 	_Ipa[0] = _Ipa[1] = _Ipa[2] = 0.;
+	_invIpa[0] = _invIpa[1] = _invIpa[2] = 0.0;
 	_numMolecules = 0;
 	this->maximalTersoffExternalRadius = 0.0;
 
@@ -39,6 +40,17 @@ Component::Component(unsigned int id) {
 	_dipoles = vector<Dipole> ();
 	_tersoff = vector<Tersoff> ();
 }
+
+
+void Component::updateInvIpa() {
+	for (unsigned short d = 0; d < 3; ++d) {
+		if (_Ipa[d] != 0.)
+			_invIpa[d] = 1. / _Ipa[d];
+		else
+			_invIpa[d] = 0.;
+	}
+}
+
 
 void Component::setI(double Ixx, double Iyy, double Izz,
                      double Ixy, double Ixz, double Iyz) {
@@ -88,6 +100,7 @@ void Component::addLJcenter(double x, double y, double z,
 		_Ipa[d] = _I[d];
 		if (_Ipa[d] == 0.) --_rot_dof;
 	}
+	updateInvIpa();
 }
 
 void Component::addCharge(double x, double y, double z, double m, double q) {
@@ -108,6 +121,7 @@ void Component::addCharge(double x, double y, double z, double m, double q) {
 		_Ipa[d] = _I[d];
 		if (_Ipa[d] == 0.) --_rot_dof;
 	}
+	updateInvIpa();
 }
 
 void Component::addDipole(double x, double y, double z,
@@ -143,6 +157,7 @@ void Component::addTersoff(double x, double y, double z,
 		_Ipa[d] = _I[d];
 		if (_Ipa[d] == 0.) --_rot_dof;
 	}
+	updateInvIpa();
 }
 
 void Component::write(std::ostream& ostrm) const {

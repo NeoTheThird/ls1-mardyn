@@ -32,6 +32,7 @@
 using namespace std;
 using Log::global_log;
 
+const std::vector<Component>* BasicMolecule::components = NULL;
 
 BasicMolecule::BasicMolecule(unsigned long id, int componentid,
 	                 double rx, double ry, double rz,
@@ -39,7 +40,10 @@ BasicMolecule::BasicMolecule(unsigned long id, int componentid,
 	                 double q0, double q1, double q2, double q3,
 	                 double Dx, double Dy, double Dz,
 	                 const vector<Component>* components)
-		: _q(q0, q1, q2, q3), _ljcenters(NULL), _tersoff(NULL) {
+		: _q(q0, q1, q2, q3) /* _ljcenters(NULL), _tersoff(NULL), _components(*components) */ {
+	if (BasicMolecule::components == NULL) {
+		BasicMolecule::components = components;
+	}
 	_id = id;
 	_componentid = componentid;
 	_r[0] = rx;
@@ -51,10 +55,10 @@ BasicMolecule::BasicMolecule(unsigned long id, int componentid,
 	_D[0] = Dx;
 	_D[1] = Dy;
 	_D[2] = Dz;
-	_sites_d = _sites_F =_osites_e = NULL;
-	_numTersoffNeighbours = 0;
-	fixedx = rx;
-	fixedy = ry;
+// _sites_d = _sites_F =_osites_e = NULL;
+//	_numTersoffNeighbours = 0;
+//	fixedx = rx;
+//	fixedy = ry;
 	if (components)
 		setupCache(components);
 }
@@ -79,7 +83,7 @@ BasicMolecule::BasicMolecule(const BasicMolecule& m) {
 	_M[1] = m._M[1];
 	_M[2] = m._M[2];
 
-	_ljcenters = m._ljcenters;
+/*	_ljcenters = m._ljcenters;
 	_charges = m._charges;
 	_dipoles = m._dipoles;
 	_quadrupoles = m._quadrupoles;
@@ -122,9 +126,11 @@ BasicMolecule::BasicMolecule(const BasicMolecule& m) {
 	_dipoles_F = &(_charges_F[numCharges()*3]);
 	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
 	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
+
 	_numTersoffNeighbours = 0;
 	fixedx = m.fixedx;
 	fixedy = m.fixedy;
+*/
 }
 
 
@@ -148,7 +154,7 @@ BasicMolecule& BasicMolecule::operator=(const BasicMolecule& rhs) {
 	_M[1] = rhs._M[1];
 	_M[2] = rhs._M[2];
 
-	_ljcenters = rhs._ljcenters;
+/*	_ljcenters = rhs._ljcenters;
 	_charges = rhs._charges;
 	_dipoles = rhs._dipoles;
 	_quadrupoles = rhs._quadrupoles;
@@ -203,18 +209,20 @@ BasicMolecule& BasicMolecule::operator=(const BasicMolecule& rhs) {
 	_dipoles_F = &(_charges_F[numCharges()*3]);
 	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
 	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
+
 	_numTersoffNeighbours = 0;
 	fixedx = rhs.fixedx;
 	fixedy = rhs.fixedy;
-	return *this;
+*/	return *this;
 }
 
 
 
 void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
-	assert(_m);
+	double m = (*components)[_componentid].m();
+	assert(m);
 	double dt_halve = .5 * dt;
-	double dtInv2m = dt_halve / _m;
+	double dtInv2m = dt_halve / m;
 	for (unsigned short d = 0; d < 3; ++d) {
 		_v[d] = vcorr * _v[d] + dtInv2m * _F[d];
 		_r[d] += dt * _v[d];
@@ -223,7 +231,7 @@ void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	double w[3];
 	_q.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
-		w[d] *= _invI[d];
+		w[d] *= (*components)[_componentid].invI(d);
 	Quaternion qhalfstep;
 	_q.differentiate(w, qhalfstep);
 	qhalfstep.scale(dt_halve);
@@ -234,7 +242,7 @@ void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 		_D[d] = Dcorr * _D[d] + dt_halve * _M[d];
 	qhalfstep.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
-		w[d] *= _invI[d];
+		w[d] *= (*components)[_componentid].invI(d);
 	Quaternion qincr;
 	qhalfstep.differentiate(w, qincr);
 	qincr.scale(dt);
@@ -246,7 +254,7 @@ void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 
 void BasicMolecule::upd_cache() {
 	// update Cache (rotate sites and save relative positions)
-	unsigned int i;
+/*	unsigned int i;
 	unsigned int ns = numLJcenters();
 	for (i = 0; i < ns; ++i)
 		_q.rotateinv((*_ljcenters)[i].r(), &(_ljcenters_d[i*3]));
@@ -270,7 +278,7 @@ void BasicMolecule::upd_cache() {
 	ns = this->numTersoff();
 	for (i = 0; i < ns; i++)
 		_q.rotateinv((*_tersoff)[i].r(), &(_tersoff_d[i*3]));
-
+*/
 	clearFM();
 	//_Upot=0.;
 }
@@ -280,7 +288,8 @@ void BasicMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
 
 	calcFM();
 
-	double dtInv2m = dt_halve / _m;
+	double m = (*components)[_componentid].m();
+	double dtInv2m = dt_halve / m;
 	double v2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
 		_v[d] += dtInv2m * _F[d];
@@ -288,14 +297,14 @@ void BasicMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
 		_D[d] += dt_halve * _M[d];
 	}
     assert(!isnan(v2)); // catches NaN
-    summv2 += _m * v2;
+    summv2 += m * v2;
 
 	double w[3];
 	_q.rotate(_D, w); // L = D = Iw
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
-		w[d] *= _invI[d];
-		Iw2 += _I[d] * w[d] * w[d];
+		w[d] *= (*components)[_componentid].invI(d);
+		Iw2 += (*components)[_componentid].I(d) * w[d] * w[d];
 	}
     assert(!isnan(Iw2)); // catches NaN
 	sumIw2 += Iw2;
@@ -306,20 +315,21 @@ double BasicMolecule::Urot() {
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
-		w[d] *= _invI[d];
-		Iw2 += _I[d] * w[d] * w[d];
+		w[d] *= (*components)[_componentid].invI(d);
+		Iw2 += (*components)[_componentid].I(d) * w[d] * w[d];
 	}
 	return 0.5 * Iw2;
 }
 
 void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2) {
-	summv2 += _m * v2();
+	double m = (*components)[_componentid].m();
+	summv2 += m * v2();
 	double w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
-		w[d] *= _invI[d];
-		Iw2 += _I[d] * w[d] * w[d];
+		w[d] *= (*components)[_componentid].invI(d);
+		Iw2 += (*components)[_componentid].I(d) * w[d] * w[d];
 	}
 	sumIw2 += Iw2;
 }
@@ -328,14 +338,15 @@ void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2, double off
 	double vcx = _v[0] - offx;
 	double vcy = _v[1] - offy;
 	double vcz = _v[2] - offz;
-	summv2 += _m * (vcx*vcx + vcy*vcy + vcz*vcz);
+	double m = (*components)[_componentid].m();
+	summv2 += m * (vcx*vcx + vcy*vcy + vcz*vcz);
 
 	double w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
-		w[d] *= _invI[d];
-		Iw2 += _I[d] * w[d] * w[d];
+		w[d] *= (*components)[_componentid].invI(d);
+		Iw2 += (*components)[_componentid].I(d) * w[d] * w[d];
 	}
 	sumIw2 += Iw2;
 }
@@ -356,8 +367,9 @@ void BasicMolecule::write(ostream& ostrm) const {
 }
 
 void BasicMolecule::addTersoffNeighbour(BasicMolecule* m, bool pairType) {
+	warn("addTersoffNeighbour");
 	// this->_Tersoff_neighbours.insert(pair<BasicMolecule*, bool>(m, (pairType > 0)));
-	for (int j = 0; j < _numTersoffNeighbours; j++) {
+/*	for (int j = 0; j < _numTersoffNeighbours; j++) {
 		if (m->_id == _Tersoff_neighbours_first[j]->id()) {
 			this->_Tersoff_neighbours_first[j] = m;
 			this->_Tersoff_neighbours_second[j] = pairType;
@@ -372,11 +384,14 @@ void BasicMolecule::addTersoffNeighbour(BasicMolecule* m, bool pairType) {
 		global_log->error() << "Tersoff neighbour list overflow: BasicMolecule " << m->_id << " has more than " << MAX_TERSOFF_NEIGHBOURS << " Tersoff neighbours." << endl;
 		exit(1);
 	}
+
+	*/
 }
 
 double BasicMolecule::tersoffParameters(double params[15]) //returns delta_r
 {
-	const Tersoff* t = &((*(this->_tersoff))[0]);
+	const std::vector<Tersoff>* tersoff = &((*components)[_componentid].tersoff());
+	const Tersoff* t = &((*(tersoff))[0]);
 	params[ 0] = t->R();
 	params[ 1] = t->S();
 	params[ 2] = t->h();
@@ -404,28 +419,28 @@ inline void BasicMolecule::setupCache(const vector<Component>* components) {
 	if (components->size() == 0)
 		return;
 	assert(_componentid >= 0);
-	_numsites = _numorientedsites = 0;
-	_ljcenters = &(*components)[_componentid].ljcenters();
-	_numsites += _ljcenters->size();
-	_charges = &(*components)[_componentid].charges();
-	_numsites += _charges->size();
-	_dipoles = &(*components)[_componentid].dipoles();
-	_numsites += _dipoles->size();
-	_numorientedsites += _dipoles->size();
-	_quadrupoles = &(*components)[_componentid].quadrupoles();
-	_numsites += _quadrupoles->size();
-	_numorientedsites += _quadrupoles->size();
-	_tersoff = &(*components)[_componentid].tersoff();
-#ifndef NDEBUG
-	if (!_tersoff) {
-		global_log->error() << "Tersoff vector null pointer detected for BasicMolecule " << _id << endl;
-		exit(1);
-	}
-#endif
-	_numsites += _tersoff->size();
+//	_numsites = _numorientedsites = 0;
+//	_ljcenters = &(*components)[_componentid].ljcenters();
+//	_numsites += _ljcenters->size();
+//	_charges = &(*components)[_componentid].charges();
+//	_numsites += _charges->size();
+//	_dipoles = &(*components)[_componentid].dipoles();
+//	_numsites += _dipoles->size();
+//	_numorientedsites += _dipoles->size();
+//	_quadrupoles = &(*components)[_componentid].quadrupoles();
+//	_numsites += _quadrupoles->size();
+//	_numorientedsites += _quadrupoles->size();
+//	_tersoff = &(*components)[_componentid].tersoff();
+//#ifndef NDEBUG
+//	if (!_tersoff) {
+//		global_log->error() << "Tersoff vector null pointer detected for BasicMolecule " << _id << endl;
+//		exit(1);
+//	}
+//#endif
+//	_numsites += _tersoff->size();
 
-	_m = (*components)[_componentid].m();
-	_I[0] = (*components)[_componentid].I11();
+	//_m = (*components)[_componentid].m();
+/*	_I[0] = (*components)[_componentid].I11();
 	_I[1] = (*components)[_componentid].I22();
 	_I[2] = (*components)[_componentid].I33();
 	for (unsigned short d = 0; d < 3; ++d) {
@@ -434,8 +449,8 @@ inline void BasicMolecule::setupCache(const vector<Component>* components) {
 		else
 			_invI[d] = 0.;
 	}
-
-	assert(_numsites);
+*/
+/*	assert(_numsites);
 
 	_sites_d = new double[_numsites*3];
 	assert(_sites_d);
@@ -458,26 +473,26 @@ inline void BasicMolecule::setupCache(const vector<Component>* components) {
 	_dipoles_F = &(_charges_F[numCharges()*3]);
 	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
 	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
-
+*/
 	this->clearFM();
 }
 
 inline void BasicMolecule::clearFM() {
-	for (unsigned int i = 0; i < _numsites * 3; ++i)
-		_sites_F[i] = 0.;
+//	for (unsigned int i = 0; i < _numsites * 3; ++i)
+//		_sites_F[i] = 0.;
 	_F[0] = _F[1] = _F[2] = 0.;
 	_M[0] = _M[1] = _M[2] = 0.;
 }
 
 void BasicMolecule::calcFM() {
-	unsigned int ns = numSites();
+/*	unsigned int ns = numSites();
 	for (unsigned int si = 0; si < ns; ++si) {
 		const double* Fsite = site_F(si);
 		const double* dsite = site_d(si);
 #ifndef NDEBUG
-		/*
-		 * catches NaN assignments
-		 */
+		//
+		// catches NaN assignments
+		//
 		for (int d = 0; d < 3; d++) {
 			if (isnan(dsite[d])) {
 				global_log->error() << "Severe dsite[" << d << "] error for site " << si << " of m" << _id << endl;
@@ -494,6 +509,7 @@ void BasicMolecule::calcFM() {
 		_M[1] += dsite[2] * Fsite[0] - dsite[0] * Fsite[2];
 		_M[2] += dsite[0] * Fsite[1] - dsite[1] * Fsite[0];
 	}
+	*/
 }
 
 
@@ -507,17 +523,17 @@ void BasicMolecule::calcFM() {
 void BasicMolecule::check(unsigned long id) {
 	assert(_id == id);
 	assert(_componentid >= 0);
-	assert(_m > 0.0);
-	assert(_numsites > 0);
-	assert(_numorientedsites >= 0);
+	assert((*components)[_componentid].m() > 0.0);
+//	assert(_numsites > 0);
+//	assert(_numorientedsites >= 0);
 	for (int d = 0; d < 3; d++) {
 		assert(!isnan(_r[d]));
 		assert(!isnan(_v[d]));
 		assert(!isnan(_D[d]));
 		assert(!isnan(_F[d]));
 		assert(!isnan(_M[d]));
-		assert(!isnan(_I[d]));
-		assert(!isnan(_invI[d]));
+		assert(!isnan((*components)[_componentid].I(d)));
+		assert(!isnan((*components)[_componentid].invI(d)));
 	}
 }
 
@@ -557,12 +573,12 @@ unsigned long BasicMolecule::totalMemsize() const {
 	unsigned long size = sizeof (*this);
 
 	//_sites_d
-	size += sizeof(double) * _numsites * 3;
+//	size += sizeof(double) * _numsites * 3;
 	// site orientation _osites_e
-	size += sizeof(double) * _numorientedsites * 3;
+//	size += sizeof(double) * _numorientedsites * 3;
 	// site Forces _sites_F
 	// row order: Fx1,Fy1,Fz1,Fx2,Fy2,Fz2,...
-	size += sizeof(double) * _numsites * 3;
+//	size += sizeof(double) * _numsites * 3;
 
 	return size;
 }

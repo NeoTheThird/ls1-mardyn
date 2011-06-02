@@ -55,9 +55,6 @@ public:
 
 	virtual void tearDown();
 
-
-protected:
-
 	/**
 	 * Initialize a particle container from the given phase specification file.
 	 * The domain class is setup as far as the input file is concerned, and for
@@ -73,6 +70,8 @@ protected:
 	 * @see ParticleContainerFactory::createInitializedParticleContainer()
 	 */
 	ParticleContainer* initializeFromFile(ParticleContainerFactory::type type, const char* fileName, double cutoff);
+
+protected:
 
 	int _rank;
 

@@ -11,7 +11,7 @@
 #include "molecules/BasicMolecule.h"
 #include "molecules/CachingMolecule.h"
 
-typedef CachingMolecule Molecule;
+typedef BasicMolecule Molecule;
 
 typedef CachingMolecule HandlerMoleculeType;
 

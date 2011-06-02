@@ -26,6 +26,9 @@
  @author Martin Bernreuther
  */
 class Quaternion {
+
+	typedef float fp_type;
+
 public:
 	Quaternion(double qw = 0., double qx = 0., double qy = 0., double qz = 0.)
 			: m_qw(qw), m_qx(qx), m_qy(qy), m_qz(qz) {
@@ -70,6 +73,15 @@ public:
 	}
 
 	void operator *=(const Quaternion& q);
+
+	void rotate(const float d[3], double drot[3]) const {
+		double d_new[3];
+		d_new[0] = d[0];
+		d_new[1] = d[1];
+		d_new[2] = d[2];
+		rotate(d_new, drot);
+	}
+
 	void rotate(const double d[3], double drot[3]) const;
 	void rotate(double d[3]) const {
 		double drot[3];
@@ -93,7 +105,7 @@ public:
 	void getRotinvMatrix(double R[3][3]) const;
 
 private:
-	double m_qw, m_qx, m_qy, m_qz; // components
+	fp_type m_qw, m_qx, m_qy, m_qz; // components
 
 };
 

@@ -51,6 +51,8 @@ public:
 	double I11() const { return _Ipa[0]; }
 	double I22() const { return _Ipa[1]; }
 	double I33() const { return _Ipa[2]; }
+	double I(int i) const { return _Ipa[i];}
+	double invI(int i) const { return _invIpa[i];}
 	void setI11(double I) { _Ipa[0]=I; }
 	void setI22(double I) { _Ipa[1]=I; }
 	void setI33(double I) { _Ipa[2]=I; }
@@ -110,6 +112,10 @@ public:
 	double T() { return _T; }
 
 private:
+
+	// update the inverse moment of inertia (to be called each time _Ipa has changed!
+	void updateInvIpa();
+
 	unsigned int _id; // IDentification number
 	// LJcenter,Dipole,Quadrupole have different size -> not suitable to store in a _Site_-array
 	//std::vector<Site> _sites;
@@ -125,6 +131,7 @@ private:
 	double _I[6]; // moments of inertia tensor
 	unsigned long _rot_dof; // number of rotational degrees of freedom
 	double _Ipa[3]; // moments of inertia for principal axes
+	double _invIpa[3]; // inverse moments of inertia for for principal axes
 
 	/* cached values, set by ensemble class! */
 	unsigned long _numMolecules; // number of molecules for this molecule type

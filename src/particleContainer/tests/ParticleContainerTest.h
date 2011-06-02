@@ -10,6 +10,7 @@
 
 #include "molecules/Component.h"
 #include "utils/Testing.h"
+#include "utils/TestWithSimulationSetup.h"
 #include <vector>
 
 class ParticleContainer;
@@ -22,7 +23,7 @@ class ParticleContainer;
  * As this class should provide basic testing, it doesn't use any convenience methods
  * for setup.
  */
-class ParticleContainerTest: public utils::Test {
+class ParticleContainerTest: public utils::TestWithSimulationSetup {
 
 public:
 	ParticleContainerTest();

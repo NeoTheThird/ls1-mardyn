@@ -492,6 +492,35 @@ void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorn
 	}
 }
 
+
+void BlockedReorderedLinkedCells::linearize(utils::DynamicArray<Molecule, true, false>& molecules, std::vector<int>& cellStartIndices) {
+	int cellStartIndex = 0;
+	for (size_t i = 0; i < _cells.size(); i++) {
+		//std::cout << "Cell[" << i<< "].size()=" << _cells[i].getMoleculeCount() << endl;
+		utils::DynamicArray<Molecule, true, false>& cellMolecules = _cells[i].getParticles();
+		molecules.insert(molecules.end(), cellMolecules.begin(), cellMolecules.end());
+		cellStartIndices.push_back(cellStartIndex);
+		cellStartIndex += cellMolecules.size();
+	}
+}
+
+
+void BlockedReorderedLinkedCells::delinearize(utils::DynamicArray<Molecule, true, false>& molecules) {
+	// TODO maybe replace the following with copying subarrays, instead of assignment?
+	assert(molecules.size() == getNumberOfParticles());
+
+	int moleculeIndex = 0;
+	for (size_t i = 0; i < _cells.size(); i++) {
+		utils::DynamicArray<Molecule, true, false>& cellMolecules = _cells[i].getParticles();
+		for (size_t j = 0; j < cellMolecules.size(); j++) {
+			assert(cellMolecules[j].id() == molecules[moleculeIndex].id());
+			cellMolecules[j] = molecules[moleculeIndex];
+			moleculeIndex++;
+		}
+	}
+}
+
+
 //################################################
 //############ PRIVATE METHODS ###################
 //################################################

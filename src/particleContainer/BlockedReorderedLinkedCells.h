@@ -204,6 +204,21 @@ public:
 	int grandcanonicalBalance(DomainDecompBase* comm);
 	void grandcanonicalStep(ChemicalPotential* mu, double T);
 
+	/**
+	 * Create one big dynamic array containing all molecules.
+	 *
+	 * @param molecules out parameter; the array to which all molecules are appended
+	 * @param cellStartIndices array mapping the index of a cell to the index of the first
+	 *        molecule of that cell in molecules
+	 */
+	void linearize(utils::DynamicArray<Molecule, true, false>& molecules, std::vector<int>& cellStartIndices);
+
+	/**
+	 * Copy the molecules back into their cells.
+	 *
+	 * @param molecules the array molecules as it has been returned from method linearize().
+	 */
+	void delinearize(utils::DynamicArray<Molecule, true, false>& molecules);
 
 #ifdef VTK
 	friend class VTKGridWriter;

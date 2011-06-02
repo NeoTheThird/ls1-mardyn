@@ -141,38 +141,35 @@ void BlockedCell::convertToHandlerMoleculeType() {
 	_currentMoleculeType = HandlerMolecule;
 	#endif
 
-//	std::vector<Component>& components = global_simulation->getDomain()->getComponents();
+	std::vector<Component>& components = global_simulation->getDomain()->getComponents();
 
 	_handlerParticles = new utils::DynamicArray<HandlerMoleculeType, true, false>();
 
 	for (size_t i = 0; i < _particles->size(); i++) {
-		_handlerParticles->push_back(HandlerMoleculeType((*_particles)[i]));
+		//_handlerParticles->push_back(HandlerMoleculeType((*_particles)[i]));
+		_handlerParticles->push_back(HandlerMoleculeType (
+						(*_particles)[i].id(),
+						(*_particles)[i].componentid(),
+						(*_particles)[i].r(0),
+						(*_particles)[i].r(1),
+						(*_particles)[i].r(2),
+						(*_particles)[i].v(0),
+						(*_particles)[i].v(1),
+						(*_particles)[i].v(2),
+						(*_particles)[i].q().qw(),
+						(*_particles)[i].q().qx(),
+						(*_particles)[i].q().qy(),
+						(*_particles)[i].q().qz(),
+						(*_particles)[i].D(0),
+						(*_particles)[i].D(1),
+						(*_particles)[i].D(2),
+						&components)
+				);
 	}
 
 	for (size_t i = 0; i < _particles->size(); i++) {
 		(*_handlerParticles)[i].upd_cache();
 	}
-
-	/*	_handlerParticles->push_back(HandlerMoleculeType (
-				(*_particles)[i].id(),
-				(*_particles)[i].componentid(),
-				(*_particles)[i].r(0),
-				(*_particles)[i].r(1),
-				(*_particles)[i].r(2),
-				(*_particles)[i].v(0),
-				(*_particles)[i].v(1),
-				(*_particles)[i].v(2),
-				(*_particles)[i].q().qw(),
-				(*_particles)[i].q().qx(),
-				(*_particles)[i].q().qy(),
-				(*_particles)[i].q().qz(),
-				(*_particles)[i].D(0),
-				(*_particles)[i].D(1),
-				(*_particles)[i].D(2),
-				&components)
-		);*/
-
-	//}
 }
 
 
@@ -200,12 +197,12 @@ void BlockedCell::convertToMoleculeType() {
 		force[0] = (*_handlerParticles)[i].F(0);
 		force[1] = (*_handlerParticles)[i].F(1);
 		force[2] = (*_handlerParticles)[i].F(2);
-		(*_particles)[i].Fadd(force);
+		(*_particles)[i].setF(force);
 		double M[3];
 		M[0] = (*_handlerParticles)[i].M(0);
 		M[1] = (*_handlerParticles)[i].M(1);
 		M[2] = (*_handlerParticles)[i].M(2);
-		(*_particles)[i].Madd(M);
+		(*_particles)[i].setM(M);
 	}
 
 	delete _handlerParticles;
