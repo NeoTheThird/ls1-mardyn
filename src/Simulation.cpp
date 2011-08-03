@@ -65,6 +65,7 @@ Simulation::Simulation(int argc, char **argv){
   this->_cutoffRadius = 0;
   this->_LJCutoffRadius = 0;
   this->_resultOutputTimesteps = 25;
+  this->_restartOutputInterval = 0;
 #ifdef COMPLEX_POTENTIAL_SET
   this->_doRecordProfile = false;
   this->_profileRecordingTimesteps = 7;
@@ -196,8 +197,15 @@ Simulation::Simulation(int argc, char **argv){
         unsigned long writeFrequency;
         string outputPathAndPrefix;
         inputfilestream >> writeFrequency >> outputPathAndPrefix;
+        if(_restartOutputInterval == 0)
+           this->_restartOutputInterval = writeFrequency;
+        _outputPlugins.push_back(new md_io::XyzWriter(_numberOfTimesteps, writeFrequency, outputPathAndPrefix));
+      }
+      else if(token == "XdrWriter") {
+        unsigned long writeFrequency;
+        string outputPathAndPrefix;
+        inputfilestream >> writeFrequency >> outputPathAndPrefix;
         this->_restartOutputInterval = writeFrequency;
-        // _outputPlugins.push_back(new md_io::XyzWriter(_numberOfTimesteps, writeFrequency, outputPathAndPrefix));
       }
       else if(token == "VisittWriter")
       {
@@ -591,6 +599,8 @@ Simulation::Simulation(int argc, char **argv){
     }
   }
   
+  if(this->_restartOutputInterval == 0) this->_restartOutputInterval = 131072;
+
   if(this->_LJCutoffRadius == 0.0) _LJCutoffRadius = this->_cutoffRadius;
   unsigned long maxid = _domain->readPhaseSpaceData(
     _moleculeContainer

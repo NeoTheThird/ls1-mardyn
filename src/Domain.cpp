@@ -213,6 +213,36 @@ double Domain::getGlobalLength(int index) const {
 }
 
 #ifdef COMPLEX_POTENTIAL_SET
+void Domain::calculatePressureVirialProfile(Molecule* mi, Molecule* mj, double forcex, double forcey, double forcez, double dr[3]) {
+	//TODO
+	// calculation of the molecules' positions
+	double ri[3], rj[3];
+	// double rij;
+        unsigned unIDi, unIDj, xuni, xunj, yuni, yunj, zuni, zunj;
+  	for (int d = 0; d <=2; ++d){
+  		ri[d] = mi->r(d);
+ 		rj[d] = mj->r(d);
+	}
+         xuni = (unsigned)floor(ri[0] * this->_universalInvProfileUnit[0]);
+         yuni = (unsigned)floor(ri[1] * this->_universalInvProfileUnit[1]);
+         zuni = (unsigned)floor(ri[2] * this->_universalInvProfileUnit[2]);
+         unIDi = xuni * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
+                + yuni * this->_universalNProfileUnits[2] + zuni;
+
+         xunj = (unsigned)floor(rj[0] * this->_universalInvProfileUnit[0]);
+         yunj = (unsigned)floor(rj[1] * this->_universalInvProfileUnit[1]);
+         zunj = (unsigned)floor(rj[2] * this->_universalInvProfileUnit[2]);
+         unIDj = xunj * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
+                + yunj * this->_universalNProfileUnits[2] + zunj;
+
+          this->_localnormalPressureVirialProfile[unIDi] += forcey*dr[1];
+          this->_localnormalPressureVirialProfile[unIDj] += forcey*dr[1];
+          this->_localtanPressureVirialProfile[unIDi] += (forcex*dr[0] + forcez*dr[2]);
+          this->_localtanPressureVirialProfile[unIDj] += (forcex*dr[0] + forcez*dr[2]);
+}
+#endif
+
+#ifdef COMPLEX_POTENTIAL_SET
 void Domain::calculateGlobalValues( parallel::DomainDecompBase* domainDecomp,
                                     datastructures::ParticleContainer<Molecule>*
                                        particleContainer,
@@ -1265,12 +1295,14 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
          string upryname(prefix);
 #endif
+         string pntpryname(prefix); //geaendert
          rhpryname += ".rhpr";
          vzpryname += ".vRpr";
          Tpryname += ".Tpr";
 #ifdef GRANDCANONICAL
          upryname += ".upr";
 #endif
+         pntpryname += ".pntpry"; //geaendert
          if(this->_universalSphericalGeometry)
          {
             if(asp == 0)
@@ -1345,7 +1377,8 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
          ofstream* upry = new ofstream(upryname.c_str());
 #endif
-         if (!(*Tpry && *rhpry))
+         ofstream *pntpry = new ofstream(pntpryname.c_str()); // geaendert
+         if (!(*Tpry && *rhpry && *pntpry)) // geaendert
          {
             return;
          }
@@ -1353,8 +1386,9 @@ void Domain::outputProfile(const char* prefix)
          if(!this->_universalSphericalGeometry) vzpry->precision(6);
          Tpry->precision(8);
 #ifdef GRANDCANONICAL
-         upry->precision(7);
+         upry->precision(5);
 #endif
+         pntpry->precision(6); // geaendert
 
          *rhpry << "# coord\trho\ttotal DOF\n# \n";
          if(this->_universalSphericalGeometry)
@@ -1367,11 +1401,12 @@ void Domain::outputProfile(const char* prefix)
          }
          *Tpry << "# coord\t2Ekin/#DOF\t2Ekin/3N (dir.)\tT\n# \n";
 #ifdef GRANDCANONICAL
-         double mu_id_glob = _globalTemperatureMap[0] * log(_globalDecisiveDensity[cid]);
-         *upry << "# coord\t\tmu_res(T_loc)\tmu_res(T = " << _globalTemperatureMap[0]
-               << "\t\tmu_id(rho_loc, T_loc)\tmu_id(global)\t\tmu(rho_loc, T_loc)\tmu(mu_id = "
-               << mu_id_glob << ")\t\tinstances(local)\tinstances(global)\n";
+         *upry << "# coord\t\tmu_conf(loc)  mu_conf(glob) \t\t mu_rho(loc)  mu_rho(glob) \t "
+               << "mu_at(loc)  mu_at(glob) \t\t mu_T(loc)  mu_T(glob) \t mu_id(loc)  "
+               << "mu_id(glob) \t\t mu_res(loc)  mu_res(glob) \t mu(loc)  mu(glob) \t\t #(loc)  "
+               << "#(glob)\n";
 #endif
+         *pntpry << "# coord\tpNK\tpNC\tpN\tpTK\tpTC\tpTn# \n";
    
          double layerVolume;
          if(_universalSphericalGeometry)
@@ -1389,6 +1424,9 @@ void Domain::outputProfile(const char* prefix)
             if((_universalSphericalGeometry) && (asp == 1)) yval = pow(yval, 1.0/3.0);
     
             long double Ny = 0.0;
+            long double rhoy = 0.0;
+            long double confignormalA = 0.0;
+            long double configtanA = 0.0;
             long double DOFy = 0.0;
             long double twoEkiny = 0.0;
             long double twoEkindiry = 0.0;
@@ -1399,6 +1437,12 @@ void Domain::outputProfile(const char* prefix)
             long double widomSigExpyTloc = 0.0;
             long double widomInstancesyTloc = 0.0;
 #endif
+            long double kineticnormal = 0.0;
+            long double kinetictan = 0.0;
+            long double confignormal = 0.0;
+            long double configtan = 0.0;
+            double normalPressurey;
+            double tanPressurey;
             for(unsigned d = 0; d < 3; d++) velocitysumy[d] = 0.0;
             for(unsigned x = 0; x < this->_universalNProfileUnits[aspx]; x++)
             {
@@ -1409,6 +1453,8 @@ void Domain::outputProfile(const char* prefix)
                   Ny += this->_globalNProfile[cid][unID];
                   DOFy += this->_globalDOFProfile[cid][unID];
                   twoEkiny += this->_globalKineticProfile[cid][unID];
+                  confignormal += this->_globalnormalPressureVirialProfile[unID];
+                  configtan += this->_globaltanPressureVirialProfile[unID];
                   for(unsigned d = 0; d < 3; d++)
                   {
                      velocitysumy[d] += this->_globalvProfile[d][cid][unID];
@@ -1423,6 +1469,14 @@ void Domain::outputProfile(const char* prefix)
             }
       
             double rho_loc = Ny / (layerVolume * this->_globalAccumulatedDatasets);
+
+            kineticnormal = rhoy * this->_globalTemperatureMap[0];
+            confignormalA = (confignormal)/(2*layerVolume*this->_globalAccumulatedDatasets);
+            kinetictan = rhoy * this->_globalTemperatureMap[0];
+            configtanA = (configtan)/(4*layerVolume*this->_globalAccumulatedDatasets);
+            normalPressurey = kineticnormal + confignormalA;
+            tanPressurey = kinetictan + configtanA;
+
             if(Ny >= 49.0)
             {
                *rhpry << yval << "\t" << rho_loc << "\t" << DOFy << "\n";
@@ -1447,30 +1501,47 @@ void Domain::outputProfile(const char* prefix)
                      << (twoEkindiry / (3.0*Ny)) << "\t" << ((twoEkiny - twoEkindiry) / DOFy) << "\n";
 
 #ifdef GRANDCANONICAL
-               if(widomInstancesy >= 2401.0)
+               if(widomInstancesy >= 900.0)
                {
-                  double mu_res_glob = -log(widomSigExpy / widomInstancesy)*_globalTemperatureMap[0];
+                  double mu_res_glob = -log(widomSigExpy / widomInstancesy);
+                  double mu_conf_glob = mu_res_glob * _globalTemperatureMap[0];
+                  double mu_id_glob = _globalTemperatureMap[0] * log(_globalDecisiveDensity[cid]);
 
+                  double mu_T_glob = 0.0;
                   double mu_loc = 0.0;
-                  double mu_id_loc = 0.0;
+                  double mu_rho_loc = 0.0;
+                  double mu_T_loc = 0.0;
                   double mu_res_loc = 0.0;
-                  if(Ny >= 49.0)
+                  double mu_conf_loc = 0.0;
+                  if(Ny >= 30.0)
                   {
-                     double Tloc = (twoEkiny - twoEkindiry) / DOFy;
-                     mu_id_loc = Tloc * log(rho_loc * _universalLambda[cid]*_universalLambda[cid]*_universalLambda[cid]);
-                     if(widomInstancesyTloc >= 2401.0)
+                     mu_T_glob = 3.0*_globalTemperatureMap[0] * log(_universalLambda[cid]);
+                     mu_res_loc = -log(widomSigExpyTloc / widomInstancesyTloc);              
+
+                     if(widomInstancesyTloc >= 900.0)
                      {
-                        mu_res_loc = -log(widomSigExpyTloc / widomInstancesyTloc)*Tloc;
-                        mu_loc = mu_id_loc + mu_res_loc;
+                        double Tloc = (twoEkiny - twoEkindiry) / DOFy;
+                        // mu_id_loc = Tloc * log(rho_loc * _universalLambda[cid]*_universalLambda[cid]*_universalLambda[cid]);
+                        mu_rho_loc = Tloc * log(rho_loc);
+                        mu_T_loc = 3.0*Tloc * (log(_universalLambda[cid]) + 0.5*log(_globalTemperatureMap[0] / Tloc));
+                        mu_conf_loc = Tloc * mu_res_loc;
                      }
                   }
                
-                  *upry << yval << "\t\t" << mu_res_loc << "\t" << mu_res_glob << "\t\t"
-                        << mu_id_loc << "\t" << mu_id_glob << "\t\t"
-                        << mu_loc << "\t" << mu_res_glob + mu_id_glob << "\t\t"
-                        << widomInstancesy << "\t" << widomInstancesyTloc << "\n";
+                  *upry << yval << " \t\t " << mu_conf_loc << "  " << mu_conf_glob << " \t\t "
+                        << mu_rho_loc << "  " << mu_id_glob - mu_T_glob << " \t "
+                        << mu_conf_loc + mu_rho_loc << "  " << mu_conf_glob + mu_id_glob - mu_T_glob << " \t\t "
+                        << mu_T_loc << "  " << mu_T_glob << " \t "
+                        << mu_rho_loc + mu_T_loc << "  " << mu_id_glob << " \t\t "
+                        << mu_res_loc << "  " << mu_res_glob << " \t "
+                        << mu_rho_loc + mu_T_loc + mu_conf_loc << "  " << mu_id_glob + mu_conf_glob << " \t\t "
+                        << widomInstancesy << "  " << widomInstancesyTloc << "\n";
                }
 #endif
+
+               *pntpry << yval << "\t" << rhoy << "\t" << kineticnormal << "\t" << confignormalA
+                       << "\t" << normalPressurey << "\t" << kinetictan << "\t" << configtanA
+                       << "\t" << tanPressurey << "\n";
             }
          }
    
@@ -1487,6 +1558,7 @@ void Domain::outputProfile(const char* prefix)
          upry->close();
          delete upry;
 #endif
+         pntpry->close(); // geaendert
       }
    }
 }
@@ -1544,6 +1616,13 @@ void Domain::resetProfile()
 #endif
          // no need to reset the global temperature profile ...
       }
+
+      this->_localnormalPressureVirialProfile[unID] = 0.0;
+      this->_localtanPressureVirialProfile[unID] = 0.0;
+      this->_globalnormalPressureVirialProfile[unID] = 0.0;
+      this->_globaltanPressureVirialProfile[unID] = 0.0;
+      this->_localpairs[unID] = 0.0;
+      this->_globalpairs[unID] = 0.0;
    }
    this->_globalAccumulatedDatasets = 0;
 }
@@ -2079,7 +2158,9 @@ void Domain::readPhaseSpaceHeader(
         if(IDummy1>0.) _components[i].setI11(IDummy1);
         if(IDummy2>0.) _components[i].setI22(IDummy2);
         if(IDummy3>0.) _components[i].setI33(IDummy3);
+#ifdef COMPLEX_POTENTIAL_SET
         this->setProfiledComponentMass(i, _components[i].m());
+#endif
       }
       _mixcoeff.clear();
       for(i=0;i<numcomponents-1;++i)

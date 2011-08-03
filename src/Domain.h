@@ -235,6 +235,16 @@ class Domain{
     //! @param index dimension for which the length should be returned
     double getGlobalLength(int index) const;
 
+#ifdef COMPLEX_POTENTIAL_SET
+    //!
+    //!
+    //!
+    void calculatePressureVirialProfile(Molecule* mi, Molecule* mj, double forcex, double forcey, double forcez, double distanceVector[3]);
+    //!
+    //!
+    //!
+#endif
+    
     //! @brief get the global pressure
     //!
     //! @todo provide justification for the formula
@@ -611,6 +621,17 @@ class Domain{
     bool _universalSphericalGeometry;
     double _universalR3max;
     double _universalCentre[3];
+
+    //! pairwise virial map of Normal Pressure
+    map<unsigned, double> _localnormalPressureVirialProfile; // geaendert
+    //! pairwise virial map of Tangential Pressure
+    map<unsigned, double> _localtanPressureVirialProfile;
+    //! pairwise virial map of Normal Pressure
+    map<unsigned, double> _globalnormalPressureVirialProfile; // geaendert
+    //! pairwise virial map of Tangential Pressure
+    map<unsigned, double> _globaltanPressureVirialProfile;
+    map<unsigned, int> _globalpairs;
+    map<unsigned, int> _localpairs;
 #endif
 
     bool _doCollectRDF;
