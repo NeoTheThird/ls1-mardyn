@@ -1130,7 +1130,7 @@ void Domain::esfera()
    this->_universalR3max = Rmax*Rmax*Rmax;
 
    _universalInvProfileUnit[0] = _universalNProfileUnits[0] / PI;  // phi
-   _universalInvProfileUnit[1] = _universalNProfileUnits[1] / _universalR3max;  // R
+   _universalInvProfileUnit[1] = _universalNProfileUnits[1] / _universalR3max;  // R^3
    _universalInvProfileUnit[2] = _universalNProfileUnits[2] / ( 2.0*PI );  // psi
    cout << "Inv profile unit (" << _universalInvProfileUnit[0] << ", " << _universalInvProfileUnit[1] << ", " << _universalInvProfileUnit[2] << ").\n";
 }
@@ -1174,6 +1174,7 @@ int Domain::unID(double qx, double qy, double qz)
    {
       unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
            + yun * this->_universalNProfileUnits[2] + zun;
+      return unID;
    }
    else if(!this->_universalSphericalGeometry || ((yun >= 0) && (yun < (int)_universalNProfileUnits[1])))
    {
@@ -1181,7 +1182,7 @@ int Domain::unID(double qx, double qy, double qz)
       cout << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
       exit(707);
    }
-   return unID;
+   else return -1;
 }
 
 void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
@@ -1195,6 +1196,7 @@ void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
       if(this->_universalProfiledComponents[cid])
       {
             unID = this->unID(thismol->r(0), thismol->r(1), thismol->r(2));
+            if(unID < 0) continue;
 
             this->_localNProfile[cid][unID] += 1.0;
             if(!this->_universalSphericalGeometry)
@@ -1302,7 +1304,7 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
          upryname += ".upr";
 #endif
-         pntpryname += ".pntpry"; //geaendert
+         pntpryname += ".pntpr"; //geaendert
          if(this->_universalSphericalGeometry)
          {
             if(asp == 0)
@@ -1343,6 +1345,7 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
                upryname += "x.";
 #endif
+               pntpryname += "x.";
             }
             else if(asp == 1)
             {
@@ -1352,6 +1355,7 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
                upryname += "y.";
 #endif
+               pntpryname += "y.";
             }
             else
             {
@@ -1361,6 +1365,7 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
                upryname += "z.";
 #endif
+               pntpryname += "z.";
             }
          }
 
@@ -1377,8 +1382,9 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
          ofstream* upry = new ofstream(upryname.c_str());
 #endif
-         ofstream *pntpry = new ofstream(pntpryname.c_str()); // geaendert
-         if (!(*Tpry && *rhpry && *pntpry)) // geaendert
+         ofstream *pntpry;
+         if(!this->_universalSphericalGeometry) pntpry = new ofstream(pntpryname.c_str()); // geaendert
+         if (!(*Tpry && *rhpry))
          {
             return;
          }
@@ -1388,7 +1394,7 @@ void Domain::outputProfile(const char* prefix)
 #ifdef GRANDCANONICAL
          upry->precision(5);
 #endif
-         pntpry->precision(6); // geaendert
+         if(!this->_universalSphericalGeometry) pntpry->precision(6); // geaendert
 
          *rhpry << "# coord\trho\ttotal DOF\n# \n";
          if(this->_universalSphericalGeometry)
@@ -1406,7 +1412,10 @@ void Domain::outputProfile(const char* prefix)
                << "mu_id(glob) \t\t mu_res(loc)  mu_res(glob) \t mu(loc)  mu(glob) \t\t #(loc)  "
                << "#(glob)\n";
 #endif
-         *pntpry << "# coord\tpNK\tpNC\tpN\tpTK\tpTC\tpTn# \n";
+         if(!this->_universalSphericalGeometry)
+         {
+            *pntpry << "# coord\tpNK\tpNC\tpN\tpTK\tpTC\tpTn# \n";
+         }
    
          double layerVolume;
          if(_universalSphericalGeometry)
@@ -1508,7 +1517,6 @@ void Domain::outputProfile(const char* prefix)
                   double mu_id_glob = _globalTemperatureMap[0] * log(_globalDecisiveDensity[cid]);
 
                   double mu_T_glob = 0.0;
-                  double mu_loc = 0.0;
                   double mu_rho_loc = 0.0;
                   double mu_T_loc = 0.0;
                   double mu_res_loc = 0.0;
@@ -1539,9 +1547,10 @@ void Domain::outputProfile(const char* prefix)
                }
 #endif
 
-               *pntpry << yval << "\t" << rhoy << "\t" << kineticnormal << "\t" << confignormalA
-                       << "\t" << normalPressurey << "\t" << kinetictan << "\t" << configtanA
-                       << "\t" << tanPressurey << "\n";
+               if(!this->_universalSphericalGeometry) 
+                  *pntpry << yval << "\t" << rhoy << "\t" << kineticnormal << "\t" << confignormalA
+                          << "\t" << normalPressurey << "\t" << kinetictan << "\t" << configtanA
+                          << "\t" << tanPressurey << "\n";
             }
          }
    
@@ -1558,7 +1567,11 @@ void Domain::outputProfile(const char* prefix)
          upry->close();
          delete upry;
 #endif
-         pntpry->close(); // geaendert
+         if(!this->_universalSphericalGeometry) 
+         {
+            pntpry->close(); // geaendert
+            delete pntpry;
+         }
       }
    }
 }
@@ -1567,6 +1580,7 @@ void Domain::outputProfile(const char* prefix)
 void Domain::submitDU(unsigned cid, double DU, double* r)
 {
    int unID = this->unID(r[0], r[1], r[2]);
+   if(unID < 0) return;
 
    _localWidomProfile[cid][unID] += exp(-DU / _globalTemperatureMap[0]);
    _localWidomInstances[cid][unID] += 1.0;
