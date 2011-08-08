@@ -35,6 +35,7 @@ float ensemble::Random::rnd_muVT()
    if(iy_muVT < 0) iy_muVT += IM;
    rnd = am_muVT * ((IM & (ix_muVT ^ iy_muVT)) | (int)1);
    // cout << "rank " << ownrank << " rnd " << rnd << ".\n";  // \\ // 
+   // cout.flush();  // \\ // 
    return rnd;
 }
 
@@ -171,7 +172,7 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
          {
             localIndex = (unsigned)floor(localN*(sel-minrnd)/(maxrnd-minrnd));
 #ifndef NDEBUG
-            cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
+            // cout << "rank " << ownrank << " will try to delete index " << localIndex << ".\n";  // \\ //
 #endif
             this->remainingDeletions.push_back(localIndex);
             this->remainingDecisions.push_back(dec);
@@ -191,19 +192,19 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
    for(int i=0; i < insertions; i++)
    {
       for(int d=0; d < 3; d++) redc[d] = this->rnd.rnd_muVT();
+      dec = this->rnd.rnd_muVT();
       if(    (redc[0] >= minredco[0]) && (redc[1] >= minredco[1]) && (redc[2] >= minredco[2]) 
           && (redc[0] <  maxredco[0]) && (redc[1] <  maxredco[1]) && (redc[2] <  maxredco[2]) )
       {
-         dec = this->rnd.rnd_muVT();
 	 for(int d=0; d < 3; d++)
 	 {
 	    tc[d] = control_bottom[d]
 	       + redc[d]*(control_top[d] - control_bottom[d]);
 	 }
 #ifndef NDEBUG
-         cout << "rank " << ownrank << " will try to insert ID "
-              << nextid << " (" << tc[0] << "/" << tc[1]
-              << "/" << tc[2] << ").\n";  // \\ //
+         // cout << "rank " << ownrank << " will try to insert ID "
+         //      << nextid << " (" << tc[0] << "/" << tc[1]
+         //      << "/" << tc[2] << ").\n";  // \\ //
 #endif
          for(int d=0; d < 3; d++)
 	 {
@@ -278,8 +279,8 @@ int ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* m
       }
    }
 #ifndef NDEBUG
-   cout << "rank " << ownrank << " selects ID " << m->id() 
-        << " for deletion (index " << idx << "). ";
+   // cout << "rank " << ownrank << " selects ID " << m->id() 
+   //      << " for deletion (index " << idx << "). ";
 #endif
    assert(m->id() < nextid);
    return DELETION_TRUE;
@@ -323,11 +324,11 @@ bool ensemble::ChemicalPotential::decideDeletion(double deltaUTilde)
    if(dec < 0.000001) ans = true;
    else if(dec > 0.999999) ans = false;
    else ans = (acc > dec);
-   // ans = (acc > 1.0e-05)? (acc > dec): false;
 #ifndef NDEBUG
    // cout << "rank " << ownrank << (ans? " accepted ": " rejected ")
    //      << "deletion with deltaUtilde = " << deltaUTilde << " (P = "
    //      << ((acc > 1.0)? 1.0: acc) << ").\n"; // \\ //
+   // cout.flush();
 #endif
    if(ans) this->globalN -= (2*ownrank + 1);  // estimate, the precise value is communicated later
    return ans;

@@ -1039,28 +1039,25 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
    bool hasInsertion = true;
    double ins[3];
    unsigned long nextid = 0;
-   while((hasDeletion != DELETION_FALSE) || hasInsertion)
+   while((hasDeletion == DELETION_TRUE) || hasInsertion)
    {
-      if(hasDeletion != DELETION_FALSE)
+      if(hasDeletion == DELETION_TRUE)
       {
          hasDeletion = mu->getDeletion(this, minco, maxco);
-      }
-      if(hasDeletion != DELETION_FALSE)
-      {
-#ifndef NDEBUG
-         // cout << "rank " << mu->rank() << ": can I delete " << m->id() << "? ";
-#endif
-         accept = mu->decideDeletion(DeltaUpot / T);
       }
       if(hasDeletion == DELETION_TRUE)
       {
          m = &(*(this->_particleIter));
          DeltaUpot = -1.0 * getEnergy(m);
+#ifndef NDEBUG
+         // cout << "rank " << mu->rank() << ": can I delete " << m->id() << "? ";
+#endif
+         accept = mu->decideDeletion(DeltaUpot / T);
 
 #ifndef NDEBUG
-         if(accept) cout << "r" << mu->rank() << "d" << m->id() << "\n";
-         else cout << "   (r" << mu->rank() << "-d" << m->id() << ")\n";
-         cout.flush();
+         // if(accept) cout << "r" << mu->rank() << "d" << m->id() << "\n";
+         // else cout << "   (r" << mu->rank() << "-d" << m->id() << ")\n";
+         // cout.flush();
 #endif
          if(accept)
          {
@@ -1097,9 +1094,9 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
          m->setFM(0.0,0.0,0.0,0.0,0.0,0.0);
          m->check(nextid); 
 #ifndef NDEBUG
-         cout << "rank " << mu->rank() << ": insert " << m->id() 
-              << " at the reduced position (" << ins[0] << "/" << ins[1] << "/" << ins[2] << ")? ";
-         cout.flush();
+         // cout << "rank " << mu->rank() << ": insert " << m->id() 
+         //      << " at the reduced position (" << ins[0] << "/" << ins[1] << "/" << ins[2] << ")? ";
+         // cout.flush();
 #endif
 
          unsigned long cellid = this->getCellIndexOfMolecule(m);
@@ -1109,9 +1106,9 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
          accept = mu->decideInsertion(DeltaUpot/T);
 
 #ifndef NDEBUG
-         if(accept) cout << "r" << mu->rank() << "i" << mit->id() << ")\n";
-         else cout << "   (r" << mu->rank() << "-i" << mit->id() << ")\n";
-         cout.flush();
+         // if(accept) cout << "r" << mu->rank() << "i" << mit->id() << ")\n";
+         // else cout << "   (r" << mu->rank() << "-i" << mit->id() << ")\n";
+         // cout.flush();
 #endif
          if(accept)
          {
