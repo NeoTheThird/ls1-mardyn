@@ -191,10 +191,10 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
    for(int i=0; i < insertions; i++)
    {
       for(int d=0; d < 3; d++) redc[d] = this->rnd.rnd_muVT();
-      dec = this->rnd.rnd_muVT();
       if(    (redc[0] >= minredco[0]) && (redc[1] >= minredco[1]) && (redc[2] >= minredco[2]) 
           && (redc[0] <  maxredco[0]) && (redc[1] <  maxredco[1]) && (redc[2] <  maxredco[2]) )
       {
+         dec = this->rnd.rnd_muVT();
 	 for(int d=0; d < 3; d++)
 	 {
 	    tc[d] = control_bottom[d]
@@ -216,10 +216,9 @@ void ensemble::ChemicalPotential::prepareTimestep(TMoleculeContainer* cell, para
    }
 }
 
-bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* minco, double* maxco)
+int ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* minco, double* maxco)
 {
-   if(this->remainingDeletions.empty()) return false;  // always empty for Widom
-   if(cell->getNumberOfParticles() == 0) return false;
+   if(this->remainingDeletions.empty()) return DELETION_FALSE;  // always empty for Widom
    
    unsigned idx = *this->remainingDeletions.begin();
    this->remainingDeletions.erase(this->remainingDeletions.begin());
@@ -238,6 +237,7 @@ bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* 
       tmaxco[d] = maxco[d];
    }
    
+   if(cell->getNumberOfParticles() == 0) return DELETION_INVALID;
    Molecule* m = cell->begin();
    int j=0;
    for(unsigned i=0; (i < idx); i++)
@@ -251,7 +251,7 @@ bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* 
          m = cell->next();
          if(m == cell->end())
 	 {
-	    if(j == 0) return false;
+	    if(j == 0) return DELETION_FALSE;
 	    m = cell->begin();
 	    j = 0;
 	 }
@@ -260,7 +260,7 @@ bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* 
       j++;
       if(m == cell->end())
       {
-	 if(j == 0) return false;
+	 if(j == 0) return DELETION_FALSE;
 	 m = cell->begin();
 	 j = 0;
       }
@@ -273,7 +273,7 @@ bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* 
       m = cell->next();
       if(m == cell->end())
       {
-	 if(j == 0) return false;
+	 if(j == 0) return DELETION_FALSE;
 	 m = cell->begin();
       }
    }
@@ -282,7 +282,7 @@ bool ensemble::ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* 
         << " for deletion (index " << idx << "). ";
 #endif
    assert(m->id() < nextid);
-   return true;
+   return DELETION_TRUE;
 }
 
 // returns 0 if no insertion remains for this subdomain
@@ -305,8 +305,16 @@ bool ensemble::ChemicalPotential::decideDeletion(double deltaUTilde)
    assert(!this->widom);  // the Widom test particle method should never call decideDeletion ...
    if(this->remainingDecisions.empty())
    {
-      cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
-      exit(1);
+      if(this->widom)
+      {
+         cout << "\n\n \t SEVERE WARNING: The Widom method is (erroneously) trying to carry out test deletions. \n\n\n";
+         return false;
+      }
+      else
+      {
+         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
+         exit(1);
+      }
    }
    float dec = *this->remainingDecisions.begin();
    this->remainingDecisions.erase(this->remainingDecisions.begin());
@@ -329,8 +337,16 @@ bool ensemble::ChemicalPotential::decideInsertion(double deltaUTilde)
 {
    if(this->remainingDecisions.empty())
    {
-      cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
-      exit(1);
+      if(this->widom)
+      {
+         cout << "\n\n\n \t\t !!! SEVERE WARNING on rank " << ownrank << ": no decision is possible !!! \n\n\n\n";
+         return false;
+      }
+      else
+      {
+         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
+         exit(1);
+      }
    }
    bool ans;
    if(this->widom) ans = false;  // the Widom method does not actually insert any particles ...
@@ -338,8 +354,8 @@ bool ensemble::ChemicalPotential::decideInsertion(double deltaUTilde)
    {
       float dec = *this->remainingDecisions.begin();
       double acc = this->globalReducedVolume * exp(muTilde - deltaUTilde) / (1.0 + (double)(this->globalN));
-      if(dec < 0.000001) ans = true;
-      else if(dec > 0.999999) ans = false;
+      if(dec < 0.0000001) ans = true;
+      else if(dec > 0.9999999) ans = false;
       else ans = (acc > dec);
       if(ans) this->globalN += (2*ownrank + 1);  // estimate, the precise value is communicated later
    }

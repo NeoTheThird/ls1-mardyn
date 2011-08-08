@@ -79,11 +79,15 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
       if(pairType == 0){
         if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
 
-        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ,_permitWallLJ);
+        PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ,_permitWallLJ,_forcex,_forcey,_forcez);
+#ifdef COMPLEX_POTENTIAL_SET
+        // calls the function that calculates the normal and the tangential profiles 
+        _domain.calculatePressureVirialProfile(&particle1,&particle2,_forcex,_forcey,_forcez,distanceVector);
+#endif
         return _upot6LJ + _upotXpoles;
       }
       else if(pairType == 1){
-        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4,cLJ,_permitWallLJ);
+        PotForce(particle1,particle2,params,distanceVector,_dummy1,_dummy2,_dummy3,_dummy4,cLJ,_permitWallLJ,_forcex,_forcey,_forcez);
         return 0.0;
       }
 #ifdef GRANDCANONICAL
@@ -157,7 +161,10 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
   private:
     //! @brief reference to the domain is needed to store the calculated macroscopic values
     Domain& _domain;
-    
+    double _forcex;
+    double _forcez;
+    double _forcey;
+   
     //! @brief variable used to sum the virial contribution of all pairs
     double _virial;
     //! @brief variable used to sum the Upot6LJ contribution of all pairs

@@ -1,6 +1,6 @@
 /***************************************************************************
  *   Copyright (C) 2011 by Martin Bernreuther and colleagues               *
- *   Head of development: M. Bernreuther <bernreuther@hlrs.de>             *
+ *   Head of development: M. F. Bernreuther <bernreuther@hlrs.de>             *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -323,13 +323,16 @@ inline void PotForceChargeDipole( const double dr[3], const double& dr2,
 
    drm == distance FROM j TO i ... !!!
 */
-inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool cLJ, bool wallLJ)
+inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3], double& Upot6LJ, double& UpotXpoles, double& MyRF, double& Virial, bool cLJ, bool wallLJ, double& forcex, double& forcey, double& forcez)
 // ???better calc Virial, when molecule forces are calculated:
 //    summing up molecule virials instead of site virials???
 { // Force Calculation
   double f[3];
   double u;
   double drs[3],dr2;  // site distance vector & length^2
+  forcex = 0.0;
+  forcey = 0.0;
+  forcez = 0.0;
   // LJ centers
 #ifdef COMPLEX_POTENTIAL_SET
   // no LJ interaction between solid atoms of the same component
@@ -384,6 +387,9 @@ inline void PotForce(Molecule& mi, Molecule& mj, ParaStrm& params, double drm[3]
            mi.Upotadd(u);
            mj.Upotadd(u);
            */
+           forcex = f[0]; 
+           forcey = f[1]; 
+           forcez = f[2];
            for(unsigned short d=0;d<3;++d) Virial+=drm[d]*f[d];
          }
 #ifndef NDEBUG

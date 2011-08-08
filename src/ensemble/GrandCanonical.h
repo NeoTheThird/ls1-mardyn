@@ -8,6 +8,10 @@
 #include <list>
 #include "molecules/Molecule.h"
 
+#define DELETION_TRUE 1
+#define DELETION_FALSE 0
+#define DELETION_INVALID -1
+
 namespace datastructures{
    template<class ParticleType> class ParticleContainer;
 }
@@ -59,7 +63,7 @@ class ensemble::ChemicalPotential
    void prepareTimestep(TMoleculeContainer* cell, parallel::DomainDecompBase* comm);  // C must not contain the halo!
 
    // false if no deletion remains for this subdomain
-   bool getDeletion(TMoleculeContainer* cell, double* minco, double* maxco);
+   int getDeletion(TMoleculeContainer* cell, double* minco, double* maxco);
    unsigned long getInsertion(double* ins);  // 0 if no insertion remains for this subdomain
    bool decideDeletion(double deltaUTilde);
    bool decideInsertion(double deltaUTilde);

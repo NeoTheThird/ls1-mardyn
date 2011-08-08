@@ -1035,23 +1035,28 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
       maxco[d] = this->getBoundingBoxMax(d);
    }
 
-   bool hasDeletion = true;
+   int hasDeletion = DELETION_TRUE;
    bool hasInsertion = true;
    double ins[3];
-   unsigned nextid = 0;
-   while(hasDeletion || hasInsertion)
+   unsigned long nextid = 0;
+   while((hasDeletion != DELETION_FALSE) || hasInsertion)
    {
-      if(hasDeletion)
-         hasDeletion = mu->getDeletion(this, minco, maxco);
-      if(hasDeletion)
+      if(hasDeletion != DELETION_FALSE)
       {
-         m = &(*(this->_particleIter));
-         DeltaUpot = -1.0 * getEnergy(m);
-
+         hasDeletion = mu->getDeletion(this, minco, maxco);
+      }
+      if(hasDeletion != DELETION_FALSE)
+      {
 #ifndef NDEBUG
          // cout << "rank " << mu->rank() << ": can I delete " << m->id() << "? ";
 #endif
          accept = mu->decideDeletion(DeltaUpot / T);
+      }
+      if(hasDeletion == DELETION_TRUE)
+      {
+         m = &(*(this->_particleIter));
+         DeltaUpot = -1.0 * getEnergy(m);
+
 #ifndef NDEBUG
          if(accept) cout << "r" << mu->rank() << "d" << m->id() << "\n";
          else cout << "   (r" << mu->rank() << "-d" << m->id() << ")\n";
@@ -1073,7 +1078,7 @@ void datastructures::LinkedCells<ParticleType>::grandcanonicalStep
       if(hasInsertion)
       {
          nextid = mu->getInsertion(ins);
-         hasInsertion = (nextid > 0);
+         hasInsertion = (nextid != 0);
       }
       if(hasInsertion)
       {

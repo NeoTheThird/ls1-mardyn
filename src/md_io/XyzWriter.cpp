@@ -34,24 +34,22 @@ void md_io::XyzWriter::doOutput(
     // }
     filenamestream.width(6);
     filenamestream.fill('0');
-    filenamestream << right << (simstep / _writeFrequency);
+    filenamestream << right << (unsigned)(simstep / _writeFrequency);
     filenamestream << 'r';
     filenamestream.width(3);
     filenamestream.fill('0');
     filenamestream << right << domain->ownrank();
-    filenamestream << simstep/_writeFrequency << ".buxyz";
+    filenamestream << ".buxyz";
 
     ofstream xyzfilestream(filenamestream.str().c_str());
-    xyzfilestream << particleContainer->getNumberOfParticles() << endl;
-    xyzfilestream << "comment line" << endl;
+    if(!domain->ownrank())
+    {
+       xyzfilestream << domain->N() << endl;
+       xyzfilestream << "comment line" << endl;
+    }
     Molecule* tempMol;
     for(tempMol = particleContainer->begin(); tempMol != particleContainer->end(); tempMol = particleContainer->next())
     {
-      // if(tempMol->componentid() == 0) { xyzfilestream << "Ar ";}
-      // else if(tempMol->componentid() == 1) {xyzfilestream << "Xe ";}
-      // else if(tempMol->componentid() == 2) {xyzfilestream << "C ";}
-      // else if(tempMol->componentid() == 3) {xyzfilestream << "O ";}
-      // else {xyzfilestream << "H ";}
       xyzfilestream << tempMol->componentid() << " ";
       xyzfilestream << tempMol->r(0) << "\t" << tempMol->r(1) << "\t" << tempMol->r(2) << endl;
     }
