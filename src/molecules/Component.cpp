@@ -17,10 +17,10 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
-
-#include "molecules/Component.h"
 #include <iostream>
 #include <iomanip>
+
+#include "Component.h"
 
 using namespace std;
 
@@ -52,26 +52,6 @@ void Component::updateInvIpa() {
 }
 
 
-void Component::setI(double Ixx, double Iyy, double Izz,
-                     double Ixy, double Ixz, double Iyz) {
-	_I[0] = Ixx;
-	_I[1] = Iyy;
-	_I[2] = Izz;
-	_I[3] = Ixy;
-	_I[4] = Ixz;
-	_I[5] = Iyz;
-}
-
-void Component::addI(double Ixx, double Iyy, double Izz,
-                     double Ixy, double Ixz, double Iyz) {
-	_I[0] += Ixx;
-	_I[1] += Iyy;
-	_I[2] += Izz;
-	_I[3] += Ixy;
-	_I[4] += Ixz;
-	_I[5] += Iyz;
-}
-
 void Component::addLJcenter(double x, double y, double z,
                             double m, double eps, double sigma,
                             double rc, bool TRUNCATED_SHIFTED) {
@@ -101,6 +81,47 @@ void Component::addLJcenter(double x, double y, double z,
 		if (_Ipa[d] == 0.) --_rot_dof;
 	}
 	updateInvIpa();
+}
+
+void Component::updateMassInertia() {
+	_m = 0;
+	for (int i = 0; i < 6; i++) {
+		_I[i] = 0.0;
+	}
+
+	for (size_t i = 0; i < _ljcenters.size(); i++) {
+		updateMassInertia(_ljcenters[i]);
+	}
+	for (size_t i = 0; i < _charges.size(); i++) {
+		updateMassInertia(_charges[i]);
+	}
+	for (size_t i = 0; i < _tersoff.size(); i++) {
+		updateMassInertia(_tersoff[i]);
+	}
+}
+
+void Component::updateMassInertia(Site& site) {
+	_m += site.m();
+	// assume the input is already transformed to the principal axes system
+	// (and therefore the origin is the center of mass)
+//	_I[0] += m * (y * y + z * z);
+	_I[0] += site.m() * (site.ry() * site.ry() + site.rz() * site.rz());
+//	_I[1] += m * (x * x + z * z);
+	_I[1] += site.m() * (site.rx() * site.rx() + site.rz() * site.rz());
+//	_I[2] += m * (x * x + y * y);
+	_I[2] += site.m() * (site.rx() * site.rx() + site.ry() * site.ry());
+//	_I[3] -= m * x * y;
+	_I[3] -= site.m() * site.rx() * site.ry();
+//	_I[4] -= m * x * z;
+	_I[4] -= site.m() * site.rx() * site.rz();
+//	_I[5] -= m * y * z;
+	_I[5] -= site.m() * site.ry() * site.rz();
+
+	_rot_dof = 3;
+	for (unsigned short d = 0; d < 3; ++d) {
+		_Ipa[d] = _I[d];
+		if (_Ipa[d] == 0.) --_rot_dof;
+	}
 }
 
 void Component::addCharge(double x, double y, double z, double m, double q) {

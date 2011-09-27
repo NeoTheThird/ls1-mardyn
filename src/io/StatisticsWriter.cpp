@@ -86,11 +86,6 @@ void StatisticsWriter::doOutput(
 
 	if(domainDecomp->getRank()==0){
 
-		int numCellsPerDimension[3];
-		for (int i = 0; i < 3; i++) {
-			numCellsPerDimension[i] = (_container._cellsPerDimension[i] - 2* _container._haloWidthInNumCells[i]);
-		}
-
 		for (unsigned int i = 0; i < _container._cells.size(); i++) {
 			if (_container._cells[i].isHaloCell()) {
 				continue;
@@ -120,7 +115,7 @@ void StatisticsWriter::doOutput(
 		global_log->warning() << "Writing Cell Occupancy only for root node!" << endl;
 	}
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 		// do a reduction
 #endif
 }

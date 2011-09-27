@@ -44,7 +44,6 @@ ReorderedBlockTraverse::ReorderedBlockTraverse(
         vector<vector<unsigned long> >& backwardNeighbourOffsets
 )
 		: _moleculeContainer(moleculeContainer),
-			_particlePairsHandler(moleculeContainer->getPairHandler()),
 			_cells(cells),
 			_innerCellIndices(innerCellIndices),
 			_boundaryCellIndices(boundaryCellIndices),
@@ -61,7 +60,6 @@ ReorderedBlockTraverse::ReorderedBlockTraverse(
         vector<unsigned long>& haloCellIndices
 )
 		: _moleculeContainer(moleculeContainer),
-			_particlePairsHandler(moleculeContainer->getPairHandler()),
 			_cells(cells),
 			_innerCellIndices(innerCellIndices),
 			_boundaryCellIndices(boundaryCellIndices),
@@ -88,7 +86,7 @@ void ReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbo
 	_minNeighbourOffset = minNeighbourOffset;
 }
 
-void ReorderedBlockTraverse::traversePairs() {
+void ReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 
 	if (!IsSame<Molecule, HandlerMoleculeType>::Result::value) {
 		global_log->error() << "For this implementation, Molecule and MoleculeHandlerType have to be " <<
@@ -96,14 +94,13 @@ void ReorderedBlockTraverse::traversePairs() {
 		exit(-1);
 	}
 
-	_particlePairsHandler = _moleculeContainer->getPairHandler();
 	double _cutoffRadius = _moleculeContainer->getCutoff();
 	double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
 	double _tersoffCutoffRadius = _moleculeContainer->getTersoffCutoff();
 	vector<vector<unsigned long> >& forwardNeighbourOffsets = *_forwardNeighbourOffsets;
 	vector<vector<unsigned long> >& backwardNeighbourOffsets = *_backwardNeighbourOffsets;
 
-	_particlePairsHandler->init();
+	particlePairsHandler->init();
 
 	// XXX comment
 	double distanceVector[3];
@@ -162,9 +159,9 @@ void ReorderedBlockTraverse::traversePairs() {
 					double dd = molecule2.dist2(molecule1, distanceVector);
 
 					if (dd < cutoffRadiusSquare) {
-						_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare)) {
-							_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
+							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 						}
 					}
 				}
@@ -185,9 +182,9 @@ void ReorderedBlockTraverse::traversePairs() {
 						HandlerMoleculeType& molecule2 = *reinterpret_cast<HandlerMoleculeType*>(neighbourCellParticles[j]);
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < cutoffRadiusSquare) {
-							_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
+							particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
 							if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare)) {
-								_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
+								particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 							}
 						}
 					}
@@ -210,7 +207,7 @@ void ReorderedBlockTraverse::traversePairs() {
 					if (molecule2.numTersoff() > 0) {
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < tersoffCutoffRadiusSquare)
-							_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, true);
+							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, true);
 					}
 				}
 
@@ -230,7 +227,7 @@ void ReorderedBlockTraverse::traversePairs() {
 							continue;
 						double dd = molecule2.dist2(molecule1, distanceVector);
 						if (dd < tersoffCutoffRadiusSquare)
-							_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, true);
+							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, true);
 					}
 				}
 			}
@@ -248,9 +245,9 @@ void ReorderedBlockTraverse::traversePairs() {
 
 					double dd = molecule2.dist2(molecule1, distanceVector);
 					if (dd < cutoffRadiusSquare) {
-						_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, dd, (dd < LJCutoffRadiusSquare));
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare)) {
-							_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
+							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 						}
 					}
 				}
@@ -277,9 +274,9 @@ void ReorderedBlockTraverse::traversePairs() {
 								/* Do not sum up values twice. */
 								pairType = MOLECULE_HALOMOLECULE;
 							}
-							_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, dd, (dd < LJCutoffRadiusSquare));
+							particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, dd, (dd < LJCutoffRadiusSquare));
 							if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare)) {
-								_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
+								particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
 							}
 						}
 					}
@@ -305,9 +302,9 @@ void ReorderedBlockTraverse::traversePairs() {
 							double dd = molecule2.dist2(molecule1, distanceVector);
 							if (dd < cutoffRadiusSquare) {
 								PairType pairType = molecule1.isLessThan(molecule2) ? MOLECULE_MOLECULE : MOLECULE_HALOMOLECULE;
-								_particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, dd, (dd < LJCutoffRadiusSquare));
+								particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, dd, (dd < LJCutoffRadiusSquare));
 								if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (dd < tersoffCutoffRadiusSquare)) {
-									_particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
+									particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
 								}
 							}
 						}
@@ -334,10 +331,10 @@ void ReorderedBlockTraverse::traversePairs() {
 					delta_r = molecule1.tersoffParameters(params);
 					knowparams = true;
 				}
-				_particlePairsHandler->processTersoffAtom(molecule1, params, delta_r);
+				particlePairsHandler->processTersoffAtom(molecule1, params, delta_r);
 			}
 		}
 	} // for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++)
 
-	_particlePairsHandler->finish();
+	particlePairsHandler->finish();
 }

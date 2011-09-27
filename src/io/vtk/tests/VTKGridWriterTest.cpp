@@ -10,10 +10,11 @@
 #include "Domain.h"
 #include "particleContainer/ParticleContainer.h"
 #include "particleContainer/LinkedCells.h"
+#include "parallel/DomainDecompDummy.h"
 #include "utils/FileUtils.h"
 #include "particleContainer/tests/ParticleContainerFactory.h"
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 #include <mpi.h>
 #endif
 
@@ -34,7 +35,7 @@ void VTKGridWriterTest::testEmptyGrid() {
 
 	VTKGridWriter writer(2, "VTKGridWriterTest", *linkedCells);
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	// in the parallel case we check only that the right files are written.
 	// Their content should be right, if the sequential tests pass.
 	int rank = 0;
@@ -62,10 +63,11 @@ void VTKGridWriterTest::testEmptyGrid() {
 	}
 #else
 	Domain domain(0, NULL);
-	writer.doOutput(container, NULL, &domain, 1, NULL);
+	DomainDecompDummy dummy;
+	writer.doOutput(container, &dummy, &domain, 1, NULL);
 	ASSERT_TRUE_MSG("Check that files are written in the right interval.", !fileExists("VTKGridWriterTest_1.vtu"));
 
-	writer.doOutput(container, NULL, &domain, 2, NULL);
+	writer.doOutput(container, &dummy, &domain, 2, NULL);
 	ASSERT_TRUE_MSG("Check that files are written in the right interval.", fileExists("VTKGridWriterTest_2.vtu"));
 
 	removeFile("VTKGridWriterTest_2.vtu");

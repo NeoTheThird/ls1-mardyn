@@ -20,6 +20,7 @@
 #define SIMULATION_H_
 
 #include "ensemble/GrandCanonical.h"
+#include "parallel/DomainDecompTypes.h"
 
 #ifndef SIMULATION_SRC
 class Simulation;
@@ -53,10 +54,6 @@ class InputBase;
 class Timer;
 class RDF;
 
-namespace optparse {
-class OptionParser;
-class Values;
-}
 
 //! @brief controls the whole simulation process
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
@@ -66,7 +63,7 @@ class Values;
 //! Thats's because e.g. the datastructure can only be built after the 
 //! phasespace has been read. \n
 //!
-//! The config file usually has the file ending ".txt" and
+//! The config file usually has the file ending ".cfg" and
 //! starts with a line containing the token "mardynconfig"
 //! followed by the following parameters, among others
 //! (possibly mixed with comment lines starting with "#"):
@@ -98,18 +95,12 @@ class Values;
 class Simulation {
 public:
 	//! @brief instantiate simulation object
-	//!
-	//! The Constructor processes the command line arguments
-	//! @param argc Pointer to the number of arguments passed to the programm. Needed for MPI
-	//! @param argv Pointer to the list of arguments, also needed for MPI
-	Simulation(optparse::Values& options, std::vector<std::string>& args);
-
-	//! should only be used for testing purposes
 	Simulation();
 
 	//! @brief destruct simulation object
 	//!
 	~Simulation();
+
 
 	//! @brief Terminate simulation with a given exit code.
 	//!
@@ -121,10 +112,10 @@ public:
 	//! @brief process configuration file
 	//! 
 	//! calls initConfigXML or initConfigOldStyle
-	//! @param inputfilename filename of the input file
-	void initConfigFile(const std::string& inputfilename);
-	void initConfigFile(const char* inputfilename) {
-		initConfigFile(std::string(inputfilename));
+	//! @param filename filename of the input file
+    void readConfigFile(std::string filename);
+    void readConfigFile(const char* filename) {
+		readConfigFile(std::string(filename));
 	}
 
 	//! @brief process XML configuration file (*.xml)
@@ -218,22 +209,25 @@ public:
 	ParticleContainer* getMolecules() {
 		return _moleculeContainer;
 	}
+	
+	/** Set the number of time steps to be performed in the simulation */
+	void setNumTimesteps( unsigned long steps ) { _numberOfTimesteps = steps; }
+	/** Get the number of time steps to be performed in the simulatoin */
+	unsigned long getNumTimesteps() { return _numberOfTimesteps; }
 
-	unsigned long getSimStep() {
-		return _simstep;
-	}
-
-	unsigned long getNumberOfTimeSteps() {
-		return _numberOfTimesteps;
-	}
+	/** Get the number of the actual time step currently processed in the simulation. */
+	unsigned long getSimStep() { return _simstep; }
 
 	Timer* getLoopTimer() {
 		return _loopTimer;
 	}
 
-	double getcutoffRadius() const {
-		return _cutoffRadius;
-	}
+	double getcutoffRadius() const { return _cutoffRadius; }
+	void setcutoffRadius(double cutoffRadius) { _cutoffRadius = cutoffRadius; }
+	double getLJCutoff() const { return _LJCutoffRadius; }
+	void getLJCutoff(double LJCutoffRadius) { _LJCutoffRadius = LJCutoffRadius; }
+	double getTersoffCutoff() const { return _tersoffCutoffRadius; }
+	void getTersoffCutoff(double tersoffCutoffRadius) { _tersoffCutoffRadius = tersoffCutoffRadius; }
 
 	void setMaxID (unsigned long id)
 	{
@@ -341,12 +335,9 @@ private:
 	//! atoms for all solid components.
 	unsigned _zoscillator;
 
-	unsigned long _numberOfTimesteps;   /**< Number of discrete time steps for the simulation */
-	unsigned long _simstep;             /**< Actual simulation time step */
+	unsigned long _numberOfTimesteps;   /**< Number of discrete time steps to be performed in the simulation */
 
-	// TODO: should go into output module
-	//! Incremental output flag NEW
-	bool _increment;
+	unsigned long _simstep;             /**< Actual time step in the simulation. */
 
 	//! initial number of steps
 	unsigned long _initSimulation;
@@ -369,6 +360,8 @@ private:
 	//! Handler describing what action is to be done for each particle pair
 	ParticlePairsHandler* _particlePairsHandler;
 
+	/** Type of the domain decomposition */
+	DomainDecompType _domainDecompositionType;
 	//! module which handles the domain decomposition
 	DomainDecompBase* _domainDecomposition;
 
@@ -384,6 +377,12 @@ private:
 	//! prefix for the names of all output files
 	std::string _outputPrefix;
 
+public:
+    void setOutputPrefix( std::string prefix ) { _outputPrefix = prefix; }
+    void setOutputPrefix( char *prefix ) { _outputPrefix = std::string( prefix ); }
+    std::string getOutputPrefix() { return _outputPrefix; }
+
+private:
 	//!Timer for computation
 	Timer* _loopTimer;
 	//! Timer for IO during simulation steps

@@ -13,6 +13,7 @@
 #include<cstdlib>
 #include<cassert>
 
+#include "utils/Logger.h"
 #include "rapidxml/rapidxml_print.hpp"
 
 using namespace std;
@@ -28,7 +29,7 @@ const char *const XMLfile::queryattrtag = "query";
 XMLfile::XMLfile()
 {
 	clear();
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	setMPIdefaults();
 #endif
 }
@@ -36,7 +37,7 @@ XMLfile::XMLfile()
 XMLfile::XMLfile(const string& filepath)
 {
 	clear();
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	setMPIdefaults();
 #endif
 	initfile(filepath);
@@ -45,7 +46,7 @@ XMLfile::XMLfile(const string& filepath)
 XMLfile::XMLfile(const char* filepath)
 {
 	clear();
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	setMPIdefaults();
 #endif
 	initfile(filepath);
@@ -56,13 +57,13 @@ bool XMLfile::initfile(const string& filepath)
 	clear();
 	bool status;
 
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	// only root node will read XML file in MPI parallel version
 	if(m_mpi_myrank==m_mpi_rootrank)
 #endif
 	status=initfile_local(filepath);
 
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	status=distributeXMLstring();
 #endif
 
@@ -73,13 +74,13 @@ void XMLfile::initstring(const char* xmlstring)
 {
 	clear();
 
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	// root node XML string will be used in MPI parallel version
 	if(m_mpi_myrank==m_mpi_rootrank)
 #endif
 	initstring_local(xmlstring);
 
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	distributeXMLstring();
 #endif
 }
@@ -108,7 +109,7 @@ bool XMLfile::changecurrentnode(const Query::const_iterator& pos)
 
 void XMLfile::save(string filepath)
 {
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 	// only root process will save its data for now
 	if(m_mpi_myrank!=m_mpi_rootrank) return;
 #endif
@@ -199,12 +200,9 @@ bool XMLfile::initfile_local(const string& filepath)
 
 	char* xmlstr = m_xmldoc.allocate_string(NULL,len+1);
 	xmlstr[len]=0;
-#ifndef NDEBUG
-	size_t lenread=fread(xmlstr,sizeof(char),len,fp);
-#endif
+	len -= fread(xmlstr,sizeof(char),len,fp);
 	fclose(fp);
-
-	assert(lenread==len);
+	assert(len == 0);
 
 	m_xmldoc.parse<0>(xmlstr);
 	expandincludes();
@@ -271,12 +269,19 @@ unsigned long XMLfile::query(list<Node>& nodeselection, const char* querystr, No
 		// nothing selected
 		return 0;
 	// initialize startnode with current node of xmlfile object
-	const t_XMLnode* node(m_currentnode.m_xmlnode);
+	//const t_XMLnode* node(m_currentnode.m_xmlnode);
+	// only ELEMENT_Node nodes will be handled => t_XMLelement* is the better choice (and doesn't need casts afterwards)...
+	const t_XMLelement* node(static_cast<const t_XMLelement*>(m_currentnode.m_xmlnode));
 	string nodepath(m_currentnode.nodepath());
 	if(startnode.m_xmlnode)
 	{ // if startnode is given use this one
-		node=startnode.m_xmlnode;
-		nodepath=startnode.nodepath();
+		if(startnode.type()==Node::ELEMENT_Node)
+		{ // but only if it's an ELEMENT_Node node
+			node=static_cast<const t_XMLelement*>(startnode.m_xmlnode);
+			nodepath=startnode.nodepath();
+		}
+		else
+			cerr << "XMLfile::query: invalid startnode type " << startnode.type() << endl;
 	}
 	size_t pos=0;
 	size_t tokenpos;
@@ -376,7 +381,7 @@ unsigned long XMLfile::query(list<Node>& nodeselection, const char* querystr, No
 	{ // wildcard *
 		map<string,unsigned long> elenames;
 		map<string,unsigned long>::iterator poselenames;
-		for(ele=static_cast<const t_XMLelement*>(node)->first_node(); ele; ele=ele->next_sibling())
+		for(ele=node->first_node(); ele; ele=ele->next_sibling())
 		{
 			poselenames=elenames.find(ele->name());
 			if(poselenames==elenames.end())
@@ -405,7 +410,7 @@ unsigned long XMLfile::query(list<Node>& nodeselection, const char* querystr, No
 			}
 		}
 	} else { // elename given (or empty)
-		const t_XMLelement* firstnode=static_cast<const t_XMLelement*>(node);
+		const t_XMLelement* firstnode=node;
 		if(!elename.empty())
 			firstnode=firstnode->first_node(elename.c_str());
 		for(ele=firstnode; ele; elename.empty() ? ele=NULL : ele=ele->next_sibling(elename.c_str()))
@@ -464,15 +469,14 @@ void XMLfile::insertcloneelement(const t_XMLelement* src, t_XMLelement* dest_aft
 }
 
 
-#ifdef PARALLEL_MPI
+#ifdef ENABLE_MPI
 void XMLfile::setMPIdefaults(int mpirootrank, MPI_Comm mpicomm)
 {
 	m_mpi_rootrank=mpirootrank;
 	m_mpi_comm=mpicomm;
 
-	int ierror, mpimyrank;
-	ierror=MPI_Comm_rank(m_mpi_comm, &mpimyrank);
-	assert(ierror==MPI_SUCCESS);
+	int mpimyrank;
+	MPI_CHECK( MPI_Comm_rank(m_mpi_comm, &mpimyrank) );
 	m_mpi_myrank=mpimyrank;
 	//m_mpi_isroot=mpirootrank==mpimyrank;
 }
@@ -483,10 +487,10 @@ bool XMLfile::distributeXMLstring()
 	string xmlstring;
 	if(m_mpi_myrank==m_mpi_rootrank) xmlstring=string(*this);
 
+	int ierror;
 	int len=xmlstring.size();
-	int ierror=MPI_Bcast(&len, 1, MPI_INT, m_mpi_rootrank, m_mpi_comm);
-	assert(ierror==MPI_SUCCESS);
-	bool status=ierror==MPI_SUCCESS && len>0;
+	MPI_CHECK( ierror = MPI_Bcast(&len, 1, MPI_INT, m_mpi_rootrank, m_mpi_comm) );
+	bool status = (ierror==MPI_SUCCESS) && (len>0);
 	char* buffer=const_cast<char*>(xmlstring.c_str());
 	if(m_mpi_myrank!=m_mpi_rootrank)
 	{
@@ -494,8 +498,7 @@ bool XMLfile::distributeXMLstring()
 		buffer=m_xmldoc.allocate_string(NULL,len+1);
 		buffer[len]=0;
 	}
-	ierror=MPI_Bcast(buffer, len, MPI_CHAR, m_mpi_rootrank, m_mpi_comm);
-	assert(ierror==MPI_SUCCESS);
+	MPI_CHECK( MPI_Bcast(buffer, len, MPI_CHAR, m_mpi_rootrank, m_mpi_comm) );
 	if(m_mpi_myrank!=m_mpi_rootrank)
 	{
 		m_xmldoc.parse<0>(buffer);
@@ -700,6 +703,15 @@ XMLfile::Query& XMLfile::Query::operator =(const XMLfile::Query& q)
 	xmlfile_register();
 	return *this;
 }
+
+template<typename T> unsigned long XMLfile::Query::getNodeValue(T& value) const
+{
+	if(!empty()) front().getValue(value);
+	return card();
+}
+template unsigned long XMLfile::Query::getNodeValue(double& value) const;
+template unsigned long XMLfile::Query::getNodeValue(int& value) const;
+template unsigned long XMLfile::Query::getNodeValue(std::string& value) const;
 
 void XMLfile::Query::printXML(std::ostream& ostrm) const
 {

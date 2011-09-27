@@ -7,13 +7,15 @@
 
 #include "io/vtk/VTKMoleculeWriter.h"
 #include "particleContainer/ParticleContainer.h"
+#include "parallel/DomainDecompBase.h"
 #include "utils/Logger.h"
 #include "Domain.h"
 
 #include <sstream>
 #include <vector>
- #ifdef PARALLEL
+ #ifdef ENABLE_MPI
 #include <mpi.h>
+#include <parallel/DomainDecompBase.h>
 #endif
 
 VTKMoleculeWriter::VTKMoleculeWriter(unsigned int writeFrequency, const std::string& fileName)
@@ -37,7 +39,7 @@ void VTKMoleculeWriter::doOutput(
 		return;
 	}
 
-	int rank = domain->getlocalRank();
+	int rank = domainDecomp->getRank();
 
 	VTKMoleculeWriterImplementation impl(rank);
 
@@ -52,7 +54,7 @@ void VTKMoleculeWriter::doOutput(
 	std::stringstream fileNameStream;
 	fileNameStream << _fileName;
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	fileNameStream << "_node" << rank;
 
 	if (rank == 0) {
@@ -70,7 +72,7 @@ void VTKMoleculeWriter::outputParallelVTKFile(unsigned int numProcs, unsigned lo
 		VTKMoleculeWriterImplementation& impl) {
 
 	std::vector<std::string> procFileNames;
-	for (int i = 0; i < numProcs; i++) {
+	for (unsigned int i = 0; i < numProcs; i++) {
 		std::stringstream fileNameStream;
 		fileNameStream << _fileName << "_node" << i << "_" << simstep << ".vtu";
 		procFileNames.push_back(fileNameStream.str());

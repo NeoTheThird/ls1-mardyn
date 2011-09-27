@@ -64,14 +64,19 @@ public:
 	unsigned int getRotationalDegreesOfFreedom() const { return _rot_dof; }
 
 	const std::vector<LJcenter>& ljcenters() const { return _ljcenters; }
+	LJcenter& ljcenter(unsigned int i) { return _ljcenters[i]; }
 	const LJcenter& ljcenter(unsigned int i) const { return _ljcenters[i]; }
 	const std::vector<Charge>& charges() const { return _charges; }
+	Charge& charge(unsigned i) { return _charges[i]; }
 	const Charge& charge(unsigned i) const { return _charges[i]; }
 	const std::vector<Dipole>& dipoles() const { return _dipoles; }
+	Dipole& dipole(unsigned int i) { return _dipoles[i]; }
 	const Dipole& dipole(unsigned int i) const { return _dipoles[i]; }
 	const std::vector<Quadrupole>& quadrupoles() const { return _quadrupoles; }
+	Quadrupole& quadrupole(unsigned int i) { return _quadrupoles[i]; }
 	const Quadrupole& quadrupole(unsigned int i) const { return _quadrupoles[i]; }
 	const std::vector<Tersoff>& tersoff() const { return _tersoff; }
+	Tersoff& tersoff(unsigned int i) { return _tersoff[i]; }
 	const Tersoff& tersoff(unsigned int i) const { return _tersoff[i]; }
 
 	void setNumMolecules(unsigned long num) { _numMolecules = num; }  /**< set the number of molecules for this component */
@@ -81,7 +86,7 @@ public:
 
 	void addLJcenter(
 			double x, double y, double z, double m, double eps,
-			double sigma, double rc, bool TRUNCATED_SHIFTED
+			double sigma, double rc = 0, bool TRUNCATED_SHIFTED = 0
 	);
 	void addCharge(double x, double y, double z, double m, double q);
 	void addDipole(double x, double y, double z,
@@ -91,6 +96,18 @@ public:
 	void addTersoff(double x, double y, double z,
 	                double m, double A, double B, double lambda, double mu, double R,
 	                double S, double c, double d, double h, double n, double beta);
+
+	/** delete the last site stored in the vector */
+	void deleteLJCenter() { _ljcenters.pop_back() ;}
+	void deleteCharge() { _charges.pop_back() ;}
+	void deleteDipole() { _dipoles.pop_back() ;}
+	void deleteQuadrupole() { _quadrupoles.pop_back() ;}
+	void deleteTersoff() { _tersoff.pop_back() ;}
+
+	/**
+	 * To be called after sites have been deleted or the properties of sites have been changed.
+	 */
+	void updateMassInertia();
 
 	/** write information to stream */
 	void write(std::ostream& ostrm) const;
@@ -106,15 +123,17 @@ public:
 	void setE_trans(double E) { _E_trans = E; }
 	void setE_rot(double E) { _E_rot = E; }
 	void setT(double T) { _T = T; }
-	double E_trans() { return _E_trans; }
-	double E_rot() { return _E_rot; }
-	double E() { return _E_trans + _E_rot; }
-	double T() { return _T; }
+	double E_trans() const { return _E_trans; }
+	double E_rot() const { return _E_rot; }
+	double E() const { return _E_trans + _E_rot; }
+	double T() const { return _T; }
 
 private:
 
 	// update the inverse moment of inertia (to be called each time _Ipa has changed!
 	void updateInvIpa();
+
+	void updateMassInertia(Site& site);
 
 	unsigned int _id; // IDentification number
 	// LJcenter,Dipole,Quadrupole have different size -> not suitable to store in a _Site_-array

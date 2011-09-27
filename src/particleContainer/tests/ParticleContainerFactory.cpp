@@ -34,15 +34,15 @@ ParticleContainer* ParticleContainerFactory::createEmptyParticleContainer(type t
 
 	if (type == LinkedCell) {
 		LinkedCells* container = new LinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
-		                                        tersoffCutoffRadius, cellsInCutoffRadius, NULL);
+		                                        tersoffCutoffRadius, cellsInCutoffRadius);
 		return container;
 	} else if (type == ReorderedLinkedCell) {
 		ReorderedLinkedCells* container = new ReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
-				                                        tersoffCutoffRadius, cellsInCutoffRadius, NULL);
+				                                        tersoffCutoffRadius, cellsInCutoffRadius);
 		return container;
 	} else if (type == BlockedReorderedLinkedCell) {
 		BlockedReorderedLinkedCells* container = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoffRadius, LJCutoffRadius,
-				                                        tersoffCutoffRadius, cellsInCutoffRadius, NULL);
+				                                        tersoffCutoffRadius, cellsInCutoffRadius);
 				return container;
 	} else {
 		global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
@@ -69,13 +69,13 @@ ParticleContainer* ParticleContainerFactory::createInitializedParticleContainer(
 
 	ParticleContainer* moleculeContainer;
 	if (type == LinkedCell) {
-		moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		moleculeContainer = new LinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0);
 	} else if (type == ReorderedLinkedCell) {
-		moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		moleculeContainer = new ReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0);
 	} else if (type == BlockedReorderedLinkedCell) {
-		moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0, NULL);
+		moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, 1.0);
 	} else if (type == AdaptiveSubCell) {
-		moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff, NULL);
+		moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, cutoff, cutoff, cutoff);
 	} else {
 		global_log->error() << "ParticleContainerFactory: Unsupported type requested! " << std::endl;
 		return NULL;

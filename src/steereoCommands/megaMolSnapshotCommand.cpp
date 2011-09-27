@@ -11,14 +11,15 @@
 
 #include <iostream>
 #include "snapshotCommand.h"
-#include "../Domain.h"
-#include "../particleContainer/ParticleContainer.h"
-#include "../molecules/Molecule.h"
-#include <steereoSteeringBase.h>
-#include <steereoStream.h>
-#include <steereoDefinitions.h>
-#ifdef PARALLEL
-  #include <mpi.h>
+#include "Domain.h"
+#include "particleContainer/ParticleContainer.h"
+#include "molecules/Molecule.h"
+#include <steereo/steereoSteeringBase.h>
+#include <steereo/steereoStream.h>
+#include <steereo/steereoDefinitions.h>
+
+#ifdef ENABLE_MPI
+#include <mpi.h>
 #endif
 
 

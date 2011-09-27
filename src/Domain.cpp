@@ -279,7 +279,7 @@ void Domain::calculateGlobalValues(
 					tM != particleContainer->end();
 					tM = particleContainer->next() )
 			{
-				Utrans = tM->Utrans();
+				Utrans = tM->U_trans();
 				if(Utrans > limit_energy)
 				{
 					vcorr = sqrt(limit_energy / Utrans);
@@ -292,7 +292,7 @@ void Domain::calculateGlobalValues(
 				if(rot_dof > 0)
 				{
 					limit_rot_energy = 3.0*rot_dof * Ti;
-					Urot = tM->Urot();
+					Urot = tM->U_rot();
 					if(Urot > limit_rot_energy)
 					{
 						Dcorr = sqrt(limit_rot_energy / Urot);
@@ -950,8 +950,6 @@ void Domain::setepsilonRF(double erf) { _epsilonRF = erf; }
 unsigned long Domain::getglobalNumMolecules() const { return _globalNumMolecules; }
 
 void Domain::setglobalNumMolecules(unsigned long glnummol) { _globalNumMolecules = glnummol; }
-
-int Domain::getlocalRank() const { return _localRank;}
 
 unsigned long Domain::getinpversion(){ return _inpversion;}
 

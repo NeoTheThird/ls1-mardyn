@@ -5,8 +5,8 @@
  * @Author: Wolfgang Eckhardt, Martin Buchholz
  */
 
-#ifndef DROPLETGENERATOR_H_
-#define DROPLETGENERATOR_H_
+#ifndef DROPLETPLACEMENT_H_
+#define DROPLETPLACEMENT_H_
 
 #include "utils/Logger.h"
 #include <vector>
@@ -15,7 +15,7 @@
  *  Places drops of different sizes in the domain, so that a given percentage
  *  of the volume (@see maxSphereVolume) is covered by fluid.
  */
-class DropletGenerator {
+class DropletPlacement {
 
 public:
 
@@ -41,7 +41,7 @@ public:
 	 *         - each class covering the same volume in total
 	 *         - the size of a sphere is determined by pow(0.9, i) * maxSphereRadius; i in [1,maxSphereSize]
 	 */
-	DropletGenerator(double fluidVolume, double maxSphereVolume, int numSphereSizes);
+	DropletPlacement(double fluidVolume, double maxSphereVolume, int numSphereSizes, Log::Logger* logger);
 
 	/**
 	 * Generates droplets with sizes as specified by numSphereSizes, fluidVolume
@@ -49,7 +49,7 @@ public:
 	 */
 	std::vector<Droplet> generateDroplets();
 
-	virtual ~DropletGenerator();
+	virtual ~DropletPlacement();
 
 private:
 	double _fluidVolume;
@@ -58,6 +58,8 @@ private:
 
 	int _numOccupied;
 	std::vector<std::vector<std::vector<bool> > > _occupiedFields;
+
+	Log::Logger* _logger;
 
 	/**
 	 * Initialize vector _occupiedFields
@@ -76,6 +78,6 @@ private:
 	void placeSphereRandomly(double radius, std::vector<Droplet>& droplets);
 };
 
-Log::Logger& operator<<(Log::Logger& str, DropletGenerator::Droplet& droplet);
+Log::Logger& operator<<(Log::Logger& str, DropletPlacement::Droplet& droplet);
 
-#endif /* DROPLETGENERATOR_H_ */
+#endif /* DropletPlacement_H_ */

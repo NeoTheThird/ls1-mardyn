@@ -8,23 +8,24 @@
 #ifdef STEEREO
 
 #include "utils/Logger.h"
+#include "Domain.h"
 #include "steereoCommands/snapshotCommand.h"
 #include "steereoCommands/megaMolSnapshotCommand.h"
 #include "steereoCommands/sendCouplingMDCommand.h"
 #include "steereoCommands/receiveCouplingMDCommand.h"
 #include "steereoCommands/estimateRemainingTimeCommand.h"
-#include "steereoCommands/getVisDataCommand.h"
-#include "Domain.h"
-#ifdef PARALLEL
+//#include "steereoCommands/getVisDataCommand.h"
+#include <steereo/steerParameterCommand.h>
+#include <steereo/steereoSocketCommunicator.h>
+#include <steereo/steereoSimSteering.h>
+#include <steereo/steereoCouplingSim.h>
+#include <steereo/steereoXMLReader.h>
+#include "particleContainer/ParticleContainer.h"
+
+#ifdef ENABLE_MPI
 #include <mpi.h>
 #include <steereoMPIIntraCommunicator.h>
-#endif //PARALLEL
-#include <steerParameterCommand.h>
-#include <steereoSocketCommunicator.h>
-#include <steereoSimSteering.h>
-#include <steereoCouplingSim.h>
-#include <steereoXMLReader.h>
-#include "particleContainer/ParticleContainer.h"
+#endif //ENABLE_MPI
 
 using Log::global_log;
 
@@ -34,7 +35,7 @@ SteereoSimSteering* initSteereo(int ownRank, int numProcs) {
 	global_log->info() << "In initSteereo" << std::endl;
 	SteereoSimSteering* _steer = new SteereoSimSteering();
 /*	SteereoXMLReader* xmlReader;
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	global_log->debug() << "I am parallel" << std::endl;
 	xmlReader = new SteereoXMLReader ("./utils/steereoParallelConfig.xml");
 #else
@@ -49,7 +50,7 @@ SteereoSimSteering* initSteereo(int ownRank, int numProcs) {
 	_steer->setNumberOfQueues(1);
 #endif
 	int portNumber = 44445;
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	int ownSize;
 	MPI_Comm_size(MPI_COMM_WORLD, &ownSize);
 	SteereoMPIIntraCommunicator* mpiIntraComm = new SteereoMPIIntraCommunicator();
@@ -67,14 +68,14 @@ SteereoSimSteering* initSteereo(int ownRank, int numProcs) {
 	_steer->setIntraCommunicator(mpiIntraComm);
 	if (mpiIntraComm->amIRoot()) {
 		portNumber += (ownRank * partNum) / ownSize;
-#endif // PARALLEL
+#endif // ENABLE_MPI
 
 	std::stringstream strstr;
 	strstr << portNumber;
 	_steer->setCommunicator(new SteereoSocketCommunicator(strstr.str()));
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 }
-#endif // PARALLEL
+#endif // ENABLE_MPI
 	global_log->info() << "done init_steereo" << std::endl;
 	return _steer;
 
@@ -96,9 +97,9 @@ void registerSteereoCommands(SteereoSimSteering* simSteer, Simulation* sim) {
 
 	simSteer->registerCommand(MegaMolSnapshotCommand::generateNewInstance, "getMegaMolSnapshot");
 	simSteer->registerCommand(SnapshotCommand::generateNewInstance, "getSnapshot");
-	simSteer->registerCommand(GetVisDataCommand::generateNewInstance, "getVisData");
+	//simSteer->registerCommand(GetVisDataCommand::generateNewInstance, "getVisData");
 	// register estimateRemainingTimeCommand
-  simSteer->registerCommand(EstimateRemainingTimeCommand::generateNewInstance, "estimateRemainingTime");
+    simSteer->registerCommand(EstimateRemainingTimeCommand::generateNewInstance, "estimateRemainingTime");
 	MegaMolSnapshotCommand::setSimData(sim);
 	//simSteer->registerSignalHandler(EstimateRemainingTimeCommand::generateNewInstance, 15);
 	SnapshotCommand::setSimData(sim);
@@ -108,7 +109,7 @@ void registerSteereoCommands(SteereoSimSteering* simSteer, Simulation* sim) {
 	    sim->getDomain(),
 	    &Domain::getGlobalCurrentTemperature,
 	    &Domain::setGlobalTemperature);
-	GetVisDataCommand::addData("getVisData", sim);
+	//GetVisDataCommand::addData("getVisData", sim);
 	global_log->info() << "add Data to EstimateRemainingTimeCommand" << std::endl;
 	EstimateRemainingTimeCommand::addData ("estimateRemainingTime", sim);
 	// add data for the EstimateRemainingTimeCommand
@@ -120,11 +121,11 @@ void registerSteereoCommands(SteereoSimSteering* simSteer, Simulation* sim) {
 }
 
 void startListeningSteereo(SteereoSimSteering* simSteer) {
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	if (simSteer->getIntraCommunicator()->amIRoot()) {
 #endif
 	simSteer->startListening();
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 }
 #endif
 }
@@ -132,12 +133,11 @@ void startListeningSteereo(SteereoSimSteering* simSteer) {
 void checkMoleculeContainer(ParticleContainer* pc) {
 	std::cout << "In checkMoleculeContainer" << std::endl;
 
-	double rmin; // lower corner of the process-specific domain //PARALLEL
+	double rmin; // lower corner of the process-specific domain //ENABLE_MPI
 	double rmax;
 	rmin = pc->getBoundingBoxMin(0);
 	rmax = pc->getBoundingBoxMax(0);
 
-	std::cout << "halo is " << pc->get_halo_L(0) << std::endl;
 	Molecule* currentMolecule;
 
 	double low_limit; // particles below this limit have to be copied or moved to the lower process

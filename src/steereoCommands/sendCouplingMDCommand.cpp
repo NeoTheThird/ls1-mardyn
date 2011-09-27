@@ -5,15 +5,15 @@
  *      Author: hpcdjenz
  */
 
-#ifdef STEEREO
+#if defined(STEEREO) && defined(STEEREO_COUPLING)
 #include "sendCouplingMDCommand.h"
 #include <cstdio>
 #include <cstdlib>
 #include <map>
-#include "../Simulation.h"
-#include "../particleContainer/ParticleContainer.h"
-#include "../molecules/Molecule.h"
-#include "../Domain.h"
+#include "Simulation.h"
+#include "particleContainer/ParticleContainer.h"
+#include "molecules/Molecule.h"
+#include "Domain.h"
 
 std::vector<Molecule>* SendCouplingMDCommand::transferContainer=NULL;
 

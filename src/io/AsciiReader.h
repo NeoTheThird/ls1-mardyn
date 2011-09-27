@@ -1,16 +1,17 @@
 #ifndef ASCIIREADER_H_
 #define ASCIIREADER_H_
 
-#include "io/InputBase.h"
 #include <string>
 #include <sstream>
 #include <fstream>
 
-class ChemicalPotential;
+#include "io/InputBase.h"
 
-//class ParticleContainer;
-//class DomainDecompBase;
-//class Domain;
+
+class ParticleContainer;
+class DomainDecompBase;
+class Domain;
+class ChemicalPotential;
 
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
 class AsciiReader : public InputBase {
@@ -22,7 +23,7 @@ public:
 	void readPhaseSpaceHeader(Domain* domain, double timestep);
 	unsigned long readPhaseSpace(ParticleContainer* particleContainer, std::list<ChemicalPotential>* lmu, Domain* domain, DomainDecompBase* domainDecomp);
 private:
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	std::istringstream _phaseSpaceFileStream;
 #else
 	std::fstream _phaseSpaceFileStream;

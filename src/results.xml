@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding='ISO-8859-1' standalone='yes' ?>
+<TestRun>
+  <FailedTests></FailedTests>
+  <SuccessfulTests>
+    <Test id="1">
+      <Name>CanonicalEnsembleTest::UpdateNumMoleculesSequential</Name>
+    </Test>
+    <Test id="2">
+      <Name>CanonicalEnsembleTest::UpdateNumMoleculesParallel</Name>
+    </Test>
+    <Test id="3">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushPopSimpleObjectRealloc</Name>
+    </Test>
+    <Test id="4">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushPopSimpleObjectReallocShrink</Name>
+    </Test>
+    <Test id="5">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushPopObjectWithPtrRealloc</Name>
+    </Test>
+    <Test id="6">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushPopObjectWithPtrReallocShrink</Name>
+    </Test>
+    <Test id="7">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushSimpleObjectRealloc</Name>
+    </Test>
+    <Test id="8">
+      <Name>N5utils27DynamicArrayPerformanceTestE::testPushObjectWithPtrRealloc</Name>
+    </Test>
+    <Test id="9">
+      <Name>N5utils16DynamicArrayTestE::testZeroInitialization</Name>
+    </Test>
+    <Test id="10">
+      <Name>N5utils16DynamicArrayTestE::testInitialization</Name>
+    </Test>
+    <Test id="11">
+      <Name>N5utils16DynamicArrayTestE::testReallocationForCopyConstruct</Name>
+    </Test>
+    <Test id="12">
+      <Name>N5utils16DynamicArrayTestE::testReallocationForRealloc</Name>
+    </Test>
+    <Test id="13">
+      <Name>MarDynInitOptionsTest::testAllOptions</Name>
+    </Test>
+    <Test id="14">
+      <Name>CommonTest::testGetTimeString</Name>
+    </Test>
+    <Test id="15">
+      <Name>CommonTest::testAlignedNumber</Name>
+    </Test>
+    <Test id="16">
+      <Name>CommonTest::testCalculateDistances</Name>
+    </Test>
+    <Test id="17">
+      <Name>RDFTest::testRDFCountSequential12_LinkedCell</Name>
+    </Test>
+    <Test id="18">
+      <Name>RDFTest::testRDFCountSequential12_ReorderedLinkedCell</Name>
+    </Test>
+    <Test id="19">
+      <Name>RDFTest::testRDFCountSequential12_BlockedReorderedLinkedCell</Name>
+    </Test>
+    <Test id="20">
+      <Name>RDFTest::testRDFCountSequential12_AdaptiveCell</Name>
+    </Test>
+    <Test id="21">
+      <Name>RDFTest::testRDFCountLinkedCell</Name>
+    </Test>
+    <Test id="22">
+      <Name>RDFTest::testRDFCountAdaptiveCell</Name>
+    </Test>
+    <Test id="23">
+      <Name>LinkedCellsTest::testInsertion</Name>
+    </Test>
+    <Test id="24">
+      <Name>LinkedCellsTest::testMoleculeIteration</Name>
+    </Test>
+    <Test id="25">
+      <Name>LinkedCellsTest::testUpdateAndDeleteOuterParticles</Name>
+    </Test>
+    <Test id="26">
+      <Name>ReorderedLinkedCellsTest::testInsertion</Name>
+    </Test>
+    <Test id="27">
+      <Name>ReorderedLinkedCellsTest::testMoleculeIteration</Name>
+    </Test>
+    <Test id="28">
+      <Name>ReorderedLinkedCellsTest::testUpdateAndDeleteOuterParticles</Name>
+    </Test>
+    <Test id="29">
+      <Name>BlockedReorderedLinkedCellsTest::testInsertion</Name>
+    </Test>
+    <Test id="30">
+      <Name>BlockedReorderedLinkedCellsTest::testMoleculeIteration</Name>
+    </Test>
+    <Test id="31">
+      <Name>BlockedReorderedLinkedCellsTest::testUpdateAndDeleteOuterParticles</Name>
+    </Test>
+    <Test id="32">
+      <Name>BlockedReorderedLinkedCellsTest::testLinearize</Name>
+    </Test>
+    <Test id="33">
+      <Name>MoleculeTest::testIsLessThan</Name>
+    </Test>
+    <Test id="34">
+      <Name>VTKGridWriterTest::testEmptyGrid</Name>
+    </Test>
+    <Test id="35">
+      <Name>VTKMoleculeWriterTest::testDoOutput</Name>
+    </Test>
+    <Test id="36">
+      <Name>VTKMoleculeWriterImplementationTest::testInitialization</Name>
+    </Test>
+    <Test id="37">
+      <Name>VTKMoleculeWriterImplementationTest::testWriteVTKFile</Name>
+    </Test>
+    <Test id="38">
+      <Name>VTKGridWriterImplementationTest::testInitialization</Name>
+    </Test>
+    <Test id="39">
+      <Name>VTKGridWriterImplementationTest::testWriteVTKFile</Name>
+    </Test>
+  </SuccessfulTests>
+  <Statistics>
+    <Tests>39</Tests>
+    <FailuresTotal>0</FailuresTotal>
+    <Errors>0</Errors>
+    <Failures>0</Failures>
+  </Statistics>
+</TestRun>

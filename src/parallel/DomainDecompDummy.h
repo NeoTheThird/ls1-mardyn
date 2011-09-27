@@ -1,10 +1,10 @@
 #ifndef DOMAINDECOMPDUMMY_H_
 #define DOMAINDECOMPDUMMY_H_
 
+#include <iostream>
+
 #include "parallel/DomainDecompBase.h"
 #include "parallel/CollectiveCommDummy.h"
-
-#include <iostream>
 
 //! @brief implement the %domain decomposition for a single processor
 //! @author Martin Buchholz
@@ -59,9 +59,7 @@ public:
 	double getBoundingBoxMax(int dimension, Domain* domain);
 
 	//! @brief In the sequential mode, there is no decomposition and therefore nothing to be printed
-	void printDecomp(std::string filename, Domain* domain) {
-		std::cerr << "printDecomp useless in serial mode" << std::endl;
-	}
+	void printDecomp(std::string filename, Domain* domain);
 
 	//! @brief opends the file(append), loops over all molecules and writes each into the file
 	void writeMoleculesToFile(std::string filename, ParticleContainer* moleculeContainer);
@@ -75,10 +73,6 @@ public:
 	int getNumProcs() {
 		return 1;
 	}
-
-	//! @brief for the sequential version, the processor name is not that important
-	//! @todo implement this
-	const char* getProcessorName() const;
 
 	//! @brief one process doesn't need synchronisation, so nothing is done here
 	void barrier() {

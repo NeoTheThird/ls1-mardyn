@@ -40,10 +40,9 @@ using Log::global_log;
 
 BlockedReorderedLinkedCells::BlockedReorderedLinkedCells(
 		double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
-		double tersoffCutoffRadius, double cellsInCutoffRadius,
-		ParticlePairsHandler* partPairsHandler
+		double tersoffCutoffRadius, double cellsInCutoffRadius
 )
-		: ParticleContainer(partPairsHandler, bBoxMin, bBoxMax),
+		: ParticleContainer(bBoxMin, bBoxMax),
 			_blockTraverse(this, _cells, _innerCellIndices, _boundaryCellIndices, _haloCellIndices )
 {
 	int numberOfCells = 1;
@@ -215,7 +214,7 @@ void BlockedReorderedLinkedCells::addParticle(Molecule& particle) {
 /**
  * @todo replace this by a call to component->getNumMolecules() !?
  */
-unsigned BlockedReorderedLinkedCells::countParticles(int cid) {
+unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid) {
 	// I won't implement redundant stuff right now...
 	#ifndef NDEBUG
 		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
@@ -241,7 +240,7 @@ unsigned BlockedReorderedLinkedCells::countParticles(int cid) {
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned BlockedReorderedLinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
+unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
 	#ifndef NDEBUG
 		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
 		exit(-1);
@@ -313,12 +312,12 @@ unsigned BlockedReorderedLinkedCells::countParticles(int cid, double* cbottom, d
 	*/
 }
 
-void BlockedReorderedLinkedCells::traversePairs() {
+void BlockedReorderedLinkedCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
-	_blockTraverse.traversePairs();
+	_blockTraverse.traversePairs(particlePairsHandler);
 }
 
 unsigned long BlockedReorderedLinkedCells::getNumberOfParticles() {

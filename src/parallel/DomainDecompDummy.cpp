@@ -1,13 +1,15 @@
-#include "parallel/DomainDecompDummy.h"
+#include <fstream>
+#include <ctime>
+
+#include "DomainDecompDummy.h"
 
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/ParticleContainer.h"
 #include "Domain.h"
-
-#include <fstream>
-#include <ctime>
+#include "utils/Logger.h"
 
 using namespace std;
+using Log::global_log;
 
 DomainDecompDummy::DomainDecompDummy() {
 }
@@ -17,9 +19,9 @@ DomainDecompDummy::~DomainDecompDummy() {
 
 void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, const vector<Component>& components, Domain* domain) {
 
-	double rmin[3]; // lower corner of the process-specific domain //PARALLEL
+	double rmin[3]; // lower corner of the process-specific domain //ENABLE_MPI
 	double rmax[3];
-	double halo_L[3]; // width of the halo strip //PARALLEL
+	double halo_L[3]; // width of the halo strip //ENABLE_MPI
 	for (int i = 0; i < 3; i++) {
 		rmin[i] = moleculeContainer->getBoundingBoxMin(i);
 		rmax[i] = moleculeContainer->getBoundingBoxMax(i);
@@ -139,11 +141,6 @@ void DomainDecompDummy::writeMoleculesToFile(string filename, ParticleContainer*
 	checkpointfilestream.close();
 }
 
-const char* DomainDecompDummy::getProcessorName() const {
-	cerr << "ERROR in DomainDecompDummy::getProcessorName(): This method is not implemented yet" << endl;
-	return "main";
-}
-
 double DomainDecompDummy::getTime() {
 	return double(clock()) / CLOCKS_PER_SEC;
 }
@@ -158,4 +155,8 @@ void DomainDecompDummy::assertIntIdentity(int IX) {
 }
 
 void DomainDecompDummy::assertDisjunctivity(TMoleculeContainer* mm) {
+}
+
+void DomainDecompDummy::printDecomp(std::string filename, Domain* domain) {
+	global_log->warning() << "printDecomp useless in serial mode" << endl;
 }

@@ -85,8 +85,11 @@ public:
 	/** get M */
 	double M(unsigned short d) const {return _M[d]; }
 
-	double Utrans() const { return .5*_m*(_v[0]*_v[0]+_v[1]*_v[1]+_v[2]*_v[2]); }
-	double Urot();
+	double U_trans() const { return 0.5 * _m * v2(); }
+	/** return the rotational energy of the molecule */
+	double U_rot();
+	/** return total kinetic energy of the molecule */
+	double U_kin() { return U_trans() + U_rot(); }
 
 	/** get number of sites */
 	unsigned int numSites() const { return _numsites; }
@@ -283,5 +286,7 @@ private:
 	void setupCache(const std::vector<Component>* components);
 
 };
+
+std::ostream& operator<<( std::ostream& os, const CachingMolecule& m );
 
 #endif /*CACHINGMOLECULE_H_*/

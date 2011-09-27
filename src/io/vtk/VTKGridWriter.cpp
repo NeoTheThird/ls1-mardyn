@@ -11,6 +11,7 @@
 #include "particleContainer/Cell.h"
 #include "Domain.h"
 #include "utils/Logger.h"
+#include "parallel/DomainDecompBase.h"
 
 using namespace Log;
 
@@ -39,7 +40,7 @@ void  VTKGridWriter::doOutput(
 		return;
 	}
 
-	int rank = domain->getlocalRank();
+	int rank = domainDecomp->getRank();
 
 	VTKGridWriterImplementation impl(rank);
 	impl.initializeVTKFile();
@@ -54,7 +55,7 @@ void  VTKGridWriter::doOutput(
 	std::stringstream fileNameStream;
 	fileNameStream << _fileName;
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	fileNameStream << "_node" << rank;
 
 	if (rank == 0) {
@@ -74,7 +75,7 @@ void  VTKGridWriter::outputParallelVTKFile(unsigned int numProcs, unsigned long 
 			VTKGridWriterImplementation& impl) {
 
 	std::vector<std::string> procFileNames;
-	for (int i = 0; i < numProcs; i++) {
+	for (unsigned int i = 0; i < numProcs; i++) {
 		std::stringstream fileNameStream;
 		fileNameStream << _fileName << "_node" << i << "_" << simstep << ".vtu";
 		procFileNames.push_back(fileNameStream.str());

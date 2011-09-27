@@ -16,10 +16,9 @@
  *   Free Software Foundation, Inc.,                                       *
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
+#include <cmath>
 
 #include "particleContainer/LinkedCells.h"
-
-#include <cmath>
 
 #include "molecules/potforce.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
@@ -39,10 +38,9 @@ using Log::global_log;
 
 LinkedCells::LinkedCells(
 		double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
-		double tersoffCutoffRadius, double cellsInCutoffRadius,
-		ParticlePairsHandler* partPairsHandler
+		double tersoffCutoffRadius, double cellsInCutoffRadius
 )
-		: ParticleContainer(partPairsHandler, bBoxMin, bBoxMax),
+		: ParticleContainer(bBoxMin, bBoxMax),
 			_blockTraverse(this, _cells, _innerCellIndices, _boundaryCellIndices, _haloCellIndices )
 {
 	int numberOfCells = 1;
@@ -68,7 +66,7 @@ LinkedCells::LinkedCells(
 
 		numberOfCells *= _cellsPerDimension[d];
 	}
-	global_log->debug() << "Cell size (" << _cellLength[1] << ", " << _cellLength[2] << ", " << _cellLength[3] << ")" << endl;
+	global_log->debug() << "Cell size (" << _cellLength[0] << ", " << _cellLength[1] << ", " << _cellLength[2] << ")" << endl;
 
 	_cells.resize(numberOfCells);
 
@@ -206,7 +204,7 @@ void LinkedCells::addParticle(Molecule& particle) {
 /**
  * @todo replace this by a call to component->getNumMolecules() !?
  */
-unsigned LinkedCells::countParticles(int cid) {
+unsigned LinkedCells::countParticles(unsigned int cid) {
 	unsigned N = 0;
 	std::vector<Molecule*>::iterator molIter1;
 	for (unsigned i = 0; i < _cells.size(); i++) {
@@ -224,7 +222,7 @@ unsigned LinkedCells::countParticles(int cid) {
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned LinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
+unsigned LinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
 	int minIndex[3];
 	int maxIndex[3];
 	for (int d = 0; d < 3; d++) {
@@ -289,12 +287,12 @@ unsigned LinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
 	return N;
 }
 
-void LinkedCells::traversePairs() {
+void LinkedCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in LinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
-	_blockTraverse.traversePairs();
+	_blockTraverse.traversePairs(particlePairsHandler);
 }
 
 unsigned long LinkedCells::getNumberOfParticles() {
@@ -541,11 +539,13 @@ unsigned long LinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {
 	int cellIndex[3]; // 3D Cell index
 
 	for (int dim = 0; dim < 3; dim++) {
+#ifndef NDEBUG
 		if (molecule->r(dim) < _haloBoundingBoxMin[dim] || molecule->r(dim) >= _haloBoundingBoxMax[dim]) {
-			global_log->error() << "getCellIndexOfMolecule(Molecule* molecule): Molecule is outside of the bounding box" << endl;
+			global_log->error() << "Molecule is outside of bounding box" << endl;
+			global_log->debug() << "Molecule:\n" << *molecule << endl;
 		}
+#endif
 		cellIndex[dim] = (int) floor((molecule->r(dim) - _haloBoundingBoxMin[dim]) / _cellLength[dim]);
-
 	}
 	return this->cellIndexOf3DIndex( cellIndex[0], cellIndex[1], cellIndex[2] );
 }

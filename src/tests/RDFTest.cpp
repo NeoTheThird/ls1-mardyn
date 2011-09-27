@@ -14,7 +14,7 @@
 #include "particleContainer/LinkedCells.h"
 #include "particleContainer/adapter/ParticlePairs2PotForceAdapter.h"
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 #include "parallel/DomainDecomposition.h"
 #endif
 
@@ -76,7 +76,6 @@ void RDFTest::testRDFCountSequential12_AdaptiveCell() {
 
 void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
 	ParticlePairs2PotForceAdapter handler(*_domain);
-	moleculeContainer->setPairHandler(&handler);
 
 	moleculeContainer->update();
 	moleculeContainer->updateMoleculeCaches();
@@ -86,7 +85,7 @@ void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
 	RDF rdf(0.018, 100, 1);
 	handler.setRDF(&rdf);
 	rdf.tickRDF();
-	moleculeContainer->traversePairs();
+	moleculeContainer->traversePairs(&handler);
 	rdf.collectRDF(_domainDecomposition);
 
 	for (int i = 0; i < 100; i++) {
@@ -109,7 +108,7 @@ void RDFTest::testRDFCountSequential12(ParticleContainer* moleculeContainer) {
 	_domainDecomposition->exchangeMolecules(moleculeContainer, _domain->getComponents(), _domain);
 	moleculeContainer->update();
 
-	moleculeContainer->traversePairs();
+	moleculeContainer->traversePairs(&handler);
 	rdf.collectRDF(_domainDecomposition);
 	rdf.accumulateRDF();
 
@@ -150,7 +149,6 @@ void RDFTest::testRDFCountAdaptiveCell() {
 
 void RDFTest::testRDFCount(ParticleContainer* moleculeContainer) {
 	ParticlePairs2PotForceAdapter handler(*_domain);
-	moleculeContainer->setPairHandler(&handler);
 
 	_domainDecomposition->balanceAndExchange(true, moleculeContainer, _domain->getComponents(), _domain);
 	moleculeContainer->updateMoleculeCaches();
@@ -158,7 +156,7 @@ void RDFTest::testRDFCount(ParticleContainer* moleculeContainer) {
 	RDF rdf(0.018, 100, 1);
 	handler.setRDF(&rdf);
 	rdf.tickRDF();
-	moleculeContainer->traversePairs();
+	moleculeContainer->traversePairs(&handler);
 	rdf.collectRDF(_domainDecomposition);
 
 	// assert number of pairs counted
@@ -180,7 +178,7 @@ void RDFTest::testRDFCount(ParticleContainer* moleculeContainer) {
 	rdf.reset();
 
 	rdf.tickRDF();
-	moleculeContainer->traversePairs();
+	moleculeContainer->traversePairs(&handler);
 	rdf.collectRDF(_domainDecomposition);
 	rdf.accumulateRDF();
 

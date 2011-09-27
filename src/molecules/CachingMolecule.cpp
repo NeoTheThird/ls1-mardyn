@@ -301,7 +301,7 @@ void CachingMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
 	sumIw2 += Iw2;
 }
 
-double CachingMolecule::Urot() {
+double CachingMolecule::U_rot() {
 	double w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
@@ -565,4 +565,15 @@ unsigned long CachingMolecule::totalMemsize() const {
 	size += sizeof(double) * _numsites * 3;
 
 	return size;
+}
+
+
+std::ostream& operator<<( std::ostream& os, const CachingMolecule& m ) {
+	os << "ID: " << m.id() << "\n";
+	os << "r:  (" << m.r(0) << ", " << m.r(1) << ", " << m.r(2) << ")\n" ;
+	os << "v:  (" << m.v(0) << ", " << m.v(1) << ", " << m.v(2) << ")\n" ;
+	os << "F:  (" << m.F(0) << ", " << m.F(1) << ", " << m.F(2) << ")\n" ;
+	os << "q:  [[" << m.q().qw() << ", " << m.q().qx() << "], [" << m.q().qy() << ", " << m.q().qz()<< "]]\n" ;
+	os << "w:  (" << m.D(0) << ", " << m.D(1) << ", " << m.D(2) << ")" ;
+	return os;
 }

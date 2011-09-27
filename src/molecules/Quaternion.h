@@ -20,7 +20,7 @@
 #ifndef QUATERNION_H_
 #define QUATERNION_H_
 
-#include "cmath"
+#include <cmath>
 
 /**
  @author Martin Bernreuther
@@ -73,16 +73,18 @@ public:
 	}
 
 	void operator *=(const Quaternion& q);
-
-	void rotate(const float d[3], double drot[3]) const {
-		double d_new[3];
-		d_new[0] = d[0];
-		d_new[1] = d[1];
-		d_new[2] = d[2];
-		rotate(d_new, drot);
-	}
-
+	/**
+	 * apply the rotation represented by tis quaternion to d
+	 * @param d the vector to be rotated
+	 * @param result vector of the rotation
+	 */
 	void rotate(const double d[3], double drot[3]) const;
+	
+	/**
+	 * apply the rotation represented by tis quaternion to d. The result vector
+	 * is stored to d.
+	 * @param d the vector to be rotated
+	 */
 	void rotate(double d[3]) const {
 		double drot[3];
 		rotate(d, drot);

@@ -93,11 +93,9 @@ public:
 	//!        ==> cellsPerDimension = phasespacelength/celllength = 100/1.5 = 66.67 cells \n
 	//!        ==> cells have to be larger: cellsPerDimension = phasespacelength/celllength = 100/celllength = 66 cells \n
 	//!        ==> celllength = 100/66 = 1.5152
-	//! @param partPairsHandler specified concrete action to be done for each pair
 	LinkedCells(
 		 double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
-		 double tersoffCutoffRadius, double cellsInCutoffRadius,
-		 ParticlePairsHandler* partPairsHandler
+		 double tersoffCutoffRadius, double cellsInCutoffRadius
 	);
 
 	//! Destructor
@@ -132,7 +130,8 @@ public:
 	//!     backward cells. Here it has to be checked whether the neighbour cell is halo or not.
 	//!     If it is Halo, the force is calculated, if it isn't, the force is not calculated,
 	//!     because the same pair of cells has already been processed in one of the other loops.
-	void traversePairs();
+	//! @param particlePairsHandler specified concrete action to be done for each pair
+	void traversePairs(ParticlePairsHandler* particlePairsHandler);
 
 	//! @return the number of particles stored in the Linked Cells
 	unsigned long getNumberOfParticles();
@@ -184,13 +183,13 @@ public:
 	}
 
 	//! @brief counts all particles inside the bounding box
-	unsigned countParticles(int cid);
+	unsigned countParticles(unsigned int cid);
 
 	/**
 	 * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
 	 */
 	//! @brief counts particles in the intersection of bounding box and control volume
-	unsigned countParticles(int cid, double* cbottom, double* ctop);
+	unsigned countParticles(unsigned int cid, double* cbottom, double* ctop);
 
 	void deleteMolecule(unsigned long molid, double x, double y, double z);
 	/* TODO: The particle container should not contain any physics, search a new place for this. */

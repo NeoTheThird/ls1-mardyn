@@ -1,4 +1,4 @@
-#include "parallel/DomainDecomposition.h"
+#include "DomainDecomposition.h"
 
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/ParticleContainer.h"

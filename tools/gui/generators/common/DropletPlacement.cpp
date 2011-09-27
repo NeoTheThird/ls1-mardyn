@@ -5,27 +5,27 @@
  * @Author: eckhardw
  */
 
-#include "io/DropletGenerator.h"
+#include "DropletPlacement.h"
 #include <cmath>
 
 #define SIZE 100
 
 using namespace std;
 
-DropletGenerator::DropletGenerator(double fluidVolume, double maxSphereVolume, int numSphereSizes)
+DropletPlacement::DropletPlacement(double fluidVolume, double maxSphereVolume, int numSphereSizes, Log::Logger* logger)
  : _fluidVolume(fluidVolume / 100.), _maxSphereRadius(pow((3.0*maxSphereVolume / 100.)/(4.0 * M_PI), 1.0/3.0)),
-   _numSphereSizes(numSphereSizes), _numOccupied(0)
+   _numSphereSizes(numSphereSizes), _numOccupied(0), _logger(logger)
 {
 	initFields(SIZE);
-	Log::global_log -> debug() << "Instantiated Droplet Generator for parameter set " <<
+	_logger -> debug() << "Instantiated Droplet Generator for parameter set " <<
 			" fluidVolume " << _fluidVolume << " maxSphereVolume " << (maxSphereVolume/100) << " numSphereSizes " << _numSphereSizes << endl;
-	Log::global_log -> debug() << " _maxSphereRadius is " << _maxSphereRadius << endl;
+	_logger -> debug() << " _maxSphereRadius is " << _maxSphereRadius << endl;
 }
 
-DropletGenerator::~DropletGenerator() {
+DropletPlacement::~DropletPlacement() {
 }
 
-void DropletGenerator::initFields(int size){
+void DropletPlacement::initFields(int size){
 	_occupiedFields.resize(size);
 	for(int ix=0; ix<size; ix++){
 		_occupiedFields[ix].resize(size);
@@ -38,7 +38,7 @@ void DropletGenerator::initFields(int size){
 	}
 }
 
-double DropletGenerator::calcDistance(vector<double> pos1, double pos2[3]){
+double DropletPlacement::calcDistance(vector<double> pos1, double pos2[3]){
 	double temp = 0;
 	for(int i=0; i<3; i++){
 		temp += pow(pos1[i]-pos2[i],2.0);
@@ -47,7 +47,7 @@ double DropletGenerator::calcDistance(vector<double> pos1, double pos2[3]){
 }
 
 
-void DropletGenerator::placeSphereRandomly(double radius, std::vector<Droplet>& droplets){
+void DropletPlacement::placeSphereRandomly(double radius, std::vector<Droplet>& droplets){
 	double center[3];
 	center[0] = rand()/(1.0*RAND_MAX);
 	center[1] = rand()/(1.0*RAND_MAX);
@@ -88,7 +88,17 @@ void DropletGenerator::placeSphereRandomly(double radius, std::vector<Droplet>& 
 	droplets.push_back(droplet);
 }
 
-vector<DropletGenerator::Droplet> DropletGenerator::generateDroplets() {
+vector<DropletPlacement::Droplet> DropletPlacement::generateDroplets() {
+
+	// in case there is only one droplet to be generated, place it in the middle!
+	double maxDropVolume = (4.0 / 3.0 * M_PI * pow(_maxSphereRadius,3));
+	if (_numSphereSizes == 1 && maxDropVolume >= _fluidVolume) {
+		vector<Droplet> droplets;
+		double center[3] = {0.5, 0.5, 0.5};
+		Droplet droplet(center, _maxSphereRadius);
+		droplets.push_back(droplet);
+		return droplets;
+	}
 
 	// sphereclass 1:
 	double currentRadius = _maxSphereRadius;
@@ -104,14 +114,14 @@ vector<DropletGenerator::Droplet> DropletGenerator::generateDroplets() {
 			count++;
 			percentageOccupied = _numOccupied / pow(SIZE, 3.0);
 		}
-		Log::global_log->debug() << "Created " << count << " spheres with radius " << currentRadius << endl;
+		_logger->debug() << "Created " << count << " spheres with radius " << currentRadius << endl;
 		currentRadius -= _maxSphereRadius / 10.0;
 	}
-	Log::global_log->debug() << "PercentOccupied: " << (100 * _numOccupied / pow(SIZE, 3.0)) << " %" << endl;
+	_logger->debug() << "PercentOccupied: " << (100 * _numOccupied / pow(SIZE, 3.0)) << " %" << endl;
 	return droplets;
 }
 
-Log::Logger& operator<<(Log::Logger& str, DropletGenerator::Droplet& droplet) {
+Log::Logger& operator<<(Log::Logger& str, DropletPlacement::Droplet& droplet) {
 	str << " Droplet: center [" << droplet._center[0] << "," << droplet._center[1] << "," << droplet._center[2] << "] r:" << droplet._radius << endl;
 	return str;
 }

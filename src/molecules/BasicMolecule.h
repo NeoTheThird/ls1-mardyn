@@ -40,7 +40,7 @@ class Domain;
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
 class BasicMolecule {
 
-	typedef float fp_type;
+	typedef double fp_type;
 
 public:
 	// TODO Correct this constructor: the components vector is optional,
@@ -88,8 +88,14 @@ public:
 	/** get M */
 	double M(unsigned short d) const {return _M[d]; }
 
-	double Utrans() const { return .5* (*components)[_componentid].m() *(_v[0]*_v[0]+_v[1]*_v[1]+_v[2]*_v[2]); }
-	double Urot();
+	double U_trans() const {
+		double m = (*components)[_componentid].m();
+		return 0.5 * m * v2();
+	}
+	/** return the rotational energy of the molecule */
+	double U_rot();
+	/** return total kinetic energy of the molecule */
+	double U_kin() { return U_trans() + U_rot(); }
 
 	/** get number of sites */
 	unsigned int numSites() const { return (*components)[_componentid].numSites(); }
@@ -306,5 +312,7 @@ private:
 	}
 
 };
+
+std::ostream& operator<<( std::ostream& os, const BasicMolecule& m );
 
 #endif /*BASICMOLECULE_H_*/

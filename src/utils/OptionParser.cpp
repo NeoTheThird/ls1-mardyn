@@ -41,7 +41,7 @@ static string str_join_trans(const string& sep, InputIterator begin, InputIterat
 }
 template<class InputIterator>
 static string str_join(const string& sep, InputIterator begin, InputIterator end) {
-	return str_join_trans(sep, begin, end, str_wrap(""));
+	return str_join_trans<InputIterator, str_wrap>(sep, begin, end, str_wrap(""));
 }
 static string& str_replace(string& s, const string& patt, const string& repl) {
 	size_t pos = 0, n = patt.length();
@@ -130,15 +130,15 @@ OptionParser::OptionParser() :
 
 Option& OptionParser::add_option(const string& opt) {
 	const string tmp[1] = { opt };
-	return add_option(vector<string>(&tmp[0], &tmp[1]));
+	return add_option(vector<string>(tmp, tmp + 1));
 }
 Option& OptionParser::add_option(const string& opt1, const string& opt2) {
 	const string tmp[2] = { opt1, opt2 };
-	return add_option(vector<string>(&tmp[0], &tmp[2]));
+	return add_option(vector<string>(tmp, tmp + 2));
 }
 Option& OptionParser::add_option(const string& opt1, const string& opt2, const string& opt3) {
 	const string tmp[3] = { opt1, opt2, opt3 };
-	return add_option(vector<string>(&tmp[0], &tmp[3]));
+	return add_option(vector<string>(tmp, tmp + 3));
 }
 Option& OptionParser::add_option(const vector<string>& v) {
 	_opts.resize(_opts.size()+1);

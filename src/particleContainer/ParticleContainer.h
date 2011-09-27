@@ -66,10 +66,9 @@ class ChemicalPotential;
 class ParticleContainer {
 public:
 	//! @brief The constructor
-	//! @param partPairsHandler specified concrete action to be done for each pair
 	//! @param bBoxMin coordinates of the lowest (in all coordinates) corner of the bounding box
 	//! @param bBoxMax coordinates of the highest (in all coordinates) corner of the bounding box
-	ParticleContainer(ParticlePairsHandler* partPairsHandler, double bBoxMin[3], double bBoxMax[3]);
+	ParticleContainer(double bBoxMin[3], double bBoxMax[3]);
 
 	//! @brief The destructor
 	virtual ~ParticleContainer();
@@ -117,7 +116,8 @@ public:
 	//! For each pair found, there is an action executed, but it is a different action for
 	//! original and duplicated pairs. Details about how to handle pairs can be found
 	//! in the documentation for the class ParticlePairsHandler
-	virtual void traversePairs() = 0;
+	//! @param particlePairsHandler specified concrete action to be done for each pair
+	virtual void traversePairs(ParticlePairsHandler* particlePairsHandler) = 0;
 
 	//! @return the number of particles stored in this container
 	//!
@@ -157,7 +157,7 @@ public:
 	//! @brief returns the width of the halo strip (for the given dimension index)
 	//! @todo remove this method, because a halo_L shouldn't be necessary for every ParticleContainer
 	//!       e.g. replace it by the cutoff-radius
-	virtual double get_halo_L(int index) const;
+	virtual double get_halo_L(int index) const = 0;
 
 	//! @brief appends pointers to all particles in the halo region to the list
 	virtual void getHaloParticles(std::list<Molecule*> &haloParticlePtrs) = 0;
@@ -173,11 +173,11 @@ public:
 
     /* TODO: This goes into the component class */
 	//! @brief counts all particles inside the bounding box
-	virtual unsigned countParticles(int cid) = 0;
+	virtual unsigned countParticles(unsigned int cid) = 0;
 
     /* TODO: This goes into the component class */
 	//! @brief counts particles in the intersection of bounding box and control volume
-	virtual unsigned countParticles(int cid, double* cbottom, double* ctop) = 0;
+	virtual unsigned countParticles(unsigned int cid, double* cbottom, double* ctop) = 0;
 
     /* TODO: Have a look on this */
 	virtual void deleteMolecule(unsigned long molid, double x, double y, double z) = 0;
@@ -187,17 +187,6 @@ public:
 	virtual int localGrandcanonicalBalance() = 0;
 	virtual int grandcanonicalBalance(DomainDecompBase* comm) = 0;
 	virtual void grandcanonicalStep(ChemicalPotential* mu, double T) = 0;
-
-    /* TODO:
-     * extend for multiple potentials
-     * take care for pre- and postprocessing 
-     * */
-	//! @brief sets a new ParticlePairsHandler
-	void setPairHandler(ParticlePairsHandler* partPairHandler);
-
-	//! @brief returns the currently used ParticlePairsHandler
-	ParticlePairsHandler* getPairHandler();
-
 
 	//! @brief Update the caches of the molecules.
 	void updateMoleculeCaches();

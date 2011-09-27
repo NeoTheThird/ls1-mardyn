@@ -1,16 +1,15 @@
 #ifndef KDDECOMPOSITION_H_
 #define KDDECOMPOSITION_H_
 
+#include <list>
+#include <mpi.h>
+
 #define KDDIM 3
 
 #include "DomainDecompBase.h"
 #include "parallel/CollectiveCommunication.h"
 
-#include "molecules/MoleculeTypes.h"
-
-#include <list>
-#include <mpi.h>
-
+class Molecule;
 class ParticleData;
 class KDNode;
 
@@ -56,7 +55,7 @@ class KDDecomposition: public DomainDecompBase{
 	//! It has to determine the number of cells and create an initial decomposition
 	//! of the domain (no knowledge about particles yet), which is stored in
 	//! _decompTree and _ownArea
-	KDDecomposition(double cutoffRadius, Domain* domain, double alpha, double beta);
+	KDDecomposition(double cutoffRadius, Domain* domain, double alpha, double beta, int steps = 0, int updateFrequency = 10);
 
 	// documentation see father class (DomainDecompBase.h)
 	~KDDecomposition();
@@ -190,6 +189,8 @@ class KDDecomposition: public DomainDecompBase{
 	void collCommAllreduceSum(){ _collComm.allreduceSum(); };
 	void collCommBroadcast(){ _collComm.broadcast(); };
 
+	int getUpdateFrequency() { return _frequency; }
+	void getUpdateFrequency(int frequency) { _frequency = frequency; }
 
  private:
 	//$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -411,7 +412,8 @@ class KDDecomposition: public DomainDecompBase{
 	// each process owns an area in the decomposition
 	KDNode* _ownArea;
 
-	// Number of particles for each cell (including halo?)
+	/* TODO: Is there a problem with the limit of 255 particles per cell?! */
+	//! Number of particles for each cell (including halo?)
 	unsigned char* _numParticlesPerCell;
 	//TODO
 	float* _globalLoadPerCell;
@@ -420,6 +422,8 @@ class KDDecomposition: public DomainDecompBase{
 	//! variable used for different kinds of collective operations
 	CollectiveCommunication _collComm;
 
+	/* TODO: This may not be equal to the number simulation steps if balanceAndExchange 
+	 * is not called exactly once in every simulatin step! */
 	//! number of simulation steps. Can be used to trigger load-balancing every _frequency steps
 	size_t _steps;
 

@@ -1,20 +1,25 @@
-#include "KDDecomposition.h" //$ Pfad aendern (parallel/...)
-
-#include "../Domain.h"
-#include "../particleContainer/ParticleContainer.h"
-#include "../particleContainer/handlerInterfaces/ParticlePairsHandler.h"
-#include "../particleContainer/adapter/ParticlePairs2LoadCalcAdapter.h"
-#include "ParticleData.h"
-#include "KDNode.h"
-
-#include <float.h>
+#include <cfloat>
 #include <sstream>
 #include <fstream>
+#include <climits>
+
+#include "KDDecomposition.h"
+
+#include "molecules/MoleculeTypes.h"
+#include "Domain.h"
+#include "particleContainer/ParticleContainer.h"
+#include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
+#include "particleContainer/adapter/ParticlePairs2LoadCalcAdapter.h"
+#include "ParticleData.h"
+#include "KDNode.h"
+#include "utils/Logger.h"
 
 using namespace std;
+using Log::global_log;
 
-KDDecomposition::KDDecomposition(double cutoffRadius, Domain* domain, double alpha, double beta)
-		: _steps(0), _frequency(10), _alpha(alpha), _beta(beta) {
+
+KDDecomposition::KDDecomposition(double cutoffRadius, Domain* domain, double alpha, double beta, int steps, int updateFrequency)
+		: _steps(steps), _frequency(updateFrequency), _alpha(alpha), _beta(beta) {
 
 	MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &_ownRank) );
 	MPI_CHECK( MPI_Comm_size(MPI_COMM_WORLD, &_numProcs) );
@@ -41,9 +46,9 @@ KDDecomposition::KDDecomposition(double cutoffRadius, Domain* domain, double alp
 	for (int dim = 0; dim < 3; dim++) {
 		maxProcs *= (highCorner[dim] - lowCorner[dim] + 1) / 2;
 	}
-	if (_ownRank == 0 && maxProcs < _numProcs) {
-		cerr << "KDDecompsition not possible. Each Proc needs at least 8 cells." << endl;
-		cerr << "the number of Cells is only sufficient for " << maxProcs << " Procs!" << endl;
+	if (maxProcs < _numProcs) {
+		global_log->error() << "KDDecompsition not possible. Each process needs at least 8 cells." << endl;
+		global_log->error() << "The number of Cells is only sufficient for " << maxProcs << " Procs!" << endl;
 		exit(1);
 	}
 	_decompTree = new KDNode(_numProcs, lowCorner, highCorner, 0, 0, coversWholeDomain);
@@ -72,13 +77,10 @@ void KDDecomposition::balanceAndExchange(bool balance, ParticleContainer* molecu
 		newDecompTree = new KDNode(_numProcs, _decompTree->_lowCorner, _decompTree->_highCorner, 0, 0, _decompTree->_coversWholeDomain);
 		ParticlePairs2LoadCalcAdapter* loadHandler;
 		loadHandler = new ParticlePairs2LoadCalcAdapter(_globalCellsPerDim, _ownArea->_lowCorner, _cellSize, _moleculeContainer);
-		ParticlePairsHandler* tempHandler = _moleculeContainer->getPairHandler();
-		_moleculeContainer->setPairHandler(loadHandler);
-		_moleculeContainer->traversePairs();
-		_moleculeContainer->setPairHandler(tempHandler);
+		_moleculeContainer->traversePairs(loadHandler);
 		_globalLoadPerCell = loadHandler->getLoad();
 		if (recDecompPar(newDecompTree, newOwnArea, MPI_COMM_WORLD)) {
-			cerr << "Domain too small to achieve a perfect load balancing" << endl;
+			global_log->warning() << "Domain too small to achieve a perfect load balancing" << endl;
 		}
 		completeTreeInfo(newDecompTree, newOwnArea);
 		delete loadHandler;
@@ -287,17 +289,24 @@ double KDDecomposition::guaranteedDistance(double x, double y, double z, Domain*
 }
 
 unsigned long KDDecomposition::countMolecules(ParticleContainer* moleculeContainer, vector<unsigned long> &compCount) {
-	vector<unsigned long> localCompCount(compCount.size(), 0);
+	const int numComponents = compCount.size();
+	unsigned long localCompCount[numComponents];
+	unsigned long globalCompCount[numComponents];
+	for( int i = 0; i < numComponents; i++ ) {
+		localCompCount[i] = 0;
+	}
+	
 	Molecule* tempMolecule;
-	int temp = 0;
 	for (tempMolecule = moleculeContainer->begin(); tempMolecule != moleculeContainer->end(); tempMolecule = moleculeContainer->next()) {
 		localCompCount[tempMolecule->componentid()] += 1;
-		temp++;
 	}
-	int numMolecules = 0;
-	for (int i = 0; i < (int) localCompCount.size(); i++) {
-		MPI_CHECK( MPI_Allreduce(&localCompCount[i], &compCount[i], 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD) );
-		numMolecules += compCount[i];
+	
+	MPI_CHECK( MPI_Allreduce(localCompCount, globalCompCount, numComponents, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD) );
+	
+	unsigned long numMolecules = 0;
+	for (int i = 0; i < numComponents; i++) {
+		compCount[i] = globalCompCount[i];
+		numMolecules += globalCompCount[i];
 	}
 	return numMolecules;
 }
@@ -391,27 +400,28 @@ void KDDecomposition::assertIntIdentity(int IX) {
 		for (int i = 1; i < num_procs; i++) {
 			MPI_CHECK( MPI_Recv(&recv, 1, MPI_INT, i, 2 * i + 17, this->_collComm.getTopology(), &s) );
 			if (recv != IX) {
-				cout << "SEVERE ERROR: IX is " << IX << " for rank 0, but " << recv << " for rank " << i << ".\n";
+				global_log->error() << "IX is " << IX << " for rank 0, but " << recv << " for rank " << i << "." << endl;
 				MPI_Abort(MPI_COMM_WORLD, 911);
 			}
 		}
-		cout << "IX = " << recv << " for all " << num_procs << " ranks.\n";
+		global_log->debug() << "IX = " << recv << " for all " << num_procs << " ranks." << endl;
 	}
 }
 
 void KDDecomposition::assertDisjunctivity(TMoleculeContainer* mm) {
 	Molecule* m;
 	if (this->_ownRank) {
-		int tid;
+		unsigned long int tid;
 		for (m = mm->begin(); m != mm->end(); m = mm->next()) {
 			tid = m->id();
-			MPI_CHECK( MPI_Send(&tid, 1, MPI_INT, 0, 2674 + _ownRank, this->_collComm.getTopology()) );
+			MPI_CHECK( MPI_Send(&tid, 1, MPI_UNSIGNED_LONG, 0, 2674 + _ownRank, this->_collComm.getTopology()) );
 		}
-		tid = -1;
-		MPI_CHECK( MPI_Send(&tid, 1, MPI_INT, 0, 2674 + _ownRank, this->_collComm.getTopology()) );
+		// use ULONG_MAX to tell the receiving process that there are no more molecules
+		tid = ULONG_MAX;
+		MPI_CHECK( MPI_Send(&tid, 1, MPI_UNSIGNED_LONG, 0, 2674 + _ownRank, this->_collComm.getTopology()) );
 	}
 	else {
-		int recv;
+		unsigned long int recv;
 		map<int, int> check;
 		for (m = mm->begin(); m != mm->end(); m = mm->next()) {
 			check[m->id()] = 0;
@@ -421,24 +431,24 @@ void KDDecomposition::assertDisjunctivity(TMoleculeContainer* mm) {
 		MPI_CHECK( MPI_Comm_size(this->_collComm.getTopology(), &num_procs) );
 		MPI_Status s;
 		for (int i = 1; i < num_procs; i++) {
-			bool cc = true;
-			while (cc) {
-				MPI_CHECK( MPI_Recv(&recv, 1, MPI_INT, i, 2674 + i, this->_collComm.getTopology(), &s) );
-				if (recv == -1)
-					cc = false;
+			bool receiveMoreMolecules = true;
+			while (receiveMoreMolecules) {
+				MPI_CHECK( MPI_Recv(&recv, 1, MPI_UNSIGNED_LONG, i, 2674 + i, this->_collComm.getTopology(), &s) );
+				if (recv == ULONG_MAX)
+					receiveMoreMolecules = false;
 				else {
 					if (check.find(recv) != check.end()) {
-						cout << "\nSEVERE ERROR. Ranks " << check[recv] << " and "
-						     << i << " both propagate ID " << recv << ". Aborting.\n";
-						MPI_Abort(MPI_COMM_WORLD, 2674);
+						global_log->error() << "Ranks " << check[recv] << " and "
+						     << i << " both propagate ID " << recv << "." << endl;
+						exit(1);
 					}
 					else
 						check[recv] = i;
 				}
 			}
 		}
-		cout << "\nData consistency checked. No duplicate IDs detected among " << check.size()
-		     << " entries.\n";
+		global_log->debug() << "Data consistency checked. No duplicate IDs detected among " << check.size()
+		     << " entries." << endl;
 	}
 }
 
@@ -711,19 +721,18 @@ bool KDDecomposition::recDecompPar(KDNode* fatherNode, KDNode*& ownArea, MPI_Com
 			return domainTooSmall;
 		}
 		else {
-			cerr << "ERROR in recDecompPar: called with a leaf node" << endl;
+			global_log->error() << "ERROR in recDecompPar: called with a leaf node" << endl;
 			exit(1);
 		}
 	}
 	bool coversAll[KDDIM];
     
     /* TODO: We do not use this values anywhere ... */
-	int cellsPerDim[KDDIM];
+	//int cellsPerDim[KDDIM];
 	for (int dim = 0; dim < KDDIM; dim++) {
 		coversAll[dim] = fatherNode->_coversWholeDomain[dim];
-		cellsPerDim[dim] = fatherNode->_highCorner[dim] - fatherNode->_lowCorner[dim] + 1;
+		//cellsPerDim[dim] = fatherNode->_highCorner[dim] - fatherNode->_lowCorner[dim] + 1;
 	}
-
 	int divDir = 0;
 	int divIdx = 0;
 	double maxProcCost = DBL_MAX;
@@ -747,8 +756,8 @@ bool KDDecomposition::recDecompPar(KDNode* fatherNode, KDNode*& ownArea, MPI_Com
 					numCellsInLayer *= fatherNode->_highCorner[temp] - fatherNode->_lowCorner[temp] + 1;
 				}
 			}
-			unsigned long numCellsLeft = numCellsInLayer * (i + 1);
-			unsigned long numCellsRight = numCellsInLayer * (fatherNode->_highCorner[dim] - fatherNode->_lowCorner[dim] - i);
+			// unsigned long numCellsLeft = numCellsInLayer * (i + 1);
+			// unsigned long numCellsRight = numCellsInLayer * (fatherNode->_highCorner[dim] - fatherNode->_lowCorner[dim] - i);
 
 			double optCostPerProc = (costsLeft[dim][i] + costsRight[dim][i]) / ((double) fatherNode->_numProcs);
 
@@ -788,8 +797,8 @@ bool KDDecomposition::recDecompPar(KDNode* fatherNode, KDNode*& ownArea, MPI_Com
 						ok = true;
 				}
 			}
-			unsigned long numBoundCellsLeft = numCellsLeft - (unsigned long) (((double) numProcsLeftTest) * pow(pow(numCellsLeft / numProcsLeftTest, 1. / 3.) - 2, 3));
-			unsigned long numBoundCellsRight = numCellsRight - (unsigned long) (((double) numProcsRightTest) * pow(pow(numCellsRight / numProcsRightTest, 1. / 3.) - 2, 3));
+			// unsigned long numBoundCellsLeft = numCellsLeft - (unsigned long) (((double) numProcsLeftTest) * pow(pow(numCellsLeft / numProcsLeftTest, 1. / 3.) - 2, 3));
+			// unsigned long numBoundCellsRight = numCellsRight - (unsigned long) (((double) numProcsRightTest) * pow(pow(numCellsRight / numProcsRightTest, 1. / 3.) - 2, 3));
 			double maxProcCostOld = max(costsLeft[dim][i] / (double) numProcsLeftTest, costsRight[dim][i] / (double) numProcsRightTest);
 			// Find out in which direction process distribution has to be shifted
 			int procShift = 1;
@@ -810,8 +819,8 @@ bool KDDecomposition::recDecompPar(KDNode* fatherNode, KDNode*& ownArea, MPI_Com
 						break;
 					}
 					else {
-						numBoundCellsLeft = numCellsLeft - (unsigned long) (((double) numProcsLeftTest) * pow(pow(numCellsLeft / numProcsLeftTest, 1. / 3.) - 2, 3));
-						numBoundCellsRight = numCellsRight - (unsigned long) (((double) numProcsRightTest) * pow(pow(numCellsRight / numProcsRightTest, 1. / 3.) - 2, 3));
+						// numBoundCellsLeft = numCellsLeft - (unsigned long) (((double) numProcsLeftTest) * pow(pow(numCellsLeft / numProcsLeftTest, 1. / 3.) - 2, 3));
+						// numBoundCellsRight = numCellsRight - (unsigned long) (((double) numProcsRightTest) * pow(pow(numCellsRight / numProcsRightTest, 1. / 3.) - 2, 3));
 						maxProcCostNew = max(costsLeft[dim][i] / (double) numProcsLeftTest, costsRight[dim][i] / (double) numProcsRightTest);
 					}
 				}
@@ -830,9 +839,7 @@ bool KDDecomposition::recDecompPar(KDNode* fatherNode, KDNode*& ownArea, MPI_Com
 			// End new version
 
 			if (numProcsLeft <= 0 || numProcsLeft >= fatherNode->_numProcs) {
-				if (_ownRank == 0) {
-					cerr << "ERROR in recDecompPar, part of the domain was not assigned to a proc" << endl;
-				}
+				global_log->error() << "ERROR in recDecompPar, part of the domain was not assigned to a proc" << endl;
 				exit(1);
 			}
 		}
@@ -1337,10 +1344,10 @@ void KDDecomposition::getNumParticles(ParticleContainer* moleculeContainer) {
 	int count = 0;
 	double bBMin[3]; // haloBoundingBoxMin
     /* TODO: We do not use values form bBMax anywhere ... */
-	double bBMax[3]; // haloBoundingBoxMax
+	//double bBMax[3]; // haloBoundingBoxMax
 	for (int dim = 0; dim < 3; dim++) {
 		bBMin[dim] = moleculeContainer->getBoundingBoxMin(dim);// - moleculeContainer->get_halo_L(dim);
-		bBMax[dim] = moleculeContainer->getBoundingBoxMax(dim);// + moleculeContainer->get_halo_L(dim);
+		//bBMax[dim] = moleculeContainer->getBoundingBoxMax(dim);// + moleculeContainer->get_halo_L(dim);
 	}
 	Molecule* molPtr = moleculeContainer->begin();
 	while (molPtr != moleculeContainer->end()) {

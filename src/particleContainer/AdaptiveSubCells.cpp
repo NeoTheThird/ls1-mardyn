@@ -1,4 +1,7 @@
-#include "particleContainer/AdaptiveSubCells.h"
+#include <cmath>
+#include <iostream>
+
+#include "AdaptiveSubCells.h"
 
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "Cell.h"
@@ -7,9 +10,6 @@
 #include "ensemble/GrandCanonical.h"
 #include "parallel/DomainDecompBase.h"
 #include "utils/Logger.h"
-
-#include <cmath>
-#include <iostream>
 
 using namespace std;
 using Log::global_log;
@@ -21,10 +21,9 @@ using Log::global_log;
 
 AdaptiveSubCells::AdaptiveSubCells(
 		double bBoxMin[3], double bBoxMax[3],
-		double cutoffRadius, double LJCutoffRadius, double tersoffCutoffRadius,
-		ParticlePairsHandler* partPairsHandler
+		double cutoffRadius, double LJCutoffRadius, double tersoffCutoffRadius
 )
-		: ParticleContainer(partPairsHandler, bBoxMin, bBoxMax),
+		: ParticleContainer(bBoxMin, bBoxMax),
 			_blockTraverse(this, _subCells, _innerSubCellIndices, _boundarySubCellIndices, _haloSubCellIndices,
 			                     _forwardNeighbourSubOffsets, _backwardNeighbourSubOffsets )
 {
@@ -242,7 +241,7 @@ void AdaptiveSubCells::addParticle(Molecule& particle) {
 }
 
 
-unsigned AdaptiveSubCells::countParticles(int cid) {
+unsigned AdaptiveSubCells::countParticles(unsigned int cid) {
 	unsigned N = 0;
 	std::vector<Molecule*>::iterator molIter1;
 
@@ -261,7 +260,7 @@ unsigned AdaptiveSubCells::countParticles(int cid) {
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned AdaptiveSubCells::countParticles(int cid, double* cbottom, double* ctop) {
+unsigned AdaptiveSubCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
 	int minIndex[3];
 	int maxIndex[3];
 
@@ -328,12 +327,12 @@ void AdaptiveSubCells::deleteMolecule(unsigned long molid, double x, double y, d
 	}
 }
 
-void AdaptiveSubCells::traversePairs() {
+void AdaptiveSubCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in AdaptiveSubCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
-	_blockTraverse.traversePairs();
+	_blockTraverse.traversePairs(particlePairsHandler);
 }
 
 double AdaptiveSubCells::getEnergy(Molecule* m1) {

@@ -196,9 +196,6 @@ public:
 		return _components[cid].getRotationalDegreesOfFreedom(); 
 	}
 
-	//! @brief get local rank
-	int getlocalRank() const;
-
 	//! @brief get input version
 	unsigned long getinpversion();
 
@@ -301,8 +298,6 @@ public:
 	//! for thermostats marked as "undirected", because otherwise the
 	//! directed velocity is not explicitly computed.
 	double getThermostatDirectedVelocity(int thermostat, int d) { return this->_universalThermostatDirectedVelocity[d][thermostat]; }
-
-	int ownrank() { return this->_localRank; }
 
 	//! @brief returns whether there are several distinct thermostats in the system
 	bool severalThermostats() { return this->_componentwiseThermostat; }

@@ -7,6 +7,7 @@
 
 #include "VTKMoleculeWriterTest.h"
 #include "particleContainer/LinkedCells.h"
+#include "parallel/DomainDecompDummy.h"
 #include "utils/FileUtils.h"
 #include "utils/Logger.h"
 #include "Domain.h"
@@ -30,7 +31,7 @@ VTKMoleculeWriterTest::~VTKMoleculeWriterTest() {
 void VTKMoleculeWriterTest::testDoOutput() {
 	double boundings_min[] = {-1., -1., -1. };
 	double boundings_max[] = {10.0, 10.0, 10.0 };
-	LinkedCells container(boundings_min, boundings_max, 1, 1, 1, 1, NULL);
+	LinkedCells container(boundings_min, boundings_max, 1, 1, 1, 1);
 
 	std::vector<Component> components;
 	Component dummyComponent(0);
@@ -51,7 +52,7 @@ void VTKMoleculeWriterTest::testDoOutput() {
 
 	VTKMoleculeWriter writer(2, "VTKMoleculeWriterTest");
 
-#ifdef PARALLEL
+#ifdef ENABLE_MPI
 	// in the parallel case we check only that the right files are written.
 	// Their content should be right, if the sequential tests pass.
 	int rank = 0;
@@ -79,10 +80,11 @@ void VTKMoleculeWriterTest::testDoOutput() {
 	}
 #else
 	Domain domain(0, NULL);
-	writer.doOutput(&container, NULL, &domain, 1, NULL);
+	DomainDecompDummy dummy;
+	writer.doOutput(&container, &dummy, &domain, 1, NULL);
 	ASSERT_TRUE_MSG("Check that files are written in the right interval.", !fileExists("VTKMoleculeWriterTest_1.vtu"));
 
-	writer.doOutput(&container, NULL, &domain, 2, NULL);
+	writer.doOutput(&container, &dummy, &domain, 2, NULL);
 	ASSERT_TRUE_MSG("Check that files are written in the right interval.", fileExists("VTKMoleculeWriterTest_2.vtu"));
 
 	try {

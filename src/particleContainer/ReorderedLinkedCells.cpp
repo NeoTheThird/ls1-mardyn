@@ -39,10 +39,8 @@ using Log::global_log;
 
 ReorderedLinkedCells::ReorderedLinkedCells(
 		double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
-		double tersoffCutoffRadius, double cellsInCutoffRadius,
-		ParticlePairsHandler* partPairsHandler
-)
-		: ParticleContainer(partPairsHandler, bBoxMin, bBoxMax),
+		double tersoffCutoffRadius, double cellsInCutoffRadius)
+: ParticleContainer(bBoxMin, bBoxMax),
 			_blockTraverse(this, _cells, _innerCellIndices, _boundaryCellIndices, _haloCellIndices )
 {
 	int numberOfCells = 1;
@@ -210,7 +208,7 @@ void ReorderedLinkedCells::addParticle(Molecule& particle) {
 /**
  * @todo replace this by a call to component->getNumMolecules() !?
  */
-unsigned ReorderedLinkedCells::countParticles(int cid) {
+unsigned ReorderedLinkedCells::countParticles(unsigned int cid) {
 	unsigned N = 0;
 	std::vector<Molecule*>::iterator molIter1;
 	for (unsigned i = 0; i < _cells.size(); i++) {
@@ -228,7 +226,7 @@ unsigned ReorderedLinkedCells::countParticles(int cid) {
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned ReorderedLinkedCells::countParticles(int cid, double* cbottom, double* ctop) {
+unsigned ReorderedLinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
 	int minIndex[3];
 	int maxIndex[3];
 	for (int d = 0; d < 3; d++) {
@@ -293,12 +291,12 @@ unsigned ReorderedLinkedCells::countParticles(int cid, double* cbottom, double* 
 	return N;
 }
 
-void ReorderedLinkedCells::traversePairs() {
+void ReorderedLinkedCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in ReorderedLinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
-	_blockTraverse.traversePairs();
+	_blockTraverse.traversePairs(particlePairsHandler);
 }
 
 unsigned long ReorderedLinkedCells::getNumberOfParticles() {
