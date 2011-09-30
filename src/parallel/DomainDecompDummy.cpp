@@ -98,7 +98,7 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 		}
 	}
 
-	for (int i =  0; i < moleculesToAdd.size(); i++) {
+	for (size_t i =  0; i < moleculesToAdd.size(); i++) {
 		moleculeContainer->addParticle(moleculesToAdd[i]);
 	}
 

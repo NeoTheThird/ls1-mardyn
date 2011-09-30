@@ -3,6 +3,8 @@
 
 using namespace std;
 
+MemoryManager BlockedCell::memoryManager;
+
 BlockedCell::BlockedCell() :	_particles(NULL), _handlerParticles(NULL)
 {
 	this->_haloCellState = false;

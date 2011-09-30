@@ -29,6 +29,26 @@ void Quaternion::operator *=(const Quaternion& q) {
 	m_qw=qw;
 }
 
+void Quaternion::rotate(const float d[3], double drot[3]) const {
+	double ww=m_qw*m_qw;
+	double xx=m_qx*m_qx;
+	double yy=m_qy*m_qy;
+	double zz=m_qz*m_qz;
+	double xy=m_qx*m_qy;
+	double zw=m_qz*m_qw;
+	double xz=m_qx*m_qz;
+	double yw=m_qy*m_qw;
+	//       1-2*(yy+zz)
+	drot[0]=(ww+xx-yy-zz)*d[0]+2.*(xy+zw)*d[1]+2.*(xz-yw)*d[2];
+	double yz=m_qy*m_qz;
+	double xw=m_qx*m_qw;
+	//                       1-2*(xx+zz)
+	drot[1]=2.*(xy-zw)*d[0]+(ww-xx+yy-zz)*d[1]+2.*(yz+xw)*d[2];
+	//                                       1-2*(xx+yy)
+	drot[2]=2.*(xz+yw)*d[0]+2.*(yz-xw)*d[1]+(ww-xx-yy+zz)*d[2];
+}
+
+
 void Quaternion::rotate(const double d[3], double drot[3]) const {
 	double ww=m_qw*m_qw;
 	double xx=m_qx*m_qx;
@@ -47,6 +67,7 @@ void Quaternion::rotate(const double d[3], double drot[3]) const {
 	//                                       1-2*(xx+yy)
 	drot[2]=2.*(xz+yw)*d[0]+2.*(yz-xw)*d[1]+(ww-xx-yy+zz)*d[2];
 }
+
 
 void Quaternion::rotateinv(const double d[3], double drot[3]) const {
 	double ww=m_qw*m_qw;

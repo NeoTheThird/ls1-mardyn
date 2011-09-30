@@ -174,6 +174,8 @@ public:
 	// documentation see father class (ParticleContainer.h)
 	void getRegion(double lowCorner[3], double highCorner[3], std::list<Molecule*> &particlePtrs);
 
+	void getRegion(double lowCorner[3], double highCorner[3], utils::DynamicArray<BasicMolecule, true, false>& particleArray);
+
 	double getCutoff() {
 		return _cutoffRadius;
 	}

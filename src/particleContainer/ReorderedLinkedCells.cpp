@@ -66,7 +66,7 @@ ReorderedLinkedCells::ReorderedLinkedCells(
 
 		numberOfCells *= _cellsPerDimension[d];
 	}
-	global_log->debug() << "Cell size (" << _cellLength[1] << ", " << _cellLength[2] << ", " << _cellLength[3] << ")" << endl;
+	global_log->debug() << "Cell size (" << _cellLength[00] << ", " << _cellLength[1] << ", " << _cellLength[2] << ")" << endl;
 
 	_cells.resize(numberOfCells);
 

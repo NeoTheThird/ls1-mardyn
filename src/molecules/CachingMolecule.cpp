@@ -33,7 +33,7 @@ using namespace std;
 using Log::global_log;
 
 
-CachingMolecule::CachingMolecule(unsigned long id, int componentid,
+CachingMolecule::CachingMolecule(unsigned long id, unsigned int componentid,
 	                 double rx, double ry, double rz,
 	                 double vx, double vy, double vz,
 	                 double q0, double q1, double q2, double q3,
@@ -403,7 +403,6 @@ inline void CachingMolecule::setupCache(const vector<Component>* components) {
 	assert(components);
 	if (components->size() == 0)
 		return;
-	assert(_componentid >= 0);
 	_numsites = _numorientedsites = 0;
 	_ljcenters = &(*components)[_componentid].ljcenters();
 	_numsites += _ljcenters->size();
@@ -462,7 +461,7 @@ inline void CachingMolecule::setupCache(const vector<Component>* components) {
 	this->clearFM();
 }
 
-inline void CachingMolecule::clearFM() {
+void CachingMolecule::clearFM() {
 	for (unsigned int i = 0; i < _numsites * 3; ++i)
 		_sites_F[i] = 0.;
 	_F[0] = _F[1] = _F[2] = 0.;
@@ -506,7 +505,6 @@ void CachingMolecule::calcFM() {
  */
 void CachingMolecule::check(unsigned long id) {
 	assert(_id == id);
-	assert(_componentid >= 0);
 	assert(_m > 0.0);
 	assert(_numsites > 0);
 	assert(_numorientedsites >= 0);

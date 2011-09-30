@@ -5,6 +5,7 @@
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 
+#include "MemoryManager.h"
 #include "Simulation.h"
 #include "Domain.h"
 
@@ -45,6 +46,9 @@ class BlockedCell {
 
 
 private:
+
+	static MemoryManager memoryManager;
+
 	//! the basic molecules contained in this cell
 	utils::DynamicArray<Molecule, true, false>* _particles;
 
@@ -143,7 +147,7 @@ void BlockedCell::convertToHandlerMoleculeType() {
 
 	std::vector<Component>& components = global_simulation->getDomain()->getComponents();
 
-	_handlerParticles = new utils::DynamicArray<HandlerMoleculeType, true, false>();
+	_handlerParticles = memoryManager.getMoleculeArray();
 
 	for (size_t i = 0; i < _particles->size(); i++) {
 		//_handlerParticles->push_back(HandlerMoleculeType((*_particles)[i]));
@@ -205,7 +209,7 @@ void BlockedCell::convertToMoleculeType() {
 		(*_particles)[i].setM(M);
 	}
 
-	delete _handlerParticles;
+	memoryManager.releaseMoleculeArray(_handlerParticles);
 
 }
 

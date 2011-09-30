@@ -78,13 +78,20 @@ public:
 	 * @param d the vector to be rotated
 	 * @param result vector of the rotation
 	 */
+	void rotate(const float d[3], double drot[3]) const;
 	void rotate(const double d[3], double drot[3]) const;
-	
 	/**
 	 * apply the rotation represented by tis quaternion to d. The result vector
 	 * is stored to d.
 	 * @param d the vector to be rotated
 	 */
+	void rotate(float d[3]) const {
+		double drot[3];
+		rotate(d, drot);
+		d[0] = drot[0];
+		d[1] = drot[1];
+		d[2] = drot[2];
+	}
 	void rotate(double d[3]) const {
 		double drot[3];
 		rotate(d, drot);

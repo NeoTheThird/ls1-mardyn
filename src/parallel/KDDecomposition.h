@@ -9,7 +9,6 @@
 #include "DomainDecompBase.h"
 #include "parallel/CollectiveCommunication.h"
 
-class Molecule;
 class ParticleData;
 class KDNode;
 

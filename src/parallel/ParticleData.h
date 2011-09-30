@@ -21,6 +21,46 @@
 //! C stuct. The static method setMPIType sets the given type to represent all the member variables.
 class ParticleData {
 public:
+
+	static void setMPITypeForBasicMolecule(MPI_Datatype &sendPartType) {
+		int blocklengths[4] = { 1, 1, 13, 1 }; // 1 unsLong value (id), 1 int value (cid), 13 double values (3r, 3v, 4q, 3D)
+		MPI_Datatype types[3];
+		if ( IsSame<BasicMolecule::fp_type,float>::Result::value ) {
+			types[0] = MPI_UNSIGNED_LONG;
+			types[1] = MPI_INT;
+			types[2] = MPI_FLOAT;
+			types[3] = MPI_UB;
+		} else {
+			types[0] = MPI_UNSIGNED_LONG;
+			types[1] = MPI_INT;
+			types[2] = MPI_DOUBLE;
+			types[3] = MPI_UB;
+		}
+
+		MPI_Aint base;
+		MPI_Aint displacements[4];
+		BasicMolecule dummyMolecules[2];
+		MPI_CHECK( MPI_Address(&dummyMolecules[0], &base) );
+		MPI_CHECK( MPI_Address(&dummyMolecules[0]._id, displacements) );
+		MPI_CHECK( MPI_Address(&dummyMolecules[0]._componentid, displacements + 1) );
+		MPI_CHECK( MPI_Address(&dummyMolecules[0]._r, displacements + 2) ); // Note: it is probably potentially dangerous to
+		                                                                 // assume that the quaternion just takes 4 double values
+		                                                                 // (the compiler might add some vtable pointers, alignment, etc...)
+		MPI_CHECK( MPI_Address(&dummyMolecules[1], displacements + 3) );
+
+		for (int i = 0; i < 4; i++) {
+			displacements[i] -= base;
+		}
+
+#if MPI_VERSION >= 2 && MPI_SUBVERSION >= 0
+		MPI_CHECK( MPI_Type_create_struct(4, blocklengths, displacements, types, &sendPartType) );
+#else
+		MPI_CHECK( MPI_Type_struct(3, blocklengths, displacements, types, &sendPartType) );
+#endif
+		MPI_CHECK( MPI_Type_commit(&sendPartType) );
+	}
+
+
 	//! @brief defines a MPI datatype which can be used to transfer a MacroscopicData object
 	static void setMPIType(MPI_Datatype &sendPartType) {
 		int blocklengths[] = { 1, 1, 13 }; // 1 unsLong value (id), 1 int value (cid), 13 double values (3r, 3v, 4q, 3D)

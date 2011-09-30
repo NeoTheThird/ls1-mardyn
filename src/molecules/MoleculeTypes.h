@@ -11,9 +11,11 @@
 #include "molecules/BasicMolecule.h"
 #include "molecules/CachingMolecule.h"
 
-typedef CachingMolecule Molecule;
+typedef BasicMolecule Molecule;
+//typedef CachingMolecule Molecule;
 
 typedef CachingMolecule HandlerMoleculeType;
+//typedef BasicMolecule HandlerMoleculeType;
 
 /**
  * The following code can be used to determine if the types Molecule and HandlerMoleculeType

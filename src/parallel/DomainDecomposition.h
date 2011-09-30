@@ -12,6 +12,9 @@
 
 #include <mpi.h>
 #include <iostream>
+#include <vector>
+
+class BlockedReorderedLinkedCells;
 
 //! @brief Basic parallelisation which divides the domain into #procs equal sized cuboids
 //! @author Martin Buchholz
@@ -47,6 +50,13 @@ public:
 	//!                   the Molecule-constructor needs this component vector
 	//! @param domain is e.g. needed to get the size of the local domain
 	void exchangeMolecules(ParticleContainer* moleculeContainer, const std::vector<Component>& components, Domain* domain);
+
+	// method exchangeMolecules(...), specialized for BlockedReorderedLinkedCells
+	void exchangeBasicMolecules(BlockedReorderedLinkedCells* moleculeContainer, const std::vector<Component>& components, Domain* domain);
+
+	// method exchangeMolecules(...), using particleData for exchange.
+	void exchangeParticleData(ParticleContainer* moleculeContainer, const std::vector<Component>& components, Domain* domain);
+
 
 	//! @brief this decompositin does no balancing, it just exchanges the particles
 	//!
@@ -212,6 +222,8 @@ private:
 	MPI_Group _neighbours_groups[DIM][2];
 
 	MPI_Datatype _mpi_Particle_data;
+
+	MPI_Datatype _mpi_basic_molecule_data;
 	//! Number of processes in each dimension (i.e. 2 for 8 processes)
 	int _gridSize[DIM];
 	//! Grid coordinates of process

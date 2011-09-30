@@ -68,7 +68,7 @@ BlockedReorderedLinkedCells::BlockedReorderedLinkedCells(
 
 		numberOfCells *= _cellsPerDimension[d];
 	}
-	global_log->debug() << "Cell size (" << _cellLength[1] << ", " << _cellLength[2] << ", " << _cellLength[3] << ")" << endl;
+	global_log->debug() << "Cell size (" << _cellLength[0] << ", " << _cellLength[1] << ", " << _cellLength[2] << ")" << endl;
 
 	_cells.resize(numberOfCells);
 
@@ -140,7 +140,7 @@ void BlockedReorderedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) 
 
 	// delete all Particles which are outside of the halo region
 	bool erase_mol;
-	for (int i = 0; i < _cells.size(); i++) {
+	for (unsigned int i = 0; i < _cells.size(); i++) {
 		utils::DynamicArray<Molecule, true, false>::iterator molIter =
 				_cells[i].getParticles().begin();
 		while (molIter != _cells[i].getParticles().end()) {
@@ -210,108 +210,6 @@ void BlockedReorderedLinkedCells::addParticle(Molecule& particle) {
 	}
 }
 
-
-/**
- * @todo replace this by a call to component->getNumMolecules() !?
- */
-unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid) {
-	// I won't implement redundant stuff right now...
-	#ifndef NDEBUG
-		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
-		exit(-1);
-	#endif
-		return 0;
-
-/*	unsigned N = 0;
-	std::vector<Molecule*>::iterator molIter1;
-	for (unsigned i = 0; i < _cells.size(); i++) {
-		BlockedCell& currentCell = _cells[i];
-		if( !currentCell.isHaloCell() ) {
-			for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-				if ((*molIter1)->componentid() == cid)
-					N++;
-			}
-		}
-	}
-	return N;
-*/
-}
-
-/**
- * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
- */
-unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
-	#ifndef NDEBUG
-		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
-		exit(-1);
-	#endif
-	return 0;
-
-/*	int minIndex[3];
-	int maxIndex[3];
-	for (int d = 0; d < 3; d++) {
-		if (cbottom[d] < this->_haloBoundingBoxMin[d])
-			minIndex[d] = 0;
-		else
-			minIndex[d] = (int) floor((cbottom[d] - this->_haloBoundingBoxMin[d]) / _cellLength[d]);
-
-		if (ctop[d] > this->_haloBoundingBoxMax[d])
-			maxIndex[d] = (int) floor((this->_haloBoundingBoxMax[d] - _haloBoundingBoxMin[d]) / this->_cellLength[d]);
-		else
-			maxIndex[d] = (int) floor((ctop[d] - this->_haloBoundingBoxMin[d]) / _cellLength[d]);
-
-		if (minIndex[d] < 0)
-			minIndex[d] = 0;
-		if (maxIndex[d] >= _cellsPerDimension[d])
-			maxIndex[d] = _cellsPerDimension[d] - 1;
-	}
-
-	unsigned N = 0;
-	int cix[3];
-	std::vector<Molecule*>::iterator molIter1;
-	bool individualCheck;
-	int cellid;
-
-	for (cix[0] = minIndex[0]; maxIndex[0] >= cix[0]; (cix[0])++) {
-		for (cix[1] = minIndex[1]; maxIndex[1] >= cix[1]; (cix[1])++) {
-			for (cix[2] = minIndex[2]; maxIndex[2] >= cix[2]; (cix[2])++) {
-				individualCheck = (cix[0] == minIndex[0]) || (cix[0] == minIndex[0] + 1) ||
-				                  (cix[0] == maxIndex[0]) || (cix[0] == maxIndex[0] - 1) ||
-				                  (cix[1] == minIndex[1]) || (cix[1] == minIndex[1] + 1) ||
-				                  (cix[1] == maxIndex[1]) || (cix[1] == maxIndex[1] - 1) ||
-				                  (cix[2] == minIndex[2]) || (cix[2] == minIndex[2] + 1) ||
-				                  (cix[2] == maxIndex[2]) || (cix[2] == maxIndex[2] - 1);
-			cellid = this->cellIndexOf3DIndex(cix[0], cix[1], cix[2]);
-				Cell& currentCell = _cells[cellid];
-				if (currentCell.isHaloCell())
-					continue;
-				if (individualCheck) {
-					for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-						if (((*molIter1)->r(0) > cbottom[0]) &&
-						    ((*molIter1)->r(1) > cbottom[1]) &&
-						    ((*molIter1)->r(2) > cbottom[2]) &&
-						    ((*molIter1)->r(0) < ctop[0]) &&
-						    ((*molIter1)->r(1) < ctop[1]) &&
-						    ((*molIter1)->r(2) < ctop[2]) &&
-						    ((*molIter1)->componentid() == cid)) {
-							N++;
-						}
-					}
-				}
-				else {
-					for (molIter1 = currentCell.getParticlePointers().begin(); molIter1 != currentCell.getParticlePointers().end(); molIter1++) {
-						if ((*molIter1)->componentid() == cid)
-							N++;
-					}
-				}
-			}
-		}
-	}
-
-	return N;
-	*/
-}
-
 void BlockedReorderedLinkedCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (traversePairs) invalid, call update first" << endl;
@@ -344,7 +242,7 @@ Molecule* BlockedReorderedLinkedCells::begin() {
 
 Molecule* BlockedReorderedLinkedCells::next() {
 	++_moleculeIteratorIndex;
-	if (_moleculeIteratorIndex < _cells[_cellIteratorIndex].getMoleculeCount()) {
+	if (_moleculeIteratorIndex < (unsigned int)_cells[_cellIteratorIndex].getMoleculeCount()) {
 		return &(_cells[_cellIteratorIndex].getParticles()[_moleculeIteratorIndex]);
 	}
 	else {
@@ -364,21 +262,7 @@ Molecule* BlockedReorderedLinkedCells::end() {
 	return NULL;
 }
 
-Molecule* BlockedReorderedLinkedCells::deleteCurrent() {
-#ifndef NDEBUG
-	global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
-	exit(-1);
-#endif
-	return NULL;
 
-	/*_particleIter = _particles.erase(_particleIter);
-	if (_particleIter != _particles.end()) {
-		return &(*_particleIter);
-	}
-	else {
-		return NULL;
-	}*/
-}
 
 void BlockedReorderedLinkedCells::deleteOuterParticles() {
 	if (_cellsValid == false) {
@@ -387,32 +271,12 @@ void BlockedReorderedLinkedCells::deleteOuterParticles() {
 	}
 
 	vector<unsigned long>::iterator cellIndexIter;
-	//std::list<Molecule*>::iterator molIter1;
 	for (cellIndexIter = _haloCellIndices.begin(); cellIndexIter != _haloCellIndices.end(); cellIndexIter++) {
 		BlockedCell& currentCell = _cells[*cellIndexIter];
 		currentCell.removeAllParticles();
 	}
-
-	/*std::list<Molecule>::iterator particleIterator = _particles.begin();
-	bool erase_mol;
-	while (particleIterator != _particles.end()) {
-		erase_mol = false;
-		for (unsigned short d = 0; d < 3; ++d) {
-			const double& rd = particleIterator->r(d);
-			// The molecules has to be within the domain of the process
-			// If it is outside in at least one dimension, it has to be
-			// erased /
-			if (rd < this->_boundingBoxMin[d] || rd >= this->_boundingBoxMax[d])
-				erase_mol = true;
-		}
-		if (erase_mol) {
-			particleIterator = _particles.erase(particleIterator);
-		}
-		else {
-			particleIterator++;
-		}
-	} */
 }
+
 
 double BlockedReorderedLinkedCells::get_halo_L(int index) const {
 	return _haloLength[index];
@@ -441,7 +305,7 @@ void BlockedReorderedLinkedCells::getHaloParticles(list<Molecule*> &haloParticle
 			haloParticlePtrs.push_back(*particleIter);
 		}
 	}
-	*/
+*/
 }
 
 void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], list<Molecule*> &particlePtrs) {
@@ -478,8 +342,8 @@ void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorn
 				globalCellIndex = (iz * _cellsPerDimension[1] + iy) * _cellsPerDimension[0] + ix;
 				// loop over all subcells (either 1 or 8)
 				// traverse all molecules in the current cell
-				utils::DynamicArray<Molecule, true, false> particles = _cells[globalCellIndex].getParticles();
-				for (int i = 0; i < particles.size(); i++) {
+				utils::DynamicArray<Molecule, true, false>& particles = _cells[globalCellIndex].getParticles();
+				for (size_t i = 0; i < particles.size(); i++) {
 					if (particles[i].r(0) >= lowCorner[0] && particles[i].r(0) < highCorner[0] &&
 						particles[i].r(1) >= lowCorner[1] && particles[i].r(1) < highCorner[1] &&
 						particles[i].r(2) >= lowCorner[2] && particles[i].r(2) < highCorner[2]) {
@@ -491,6 +355,63 @@ void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorn
 	}
 }
 
+
+void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], utils::DynamicArray<BasicMolecule, true, false>& particleArray) {
+	if (_cellsValid == false) {
+		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (getRegion) invalid, call update first" << endl;
+		exit(1);
+	}
+
+	if (!IsSame<Molecule, BasicMolecule>::Result::value) {
+		global_log->error() << "BlockedReorderedLinkedCells::getRegion(DynamicArray<BasicMolecule>&) must only be called for BasicMolecules!" << endl;
+		return;
+	}
+
+	// cast to make this code compile for all combinations of Molecule/HandlerTypeMolecule
+	utils::DynamicArray<Molecule, true, false>& particleArrayToReturn = reinterpret_cast<utils::DynamicArray<Molecule, true, false>&>(particleArray);
+
+	int startIndex[3];
+	int stopIndex[3];
+	int globalCellIndex;
+
+	for (int dim = 0; dim < 3; dim++) {
+		if (lowCorner[dim] < this->_boundingBoxMax[dim] && highCorner[dim] > this->_boundingBoxMin[dim]) {
+			startIndex[dim] = (int) floor((lowCorner[dim] - _haloBoundingBoxMin[dim]) / _cellLength[dim]) - 1;
+			stopIndex[dim] = (int) floor((highCorner[dim] - _haloBoundingBoxMin[dim]) / _cellLength[dim]) + 1;
+			if (startIndex[dim] < 0)
+				startIndex[dim] = 0;
+			if (stopIndex[dim] > _cellsPerDimension[dim] - 1)
+				stopIndex[dim] = _cellsPerDimension[dim] - 1;
+		}
+		else {
+			// No Part of the given region is owned by this process
+			// --> chose some startIndex which is higher than the stopIndex
+			startIndex[dim] = 1;
+			stopIndex[dim] = 0;
+		}
+	}
+
+	// TODO Optimisation: for those cells which are in the inner of the requested area,
+	//                    we can just append the whole particle array instead of pushing them back individually.
+	for (int iz = startIndex[2]; iz <= stopIndex[2]; iz++) {
+		for (int iy = startIndex[1]; iy <= stopIndex[1]; iy++) {
+			for (int ix = startIndex[0]; ix <= stopIndex[0]; ix++) {
+				// globalCellIndex is the cellIndex of the molecule on the coarse Cell level.
+				globalCellIndex = (iz * _cellsPerDimension[1] + iy) * _cellsPerDimension[0] + ix;
+				// loop over all subcells (either 1 or 8)
+				// traverse all molecules in the current cell
+				utils::DynamicArray<Molecule, true, false>& particles = _cells[globalCellIndex].getParticles();
+				for (size_t i = 0; i < particles.size(); i++) {
+					if (particles[i].r(0) >= lowCorner[0] && particles[i].r(0) < highCorner[0] &&
+						particles[i].r(1) >= lowCorner[1] && particles[i].r(1) < highCorner[1] &&
+						particles[i].r(2) >= lowCorner[2] && particles[i].r(2) < highCorner[2]) {
+						particleArrayToReturn.push_back((particles[i]));
+					}
+				}
+			}
+		}
+	}
+}
 
 void BlockedReorderedLinkedCells::linearize(utils::DynamicArray<Molecule, true, false>& molecules, std::vector<int>& cellStartIndices) {
 	int cellStartIndex = 0;
@@ -654,57 +575,6 @@ void BlockedReorderedLinkedCells::deleteMolecule(unsigned long molid, double x, 
 	}
 }
 
-double BlockedReorderedLinkedCells::getEnergy(Molecule* m1) {
-#ifndef NDEBUG
-	global_log->error() << "TODO: getEnergy() method is not implemented / refactored right!" << endl;
-	exit(-1);
-#endif
-
-/*	double u = 0.0;
-
-	std::vector<Molecule*>::iterator molIter2;
-	vector<unsigned long>::iterator neighbourOffsetsIter;
-
-	// sqare of the cutoffradius
-	double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius;
-	double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
-	double dd;
-	double distanceVector[3];
-
-	unsigned long cellIndex = getCellIndexOfMolecule(m1);
-	BlockedCell& currentCell = _cells[cellIndex];
-
-	if (m1->numTersoff() > 0) {
-		global_log->error() << "The grand canonical ensemble is not implemented for solids." << endl;
-		exit(484);
-	}
-	// molecules in the cell
-	for (molIter2 = currentCell.getParticlePointers().begin(); molIter2 != currentCell.getParticlePointers().end(); molIter2++) {
-		if (m1->id() == (*molIter2)->id())
-			continue;
-		dd = (*molIter2)->dist2(*m1, distanceVector);
-		if (dd > cutoffRadiusSquare)
-			continue;
-		u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
-	}
-
-	// backward and forward neighbours
-	for (neighbourOffsetsIter = _backwardNeighbourOffsets.begin(); neighbourOffsetsIter != _forwardNeighbourOffsets.end(); neighbourOffsetsIter++) {
-
-		if (neighbourOffsetsIter == _backwardNeighbourOffsets.end())
-			neighbourOffsetsIter = _forwardNeighbourOffsets.begin();
-
-		Cell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
-		for (molIter2 = neighbourCell.getParticlePointers().begin(); molIter2 != neighbourCell.getParticlePointers().end(); molIter2++) {
-			dd = (*molIter2)->dist2(*m1, distanceVector);
-			if (dd > cutoffRadiusSquare)
-				continue;
-			u += this->_particlePairsHandler->processPair(*m1, **molIter2, distanceVector, MOLECULE_MOLECULE_FLUID, dd, (dd < LJCutoffRadiusSquare));
-		}
-	}
-	return u;
-	*/
-}
 
 int BlockedReorderedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
 	comm->collCommInit(1);
@@ -715,113 +585,53 @@ int BlockedReorderedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
 	return universalInsertionsMinusDeletions;
 }
 
+/*****************************************************************/
+/************** To be implementended / adapted *******************/
+/*****************************************************************/
+
+Molecule* BlockedReorderedLinkedCells::deleteCurrent() {
+#ifndef NDEBUG
+	global_log->error() << "TODO: method deleteCurrent() is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+	return NULL;
+}
+
+double BlockedReorderedLinkedCells::getEnergy(Molecule* m1) {
+#ifndef NDEBUG
+	global_log->error() << "TODO: getEnergy() method is not implemented / refactored right!" << endl;
+	exit(-1);
+#endif
+	return 0;
+}
+
+/**
+ * @todo replace this by a call to component->getNumMolecules() !?
+ */
+unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid) {
+	// I won't implement redundant stuff right now...
+	#ifndef NDEBUG
+		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
+		exit(-1);
+	#endif
+		return 0;
+}
+
+/**
+ * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
+ */
+unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
+	#ifndef NDEBUG
+		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
+		exit(-1);
+	#endif
+	return 0;
+}
+
 void BlockedReorderedLinkedCells::grandcanonicalStep(ChemicalPotential* mu, double T) {
 #ifndef NDEBUG
 	global_log->error() << "TODO: this method is not implemented / refactored right!" << endl;
 	exit(-1);
 #endif
 
-/*	bool accept = true;
-	double DeltaUpot;
-	Molecule* m;
-
-	this->_localInsertionsMinusDeletions = 0;
-
-	mu->submitTemperature(T);
-	double minco[3];
-	double maxco[3];
-	for (int d = 0; d < 3; d++) {
-		minco[d] = this->getBoundingBoxMin(d);
-		maxco[d] = this->getBoundingBoxMax(d);
-	}
-
-	bool hasDeletion = true;
-	bool hasInsertion = true;
-	double ins[3];
-	unsigned nextid = 0;
-	while (hasDeletion || hasInsertion) {
-		if (hasDeletion)
-			hasDeletion = mu->getDeletion(this, minco, maxco);
-		if (hasDeletion) {
-			m = &(*(this->_particleIter));
-			DeltaUpot = -1.0 * getEnergy(m);
-
-			accept = mu->decideDeletion(DeltaUpot / T);
-#ifndef NDEBUG
-			if(accept) global_log->debug() << "r" << mu->rank() << "d" << m->id() << endl;
-			else global_log->debug() << "   (r" << mu->rank() << "-d" << m->id() << ")" << endl;
-#endif
-			if (accept) {
-				m->upd_cache();
-				// m->clearFM();
-				// reset forces and momenta to zero
-				{
-					double zeroVec[3] = {0.0, 0.0, 0.0};
-					m->setF(zeroVec);
-					m->setM(zeroVec);
-				}
-				mu->storeMolecule(*m);
-				this->deleteMolecule(m->id(), m->r(0), m->r(1), m->r(2));
-				this->_particles.erase(this->_particleIter);
-				this->_particleIter = _particles.begin();
-				this->_localInsertionsMinusDeletions--;
-			}
-		}
-
-		if (hasInsertion) {
-			nextid = mu->getInsertion(ins);
-			hasInsertion = (nextid > 0);
-		}
-		if (hasInsertion) {
-			// for(int d = 0; d < 3; d++)
-			//    ins[d] = ins[d]-coords[d]*proc_domain_L[d]-m_rmin[d];
-			Molecule tmp = mu->loadMolecule();
-			for (int d = 0; d < 3; d++)
-				tmp.setr(d, ins[d]);
-			tmp.setid(nextid);
-			this->_particles.push_back(tmp);
-
-			std::list<Molecule>::iterator mit = _particles.end();
-			mit--;
-			m = &(*mit);
-			m->upd_cache();
-			// reset forces and momenta to zero
-			{
-				double zeroVec[3] = {0.0, 0.0, 0.0};
-				m->setF(zeroVec);
-				m->setM(zeroVec);
-			}
-			m->check(nextid);
-#ifndef NDEBUG
-			global_log->debug() << "rank " << mu->rank() << ": insert " << m->id()
-			<< " at the reduced position (" << ins[0] << "/" << ins[1] << "/" << ins[2] << ")? " << endl;
-#endif
-
-			unsigned long cellid = this->getCellIndexOfMolecule(m);
-			this->_cells[cellid].addParticle(m);
-			DeltaUpot = getEnergy(m);
-			accept = mu->decideInsertion(DeltaUpot / T);
-
-#ifndef NDEBUG
-			if(accept) global_log->debug() << "r" << mu->rank() << "i" << mit->id() << ")" << endl;
-			else global_log->debug() << "   (r" << mu->rank() << "-i" << mit->id() << ")" << endl;
-#endif
-			if (accept) {
-				this->_localInsertionsMinusDeletions++;
-			}
-			else {
-				// this->deleteMolecule(m->id(), m->r(0), m->r(1), m->r(2));
-				this->_cells[cellid].deleteMolecule(m->id());
-
-				mit->check(m->id());
-				this->_particles.erase(mit);
-			}
-		}
-	}
-	for (m = this->begin(); m != this->end(); m = this->next()) {
-#ifndef NDEBUG
-		m->check(m->id());
-#endif
-	}
-	*/
 }

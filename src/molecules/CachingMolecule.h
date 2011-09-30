@@ -40,11 +40,14 @@ class Domain;
 class CachingMolecule {
 
 public:
+
+	friend class ParticleData;
+
 	// TODO Correct this constructor: the components vector is optional,
 	// but if it is left away, all pointer data is not initialized (which is not
 	// neccessarily bad), but then assertions fail (e.g. in the destructor) and we can't
 	// use it's instances.
-	CachingMolecule(unsigned long id = 0, int componentid = 0,
+	CachingMolecule(unsigned long id = 0, unsigned int componentid = 0,
 	         double rx = 0., double ry = 0., double rz = 0.,
 	         double vx = 0., double vy = 0., double vz = 0.,
 	         double q0 = 0., double q1 = 0., double q2 = 0., double q3 = 0.,
@@ -66,7 +69,7 @@ public:
 	unsigned long id() const { return _id; }
 	void setid(unsigned long id) { this->_id = id; }
 	/** get the Component */
-	int componentid() const { return _componentid; }
+	unsigned int componentid() const { return _componentid; }
 	/** get the position */
 	double r(unsigned short d) const { return _r[d]; }
 
@@ -99,14 +102,15 @@ public:
 	unsigned int numQuadrupoles() const { return _quadrupoles->size(); }
 	unsigned int numTersoff() const { assert(_tersoff); return _tersoff->size(); }
 
+	// TODO test this!
 	const double* site_d(unsigned int i) const { return &(_sites_d[3*i]); }
 	const double* site_F(unsigned int i) const { return &(_sites_F[3*i]); }
-	const double* ljcenter_d(unsigned int i) const { return &(_ljcenters_d[3*i]); }
-	const double* charge_d(unsigned int i) const { return &(_charges_d[3*i]); }
-	const double* dipole_d(unsigned int i) const { return &(_dipoles_d[3*i]); }
-	const double* dipole_e(unsigned int i) const { return &(_dipoles_e[3*i]); }
-	const double* quadrupole_d(unsigned int i) const { return &(_quadrupoles_d[3*i]); }
-	const double* quadrupole_e(unsigned int i) const { return &(_quadrupoles_e[3*i]); }
+	void ljcenter_d(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] = _ljcenters_d[3*i + k]; }
+	void charge_d(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] =  _charges_d[3*i + k]; }
+	void dipole_d(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] = _dipoles_d[3*i + k]; }
+	void dipole_e(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] = _dipoles_e[3*i + k]; }
+	void quadrupole_d(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] = _quadrupoles_d[3*i + k]; }
+	void quadrupole_e(unsigned int i, double d[3]) const { for (int k = 0; k < 3; k++) d[k] = _quadrupoles_e[3*i + k]; }
 
 	/**
 	 * get the total object memory size, together with all its members
@@ -244,7 +248,7 @@ public:
 private:
 
 	unsigned long _id; // IDentification number of that molecule
-	int _componentid;  // IDentification number of its component type
+	unsigned int _componentid;  // IDentification number of its component type
 	double _r[3];  // position coordinates
 	double _F[3];  // forces
 	double _v[3];  // velocity

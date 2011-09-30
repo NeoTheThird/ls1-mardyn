@@ -139,7 +139,7 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 
 	// open the window of cells with cache activated
-	for (int cellIndex = 0; cellIndex < _maxNeighbourOffset; cellIndex++) {
+	for (unsigned int cellIndex = 0; cellIndex < _maxNeighbourOffset; cellIndex++) {
 		_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 		#ifndef NDEBUG
 		global_log->debug() << "Opened cached cells window for cell index=<< " << cellIndex
@@ -355,7 +355,7 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 		}
 
 		// narrow the window of cells with cache activated
-		if (cellIndex >= -_minNeighbourOffset) {
+		if (cellIndex >= _minNeighbourOffset) {
 #ifndef NDEBUG
 			global_log->debug() << "Narrowing cached cells window for cell index=" << (cellIndex + _minNeighbourOffset)
 					<< " with size()="<<_cells[cellIndex + _minNeighbourOffset].getMoleculeCount()

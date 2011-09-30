@@ -103,8 +103,8 @@ private:
 	//! Neighbours that come in the total ordering before a cell
 	std::vector<std::vector<unsigned long> >* _backwardNeighbourOffsets;
 
-	int _maxNeighbourOffset;
-	int _minNeighbourOffset;
+	unsigned int _maxNeighbourOffset;
+	unsigned int _minNeighbourOffset;
 
 	//! If true, _(forward|backward)NeighbourOffsets are allocated and must be free'd
 	bool _allocatedOffsets;
