@@ -142,6 +142,7 @@ template <class Molecule, class HandlerMoleculeType>
 void BlockedCell::convertToHandlerMoleculeType() {
 
 	#ifndef NDEBUG
+	assert(_currentMoleculeType == BasicMolecule);
 	_currentMoleculeType = HandlerMolecule;
 	#endif
 
@@ -181,6 +182,7 @@ template <class Molecule, class HandlerMolecule>
 void BlockedCell::convertToMoleculeType() {
 
 	#ifndef NDEBUG
+	assert(_currentMoleculeType == HandlerMolecule);
 	_currentMoleculeType = BasicMolecule;
 	#endif
 

@@ -84,7 +84,8 @@ void BlockedReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forward
 	_forwardNeighbourOffsets->assign(_cells.size(), forwardNeighbourOffsets);
 	_backwardNeighbourOffsets->assign(_cells.size(), backwardNeighbourOffsets);
 	_maxNeighbourOffset = maxNeighbourOffset;
-	_minNeighbourOffset = minNeighbourOffset;
+	_minNeighbourOffset = abs(minNeighbourOffset);
+	global_log->info() << "BlockedReorderedBlockTraverse::assignOffsets() maxNeighbourOffsets=" << maxNeighbourOffset << "; minNeighbourOffsets=" << minNeighbourOffset << endl;
 }
 
 void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particlePairsHandler) {
@@ -140,11 +141,11 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 	// open the window of cells with cache activated
 	for (unsigned int cellIndex = 0; cellIndex < _maxNeighbourOffset; cellIndex++) {
-		_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 		#ifndef NDEBUG
-		global_log->debug() << "Opened cached cells window for cell index=<< " << cellIndex
-				<< " size()="<<_cells[cellIndex].getMoleculeCount() << endl;
+		global_log->debug() << "Opening cached cells window for cell index= " << cellIndex
+				<< " numMolecules()="<<_cells[cellIndex].getMoleculeCount() << endl;
 		#endif
+		_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 	}
 
 	// loop over all inner cells and calculate forces to forward neighbours
@@ -154,12 +155,12 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 		// extend the window of cells with cache activated
 		if (cellIndex + _maxNeighbourOffset < _cells.size()) {
-			_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 			#ifndef NDEBUG
-			global_log->debug() << "Opened cached cells window for cell index=" << (cellIndex + _maxNeighbourOffset)
-					<< " with size()="<< _cells[cellIndex + _maxNeighbourOffset].getMoleculeCount()
+			global_log->debug() << "Opening cached cells window for cell index=" << (cellIndex + _maxNeighbourOffset)
+					<< " with numMolecules()="<< _cells[cellIndex + _maxNeighbourOffset].getMoleculeCount()
 					<< " currentCell " << cellIndex << endl;
 			#endif
+			_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 		}
 
 		utils::DynamicArray<HandlerMoleculeType, true, false>& currentCellParticles = currentCell.getHandlerTypeParticles();
@@ -357,24 +358,24 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 		// narrow the window of cells with cache activated
 		if (cellIndex >= _minNeighbourOffset) {
 #ifndef NDEBUG
-			global_log->debug() << "Narrowing cached cells window for cell index=" << (cellIndex + _minNeighbourOffset)
-					<< " with size()="<<_cells[cellIndex + _minNeighbourOffset].getMoleculeCount()
+			global_log->debug() << "Narrowing cached cells window for cell index=" << (cellIndex - _minNeighbourOffset)
+					<< " with size()="<<_cells[cellIndex - _minNeighbourOffset].getMoleculeCount()
 					<< " currentCell " << cellIndex << endl;
 #endif
 //			if (applyForces)
 //				_cells[cellIndex + _minNeighbourOffset].applyForces();
-			_cells[cellIndex + _minNeighbourOffset].convertToMoleculeType<Molecule, HandlerMoleculeType>();
+			_cells[cellIndex - _minNeighbourOffset].convertToMoleculeType<Molecule, HandlerMoleculeType>();
 		}
 
 	} // for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++)
 
 	// close the window of cells with cache activated
-	for (unsigned int cellIndex = _cells.size() + _minNeighbourOffset; cellIndex < _cells.size(); cellIndex++) {
-		_cells[cellIndex].convertToMoleculeType<Molecule, HandlerMoleculeType>();
+	for (unsigned int cellIndex = _cells.size() - _minNeighbourOffset; cellIndex < _cells.size(); cellIndex++) {
 #ifndef NDEBUG
 			global_log->debug() << "Narrowing cached cells window for cell index=" << cellIndex
 					<< " size()="<<_cells[cellIndex].getMoleculeCount() << endl;
 #endif
+		_cells[cellIndex].convertToMoleculeType<Molecule, HandlerMoleculeType>();
 	}
 
 	particlePairsHandler->finish();
