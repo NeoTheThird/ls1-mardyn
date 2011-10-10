@@ -7,6 +7,8 @@
 #include <cmath>
 #include <iostream>
 
+#include <xmmintrin.h>
+
 using namespace std;
 
 string gettimestring(const char* fmt) {
@@ -104,3 +106,76 @@ void calculateDistances( float * __restrict__ valuesA[3], float* __restrict__ co
 		distances[i+2] = distanceVectors[i+2] + distanceVectors[i+2];
 	}
 }*/
+
+
+void calculateDistances( int numA, float* A[3], int numB, float* B[3], float** distances) {
+
+	//int numIterationsA = numA / 4;
+	int numIterationsB = numB / 4 + (numB % 4 == 0 ? 0 : 1) ;
+
+	//std::cout << "SSE Distances: numA=" << numA << " numIterationsB=" << numIterationsB << std::endl;
+	for (int i = 0; i < numA; i++) {
+		__m128 xCoordsA = _mm_load1_ps(A[0] + i);
+		__m128 yCoordsA = _mm_load1_ps(A[1] + i);
+		__m128 zCoordsA = _mm_load1_ps(A[2] + i);
+
+		for (int j = 0; j < numIterationsB; j++) {
+
+
+			__m128 xCoordsB = _mm_load_ps(B[0] + j * 4);
+			xCoordsB = _mm_sub_ps(xCoordsA, xCoordsB);
+			__m128 yCoordsB = _mm_load_ps(B[1] + j * 4);
+			yCoordsB = _mm_sub_ps(yCoordsA, yCoordsB);
+			__m128 zCoordsB = _mm_load_ps(B[2] + j * 4);
+			zCoordsB = _mm_sub_ps(zCoordsA, zCoordsB);
+
+			xCoordsB = _mm_mul_ps(xCoordsB, xCoordsB);
+			yCoordsB = _mm_mul_ps(yCoordsB, yCoordsB);
+			zCoordsB = _mm_mul_ps(zCoordsB, zCoordsB);
+
+			xCoordsB = _mm_add_ps(xCoordsB, yCoordsB);
+			xCoordsB = _mm_add_ps(xCoordsB, zCoordsB);
+
+			_mm_store_ps(distances[i] + j*4, xCoordsB);
+		}
+	}
+
+}
+
+
+void calculateInteractionTable( int numA, float* A[3], int numB, float* B[3], float** distances, float cutoff) {
+
+	__m128 cutoffRegister = _mm_load1_ps(&cutoff);
+
+	//int numIterationsA = numA / 4;
+	int numIterationsB = numB / 4 + (numB % 4 == 0 ? 0 : 1) ;
+
+	//std::cout << "SSE Distances: numA=" << numA << " numIterationsB=" << numIterationsB << std::endl;
+	for (int i = 0; i < numA; i++) {
+		__m128 xCoordsA = _mm_load1_ps(A[0] + i);
+		__m128 yCoordsA = _mm_load1_ps(A[1] + i);
+		__m128 zCoordsA = _mm_load1_ps(A[2] + i);
+
+		for (int j = 0; j < numIterationsB; j++) {
+
+
+			__m128 xCoordsB = _mm_load_ps(B[0] + j * 4);
+			xCoordsB = _mm_sub_ps(xCoordsA, xCoordsB);
+			__m128 yCoordsB = _mm_load_ps(B[1] + j * 4);
+			yCoordsB = _mm_sub_ps(yCoordsA, yCoordsB);
+			__m128 zCoordsB = _mm_load_ps(B[2] + j * 4);
+			zCoordsB = _mm_sub_ps(zCoordsA, zCoordsB);
+
+			xCoordsB = _mm_mul_ps(xCoordsB, xCoordsB);
+			yCoordsB = _mm_mul_ps(yCoordsB, yCoordsB);
+			zCoordsB = _mm_mul_ps(zCoordsB, zCoordsB);
+
+			xCoordsB = _mm_add_ps(xCoordsB, yCoordsB);
+			xCoordsB = _mm_add_ps(xCoordsB, zCoordsB);
+
+			xCoordsB = _mm_cmplt_ps(xCoordsB, cutoffRegister);
+			_mm_store_ps(distances[i] + j*4, xCoordsB);
+		}
+	}
+
+}

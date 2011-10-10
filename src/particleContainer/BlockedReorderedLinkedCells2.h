@@ -17,11 +17,11 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#ifndef BLOCKEDREORDEREDLINKEDCELLS_H_
-#define BLOCKEDREORDEREDLINKEDCELLS_H_
+#ifndef BLOCKEDREORDEREDLINKEDCELLS2_H_
+#define BLOCKEDREORDEREDLINKEDCELLS2_H_
 
 #include "particleContainer/ParticleContainer.h"
-#include "BlockedReorderedBlockTraverse.h"
+#include "BlockedReorderedBlockTraverse2.h"
 #include "utils/DynamicArray.h"
 
 #include <vector>
@@ -30,35 +30,12 @@ class BlockedCell;
 class ChemicalPotential;
 class DomainDecompBase;
 
-//! @brief Linked Cell Data Structure
-//! @author Martin Buchholz
-//!
-//! Without any specialized data structure, it needs O(N*N) - where N is
-//! the number of particles - time to find all neighbouring pairs of particles.
-//! The linked cell data structure is a datastructure which allows to find all
-//! neighbouring pairs of particles (neighbouring means particles pairs
-//! which have less than a certain distance) in O(N) time.
-//! The following picture shows a domain with some particles in it. The blue
-//! circle shows the neighbouring area of the red particle
-//! \image particles.jpg
-//! The problem is that all particles have to be examined to find those within the circle
-//! With the linked cell data structure, the domain is divided into cells (using a regular grid).
-//! All particles are placed in those cells.
-//! For a given cell, neighbouring cells can easily be calculated, so for a given particle,
-//! only the particles from neighbouring cells have to be examined. The following
-//! picture illustrates this
-//! \image particles_with_lc.jpg
-//!
-//! The spacial domain covered by the linked cells is larger then
-//! the bounding box of the domain. This halo region surrounding
-//! the phasespace is used for (periodic) boundary conditions
-//! and has to be at least as wide as the cutoff radius. \n
-//! In total, there are three different cell types:
-//! - halo
-//! - boundary
-//! - inner
-
-class BlockedReorderedLinkedCells : public ParticleContainer {
+/**
+ * Like BlockedReorderedLinkedCells, however doesn't calculate the distances of
+ * molecules for the comparison "distance < cutoff", but calculates the boolean
+ * result of the comparison.
+ */
+class BlockedReorderedLinkedCells2 : public ParticleContainer {
 public:
 	//! @brief initialize the Linked Cell datastructure
 	//!
@@ -95,13 +72,13 @@ public:
 	//!        ==> cells have to be larger: cellsPerDimension = phasespacelength/celllength = 100/celllength = 66 cells \n
 	//!        ==> celllength = 100/66 = 1.5152
 	//! @param partPairsHandler specified concrete action to be done for each pair
-	BlockedReorderedLinkedCells(
+	BlockedReorderedLinkedCells2(
 		 double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 		 double tersoffCutoffRadius, double cellsInCutoffRadius
 	);
 
 	//! Destructor
-	~BlockedReorderedLinkedCells();
+	~BlockedReorderedLinkedCells2();
 
 	// documentation see father class (ParticleContainer.h)
 	void rebuild(double bBoxMin[3], double bBoxMax[3]);
@@ -326,7 +303,7 @@ private:
 	//! should be set to true.
 	bool _cellsValid;
 
-	BlockedReorderedBlockTraverse _blockTraverse;
+	BlockedReorderedBlockTraverse2 _blockTraverse;
 
 
 };

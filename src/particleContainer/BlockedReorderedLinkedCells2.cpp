@@ -17,7 +17,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "particleContainer/BlockedReorderedLinkedCells.h"
+#include "particleContainer/BlockedReorderedLinkedCells2.h"
 
 #include <cmath>
 
@@ -38,7 +38,7 @@ using Log::global_log;
 //################################################
 
 
-BlockedReorderedLinkedCells::BlockedReorderedLinkedCells(
+BlockedReorderedLinkedCells2::BlockedReorderedLinkedCells2(
 		double bBoxMin[3], double bBoxMax[3], double cutoffRadius, double LJCutoffRadius,
 		double tersoffCutoffRadius, double cellsInCutoffRadius
 )
@@ -93,10 +93,10 @@ BlockedReorderedLinkedCells::BlockedReorderedLinkedCells(
 }
 
 
-BlockedReorderedLinkedCells::~BlockedReorderedLinkedCells() {
+BlockedReorderedLinkedCells2::~BlockedReorderedLinkedCells2() {
 }
 
-void BlockedReorderedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
+void BlockedReorderedLinkedCells2::rebuild(double bBoxMin[3], double bBoxMax[3]) {
 	for (int i = 0; i < 3; i++) {
 		this->_boundingBoxMin[i] = bBoxMin[i];
 		this->_boundingBoxMax[i] = bBoxMax[i];
@@ -164,7 +164,7 @@ void BlockedReorderedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) 
 	_cellsValid = false;
 }
 
-void BlockedReorderedLinkedCells::update() {
+void BlockedReorderedLinkedCells2::update() {
 
 	unsigned long index;
 	int counter = 0;
@@ -191,7 +191,7 @@ void BlockedReorderedLinkedCells::update() {
 	_cellsValid = true;
 }
 
-void BlockedReorderedLinkedCells::addParticle(Molecule& particle) {
+void BlockedReorderedLinkedCells2::addParticle(Molecule& particle) {
 
 	double x = particle.r(0);
 	double y = particle.r(1);
@@ -210,7 +210,7 @@ void BlockedReorderedLinkedCells::addParticle(Molecule& particle) {
 	}
 }
 
-void BlockedReorderedLinkedCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
+void BlockedReorderedLinkedCells2::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
@@ -218,7 +218,7 @@ void BlockedReorderedLinkedCells::traversePairs(ParticlePairsHandler* particlePa
 	_blockTraverse.traversePairs(particlePairsHandler);
 }
 
-unsigned long BlockedReorderedLinkedCells::getNumberOfParticles() {
+unsigned long BlockedReorderedLinkedCells2::getNumberOfParticles() {
 	unsigned long size = 0;
 	for (unsigned int i = 0; i < _cells.size(); i++) {
 		size += _cells[i].getMoleculeCount();
@@ -227,7 +227,7 @@ unsigned long BlockedReorderedLinkedCells::getNumberOfParticles() {
 	return size;
 }
 
-Molecule* BlockedReorderedLinkedCells::begin() {
+Molecule* BlockedReorderedLinkedCells2::begin() {
 	_cellIteratorIndex = 0;
 	_moleculeIteratorIndex = 0;
 
@@ -240,7 +240,7 @@ Molecule* BlockedReorderedLinkedCells::begin() {
 	return NULL;
 }
 
-Molecule* BlockedReorderedLinkedCells::next() {
+Molecule* BlockedReorderedLinkedCells2::next() {
 	++_moleculeIteratorIndex;
 	if (_moleculeIteratorIndex < (unsigned int)_cells[_cellIteratorIndex].getMoleculeCount()) {
 		return &(_cells[_cellIteratorIndex].getParticles()[_moleculeIteratorIndex]);
@@ -258,13 +258,13 @@ Molecule* BlockedReorderedLinkedCells::next() {
 	return NULL;
 }
 
-Molecule* BlockedReorderedLinkedCells::end() {
+Molecule* BlockedReorderedLinkedCells2::end() {
 	return NULL;
 }
 
 
 
-void BlockedReorderedLinkedCells::deleteOuterParticles() {
+void BlockedReorderedLinkedCells2::deleteOuterParticles() {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (deleteOuterParticles) invalid, call update first" << endl;
 		exit(1);
@@ -278,12 +278,12 @@ void BlockedReorderedLinkedCells::deleteOuterParticles() {
 }
 
 
-double BlockedReorderedLinkedCells::get_halo_L(int index) const {
+double BlockedReorderedLinkedCells2::get_halo_L(int index) const {
 	return _haloLength[index];
 }
 
 
-void BlockedReorderedLinkedCells::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
+void BlockedReorderedLinkedCells2::getHaloParticles(list<Molecule*> &haloParticlePtrs) {
 #ifndef NDEBUG
 	global_log->error() << "TODO: method getHaloParticles is not implemented / refactored right!" << endl;
 	exit(-1);
@@ -308,7 +308,7 @@ void BlockedReorderedLinkedCells::getHaloParticles(list<Molecule*> &haloParticle
 */
 }
 
-void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], list<Molecule*> &particlePtrs) {
+void BlockedReorderedLinkedCells2::getRegion(double lowCorner[3], double highCorner[3], list<Molecule*> &particlePtrs) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (getRegion) invalid, call update first" << endl;
 		exit(1);
@@ -356,7 +356,7 @@ void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorn
 }
 
 
-void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorner[3], utils::DynamicArray<BasicMolecule, true, false>& particleArray) {
+void BlockedReorderedLinkedCells2::getRegion(double lowCorner[3], double highCorner[3], utils::DynamicArray<BasicMolecule, true, false>& particleArray) {
 	if (_cellsValid == false) {
 		global_log->error() << "Cell structure in BlockedReorderedLinkedCells (getRegion) invalid, call update first" << endl;
 		exit(1);
@@ -413,7 +413,7 @@ void BlockedReorderedLinkedCells::getRegion(double lowCorner[3], double highCorn
 	}
 }
 
-void BlockedReorderedLinkedCells::linearize(MoleculeArray& molecules, std::vector<int>& cellStartIndices) {
+void BlockedReorderedLinkedCells2::linearize(MoleculeArray& molecules, std::vector<int>& cellStartIndices) {
 	int cellStartIndex = 0;
 	for (size_t i = 0; i < _cells.size(); i++) {
 		//std::cout << "Cell[" << i<< "].size()=" << _cells[i].getMoleculeCount() << endl;
@@ -425,7 +425,7 @@ void BlockedReorderedLinkedCells::linearize(MoleculeArray& molecules, std::vecto
 }
 
 
-void BlockedReorderedLinkedCells::delinearize(MoleculeArray& molecules) {
+void BlockedReorderedLinkedCells2::delinearize(MoleculeArray& molecules) {
 	// TODO maybe replace the following with copying subarrays, instead of assignment?
 	assert(molecules.size() == getNumberOfParticles());
 
@@ -446,7 +446,7 @@ void BlockedReorderedLinkedCells::delinearize(MoleculeArray& molecules) {
 //################################################
 
 
-void BlockedReorderedLinkedCells::initializeCells() {
+void BlockedReorderedLinkedCells2::initializeCells() {
 	_innerCellIndices.clear();
 	_boundaryCellIndices.clear();
 	_haloCellIndices.clear();
@@ -478,7 +478,7 @@ void BlockedReorderedLinkedCells::initializeCells() {
 	}
 }
 
-void BlockedReorderedLinkedCells::calculateNeighbourIndices() {
+void BlockedReorderedLinkedCells2::calculateNeighbourIndices() {
 	_forwardNeighbourOffsets.clear();
 	_backwardNeighbourOffsets.clear();
 	double xDistanceSquare;
@@ -538,7 +538,7 @@ void BlockedReorderedLinkedCells::calculateNeighbourIndices() {
 			_backwardNeighbourOffsets, maxNeighbourOffset, minNeighbourOffset);
 }
 
-unsigned long BlockedReorderedLinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {
+unsigned long BlockedReorderedLinkedCells2::getCellIndexOfMolecule(Molecule* molecule) const {
 	int cellIndex[3]; // 3D Cell index
 
 	for (int dim = 0; dim < 3; dim++) {
@@ -551,12 +551,12 @@ unsigned long BlockedReorderedLinkedCells::getCellIndexOfMolecule(Molecule* mole
 	return this->cellIndexOf3DIndex( cellIndex[0], cellIndex[1], cellIndex[2] );
 }
 
-unsigned long BlockedReorderedLinkedCells::cellIndexOf3DIndex(int xIndex, int yIndex, int zIndex) const {
+unsigned long BlockedReorderedLinkedCells2::cellIndexOf3DIndex(int xIndex, int yIndex, int zIndex) const {
 	return (zIndex * _cellsPerDimension[1] + yIndex) * _cellsPerDimension[0] + xIndex;
 }
 
 
-void BlockedReorderedLinkedCells::deleteMolecule(unsigned long molid, double x, double y, double z) {
+void BlockedReorderedLinkedCells2::deleteMolecule(unsigned long molid, double x, double y, double z) {
 
 	int ix = (int) floor((x - this->_haloBoundingBoxMin[0]) / this->_cellLength[0]);
 	int iy = (int) floor((y - this->_haloBoundingBoxMin[1]) / this->_cellLength[1]);
@@ -576,7 +576,7 @@ void BlockedReorderedLinkedCells::deleteMolecule(unsigned long molid, double x, 
 }
 
 
-int BlockedReorderedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
+int BlockedReorderedLinkedCells2::grandcanonicalBalance(DomainDecompBase* comm) {
 	comm->collCommInit(1);
 	comm->collCommAppendInt(this->_localInsertionsMinusDeletions);
 	comm->collCommAllreduceSum();
@@ -589,7 +589,7 @@ int BlockedReorderedLinkedCells::grandcanonicalBalance(DomainDecompBase* comm) {
 /************** To be implementended / adapted *******************/
 /*****************************************************************/
 
-Molecule* BlockedReorderedLinkedCells::deleteCurrent() {
+Molecule* BlockedReorderedLinkedCells2::deleteCurrent() {
 #ifndef NDEBUG
 	global_log->error() << "TODO: method deleteCurrent() is not implemented / refactored right!" << endl;
 	exit(-1);
@@ -597,7 +597,7 @@ Molecule* BlockedReorderedLinkedCells::deleteCurrent() {
 	return NULL;
 }
 
-double BlockedReorderedLinkedCells::getEnergy(Molecule* m1) {
+double BlockedReorderedLinkedCells2::getEnergy(Molecule* m1) {
 #ifndef NDEBUG
 	global_log->error() << "TODO: getEnergy() method is not implemented / refactored right!" << endl;
 	exit(-1);
@@ -608,7 +608,7 @@ double BlockedReorderedLinkedCells::getEnergy(Molecule* m1) {
 /**
  * @todo replace this by a call to component->getNumMolecules() !?
  */
-unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid) {
+unsigned BlockedReorderedLinkedCells2::countParticles(unsigned int cid) {
 	// I won't implement redundant stuff right now...
 	#ifndef NDEBUG
 		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
@@ -620,7 +620,7 @@ unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid) {
 /**
  * @todo move this method to the ChemicalPotential, using a call to ParticleContainer::getRegion() !?
  */
-unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid, double* cbottom, double* ctop) {
+unsigned BlockedReorderedLinkedCells2::countParticles(unsigned int cid, double* cbottom, double* ctop) {
 	#ifndef NDEBUG
 		global_log->error() << "TODO: method countParticles(cid) is not implemented / refactored right!" << endl;
 		exit(-1);
@@ -628,7 +628,7 @@ unsigned BlockedReorderedLinkedCells::countParticles(unsigned int cid, double* c
 	return 0;
 }
 
-void BlockedReorderedLinkedCells::grandcanonicalStep(ChemicalPotential* mu, double T) {
+void BlockedReorderedLinkedCells2::grandcanonicalStep(ChemicalPotential* mu, double T) {
 #ifndef NDEBUG
 	global_log->error() << "TODO: this method is not implemented / refactored right!" << endl;
 	exit(-1);

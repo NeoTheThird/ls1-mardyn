@@ -9,6 +9,9 @@
 #include "Common.h"
 #include "utils/Logger.h"
 
+#include <xmmintrin.h>
+#include <malloc.h>
+
 #include <iostream>
 
 TEST_SUITE_REGISTRATION(CommonTest);
@@ -89,4 +92,53 @@ void CommonTest::testCalculateDistances() {
 	ASSERT_DOUBLES_EQUAL(distanceVectors[1][2][0], -1, 0.000001);
 	ASSERT_DOUBLES_EQUAL(distanceVectors[2][2][0], -1, 0.000001);
 	ASSERT_DOUBLES_EQUAL(distances[2][0], 3, 0.000001);
+}
+
+void CommonTest::testCalculateDistancesFloat() {
+#ifdef __INTEL_COMPILER
+	__declspec( align(16) ) float x[4]; // = {1, 2, 2, 2};
+#else
+	float x[4] __attribute__ ((aligned (16))) = {1, 2, 3, 4};
+	float y[4] __attribute__ ((aligned (16))) = {1, 2, 3, 4};
+	float z[4] __attribute__ ((aligned (16))) = {1, 2, 3, 4};
+
+	float x2[5] __attribute__ ((aligned (16))) = {1, 2, 3, 4, 5};
+	float y2[5] __attribute__ ((aligned (16))) = {1, 2, 3, 4, 5};
+	float z2[5] __attribute__ ((aligned (16))) = {1, 2, 3, 4, 5};
+
+	float** distances = new float*[4];
+	for (int i = 0; i < 4; i++) {
+		distances[i] = static_cast<float*>(_mm_malloc(8 * sizeof(float), 16));
+	}
+
+	float* coordsA[3];
+	coordsA[0] = x;
+	coordsA[1] = y;
+	coordsA[2] = z;
+
+	float* coordsB[3];
+	coordsB[0] = x2;
+	coordsB[1] = y2;
+	coordsB[2] = z2;
+
+	calculateDistances(4, coordsA, 5, coordsB, distances);
+
+	double expectedDistances[4][5] = { {0, 3, 12, 27, 48},
+	                                   {3, 0, 3, 12, 27},
+	                                   {12, 3, 0, 3, 12},
+	                                   {27, 12, 3, 0, 3}};
+
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 5; j++) {
+			std::stringstream msg;
+			msg << "expectedDistance[" << i << "]["<<j<<"]=" << expectedDistances[i][j] << std::endl;
+			ASSERT_DOUBLES_EQUAL_MSG(msg.str().c_str(), expectedDistances[i][j], distances[i][j], 0.000001);
+		}
+	}
+
+	for (int i = 0; i < 4; i++) {
+		_mm_free(distances[i]);
+	}
+
+#endif
 }

@@ -22,6 +22,7 @@ class CommonTest : public utils::Test {
 	TEST_METHOD(testGetTimeString);
 	TEST_METHOD(testAlignedNumber);
 	TEST_METHOD(testCalculateDistances);
+	TEST_METHOD(testCalculateDistancesFloat);
 
 	// end suite declaration
 	TEST_SUITE_END();
@@ -36,6 +37,8 @@ public:
 	void testAlignedNumber();
 
 	void testCalculateDistances();
+
+	void testCalculateDistancesFloat();
 };
 
 #endif /* COMMONTEST_H_ */

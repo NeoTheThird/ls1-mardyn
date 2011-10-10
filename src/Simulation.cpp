@@ -33,6 +33,7 @@
 #include "particleContainer/LinkedCells.h"
 #include "particleContainer/ReorderedLinkedCells.h"
 #include "particleContainer/BlockedReorderedLinkedCells.h"
+#include "particleContainer/BlockedReorderedLinkedCells2.h"
 #include "particleContainer/AdaptiveSubCells.h"
 #include "parallel/DomainDecompBase.h"
 
@@ -590,9 +591,23 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				}
 				if (this->_LJCutoffRadius == 0.0)
 					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				_moleculeContainer = new BlockedReorderedLinkedCells2(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius);
 				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells" << endl;
+			} else if (token == "BlockedReorderedLinkedCells2") {
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new BlockedReorderedLinkedCells2(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius);
+				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells2" << endl;
 			}
 
 			else if (token == "AdaptiveSubCells") {

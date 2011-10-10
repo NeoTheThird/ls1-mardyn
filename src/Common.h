@@ -39,4 +39,9 @@ void calculateDistances( float * __restrict__ valuesA[3], float* __restrict__ co
 /*void calculateDistances( double valuesA[], double const valuesB[], int numValuesA, int numValuesB,
 		double * __restrict__ distances, double * __restrict__ distanceVectors ); */
 
+
+void calculateDistances( int numA, float* A[3], int numB, float* B[3], float** distances);
+
+void calculateInteractionTable( int numA, float* A[3], int numB, float* B[3], float** distances, float cutoff);
+
 #endif /*COMMON_H_*/

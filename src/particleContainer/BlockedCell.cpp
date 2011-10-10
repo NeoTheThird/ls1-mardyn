@@ -13,7 +13,7 @@ BlockedCell::BlockedCell() :	_particles(NULL), _handlerParticles(NULL)
 #ifndef NDEBUG
 	_currentMoleculeType = BasicMolecule;
 #endif
-	_particles = new utils::DynamicArray<Molecule, true, false>(2);
+	_particles = new MoleculeArray(2);
 	_handlerParticles = NULL;
 	//std::cout << "Constructor BlockedCell: _particles at " << _particles << std::endl;
 }
@@ -26,13 +26,16 @@ BlockedCell::BlockedCell(const BlockedCell& other) {
 #ifndef NDEBUG
 	_currentMoleculeType = BasicMolecule;
 #endif
-	_particles = new utils::DynamicArray<Molecule, true, false>(*(other._particles));
+	_particles = new MoleculeArray(*(other._particles));
 	_handlerParticles = NULL;
 	//std::cout << "CopyConstructor BlockedCell: _particles at " << _particles << std::endl;
 }
 
 
 BlockedCell::~BlockedCell() {
+	assert(_currentMoleculeType == BasicMolecule);
+	assert(_handlerParticles == NULL);
+
 	delete _particles;
 }
 
@@ -46,12 +49,12 @@ void BlockedCell::addParticle(const Molecule& particle) {
 	_particles->push_back(particle);
 }
 
-utils::DynamicArray<Molecule, true, false>& BlockedCell::getParticles() {
+MoleculeArray& BlockedCell::getParticles() {
 	assert(_currentMoleculeType == BasicMolecule);
 	return *(this->_particles);
 }
 
-utils::DynamicArray<HandlerMoleculeType, true, false>& BlockedCell::getHandlerTypeParticles() {
+HandlerMoleculeTypeArray& BlockedCell::getHandlerTypeParticles() {
 	assert(_currentMoleculeType == HandlerMolecule);
 	return *(this->_handlerParticles);
 }
@@ -87,7 +90,7 @@ int BlockedCell::getMoleculeCount() const {
 bool BlockedCell::deleteMolecule(unsigned long molid) {
 	assert(_currentMoleculeType == BasicMolecule);
 	bool found = false;
-	utils::DynamicArray<Molecule, true, false>::iterator cellit = _particles->begin();
+	MoleculeArray::iterator cellit = _particles->begin();
 
 	while (cellit != _particles->end()) {
 		if ((*cellit).id() == molid) {
@@ -101,7 +104,28 @@ bool BlockedCell::deleteMolecule(unsigned long molid) {
 }
 
 
-utils::DynamicArray<Molecule, true, false>::iterator& BlockedCell::deleteMolecule(utils::DynamicArray<Molecule, true, false>::iterator& it) {
+MoleculeArray::iterator& BlockedCell::deleteMolecule(MoleculeArray::iterator& it) {
 	assert(_currentMoleculeType == BasicMolecule);
 	return _particles->erase(it);
+}
+
+
+void BlockedCell::setToHandlerMoleculeType() {
+	#ifndef NDEBUG
+	assert(_currentMoleculeType == BasicMolecule);
+	_currentMoleculeType = HandlerMolecule;
+	std::cout << "Set ptr to HandlerMoleculeArray." << std::endl;
+	#endif
+	_handlerParticles = reinterpret_cast<HandlerMoleculeTypeArray*>(_particles);
+}
+
+
+void BlockedCell::setToMoleculeType() {
+	#ifndef NDEBUG
+	assert(_currentMoleculeType == HandlerMolecule);
+	_currentMoleculeType = BasicMolecule;
+	std::cout << "Release ptr to HandlerMoleculeArray." << std::endl;
+	#endif
+
+	_handlerParticles = NULL;
 }

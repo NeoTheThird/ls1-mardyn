@@ -6,6 +6,7 @@
  */
 
 #include "particleContainer/tests/BlockedReorderedLinkedCellsTest.h"
+#include "molecules/MoleculeTypes.h"
 
 TEST_SUITE_REGISTRATION(BlockedReorderedLinkedCellsTest);
 
@@ -19,7 +20,7 @@ BlockedReorderedLinkedCellsTest::~BlockedReorderedLinkedCellsTest() {
 
 void BlockedReorderedLinkedCellsTest::testLinearize() {
 	BlockedReorderedLinkedCells* container = static_cast<BlockedReorderedLinkedCells*>(initializeFromFile(ParticleContainerFactory::BlockedReorderedLinkedCell, "1clj-regular-12x12x12.inp", 1.8));
-	utils::DynamicArray<Molecule, true, false> molecules;
+	MoleculeArray molecules;
 	std::vector<int> cellStartIndices;
 	container->linearize(molecules, cellStartIndices);
 

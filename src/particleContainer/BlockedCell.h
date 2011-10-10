@@ -44,16 +44,20 @@
 
 class BlockedCell {
 
-
-private:
+public:
 
 	static MemoryManager memoryManager;
 
+private:
+
 	//! the basic molecules contained in this cell
-	utils::DynamicArray<Molecule, true, false>* _particles;
+	MoleculeArray* _particles;
 
 	//! the molecules as the handler expects them
-	utils::DynamicArray<HandlerMoleculeType, true, false>* _handlerParticles;
+	HandlerMoleculeTypeArray* _handlerParticles;
+
+	// contains the x, y and z coordinates of the molecules, if converted to HandlerMoleculeType.
+	MemoryManager::fp_memory_type* _moleculePositions[3];
 
 	//! true when the cell is in the halo region
 	bool _haloCellState;
@@ -61,6 +65,7 @@ private:
 	bool _boundaryCellState;
 	//! true when the cell is in the inner region
 	bool _innerCellState;
+
 
 
 #ifndef NDEBUG
@@ -86,18 +91,18 @@ public:
 	void addParticle(const Molecule& particle);
 
 	//! return a reference to the list of molecules in this cell
-	utils::DynamicArray<Molecule, true, false>& getParticles();
+	MoleculeArray& getParticles();
 
 	//! return a reference to the list of molecules in this cell
 	//! in the representation for the ParticlePairsHandler
-	utils::DynamicArray<HandlerMoleculeType, true, false>& getHandlerTypeParticles();
+	HandlerMoleculeTypeArray& getHandlerTypeParticles();
 
 	//! @todo Return type bool neccessary!?
 	bool deleteMolecule(unsigned long molid);
 
 	//! delete molecule at iterator position.
 	//! the iterator is set to point to the next particle
-	utils::DynamicArray<Molecule, true, false>::iterator& deleteMolecule(utils::DynamicArray<Molecule, true, false>::iterator& it);
+	MoleculeArray::iterator& deleteMolecule(MoleculeArray::iterator& it);
 
 	//! Set the flag for a Halo Cell
 	void assingCellToHaloRegion();
@@ -134,6 +139,27 @@ public:
 	template <class Molecule, class HandlerMolecule>
 	void convertToMoleculeType();
 
+	/**
+	 * Calling this method is exlusive to calling convertToMoleculeType. It should
+	 * be a specialization for the case that Molecule and HandlerMoleculeType are
+	 * identical.
+	 */
+	void setToHandlerMoleculeType();
+
+	/**
+	 * Calling this method is exlusive to calling convertToMoleculeType. It should
+	 * be a specialization for the case that Molecule and HandlerMoleculeType are
+	 * identical.
+	 */
+	void setToMoleculeType();
+
+	MemoryManager::fp_memory_type** getMoleculePositons() {
+#ifndef VECTORIZE
+		assert(false);
+#endif
+		assert(_currentMoleculeType == HandlerMolecule);
+		return _moleculePositions;
+	}
 };
 
 
@@ -149,6 +175,11 @@ void BlockedCell::convertToHandlerMoleculeType() {
 	std::vector<Component>& components = global_simulation->getDomain()->getComponents();
 
 	_handlerParticles = memoryManager.getMoleculeArray();
+#ifdef VECTORIZE
+	_moleculePositions[0] = memoryManager.getFPMemory(_particles->size());
+	_moleculePositions[1] = memoryManager.getFPMemory(_particles->size());
+	_moleculePositions[2] = memoryManager.getFPMemory(_particles->size());
+#endif
 
 	for (size_t i = 0; i < _particles->size(); i++) {
 		//_handlerParticles->push_back(HandlerMoleculeType((*_particles)[i]));
@@ -170,6 +201,12 @@ void BlockedCell::convertToHandlerMoleculeType() {
 						(*_particles)[i].D(2),
 						&components)
 				);
+
+#ifdef VECTORIZE
+		_moleculePositions[0][i] = (*_particles)[i].r(0);
+		_moleculePositions[1][i] = (*_particles)[i].r(1);
+		_moleculePositions[2][i] = (*_particles)[i].r(2);
+#endif
 	}
 
 	for (size_t i = 0; i < _particles->size(); i++) {
@@ -212,7 +249,12 @@ void BlockedCell::convertToMoleculeType() {
 	}
 
 	memoryManager.releaseMoleculeArray(_handlerParticles);
-
+#ifdef VECTORIZE
+	memoryManager.releaseFPMemory(_moleculePositions[0]);
+	memoryManager.releaseFPMemory(_moleculePositions[1]);
+	memoryManager.releaseFPMemory(_moleculePositions[2]);
+#endif
+	_handlerParticles = NULL;
 }
 
 #endif /*CELL_H_*/

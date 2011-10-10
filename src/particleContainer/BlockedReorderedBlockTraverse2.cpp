@@ -17,7 +17,7 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "BlockedReorderedBlockTraverse.h"
+#include "BlockedReorderedBlockTraverse2.h"
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
 #include "BlockedCell.h"
@@ -37,7 +37,7 @@ using Log::global_log;
 //################################################
 
 
-BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
+BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
 		ParticleContainer* moleculeContainer,
 		vector<BlockedCell>& cells,
         vector<unsigned long>& innerCellIndices, 
@@ -55,7 +55,7 @@ BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
 			_allocatedOffsets(false) {
 }
 
-BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
+BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
 		ParticleContainer* moleculeContainer,
 		vector<BlockedCell>& cells,
         vector<unsigned long>& innerCellIndices, 
@@ -74,14 +74,14 @@ BlockedReorderedBlockTraverse::BlockedReorderedBlockTraverse(
 	_backwardNeighbourOffsets = new vector<vector<unsigned long> >;
 }
 
-BlockedReorderedBlockTraverse::~BlockedReorderedBlockTraverse() {
+BlockedReorderedBlockTraverse2::~BlockedReorderedBlockTraverse2() {
 	if (_allocatedOffsets) {
 		delete _forwardNeighbourOffsets;
 		delete _backwardNeighbourOffsets;
 	}
 }
 
-void BlockedReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
+void BlockedReorderedBlockTraverse2::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
 		int maxNeighbourOffset, int minNeighbourOffset) {
 	_forwardNeighbourOffsets->assign(_cells.size(), forwardNeighbourOffsets);
 	_backwardNeighbourOffsets->assign(_cells.size(), backwardNeighbourOffsets);
@@ -90,10 +90,10 @@ void BlockedReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forward
 	global_log->info() << "BlockedReorderedBlockTraverse::assignOffsets() maxNeighbourOffsets=" << maxNeighbourOffset << "; minNeighbourOffsets=" << minNeighbourOffset << endl;
 }
 
-void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particlePairsHandler) {
+void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 
 	double _cutoffRadius = _moleculeContainer->getCutoff();
-	double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
+	//double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
 	double _tersoffCutoffRadius = _moleculeContainer->getTersoffCutoff();
 	vector<vector<unsigned long> >& forwardNeighbourOffsets = *_forwardNeighbourOffsets;
 	vector<vector<unsigned long> >& backwardNeighbourOffsets = *_backwardNeighbourOffsets;
@@ -132,7 +132,7 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 	// sqare of the cutoff radius
 	double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius;
-	double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
+	//double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
 	double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * _tersoffCutoffRadius;
 
 #ifndef NDEBUG
@@ -181,9 +181,9 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 #ifdef VECTORIZE
 			MemoryManager::fp_memory_type** moleculePositions = currentCell.getMoleculePositons();
-			MemoryManager::fp_memory_type** moleculeDistances = BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount);
+			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
 			global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << endl;
-			calculateDistances(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, moleculeDistances);
+			calculateInteractionTable(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
 
 			for (int i = 0; i < currentParticleCount; i++) {
@@ -192,17 +192,17 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 				for (int j = i+1; j < currentParticleCount; j++) {
  #ifdef VECTORIZE
-					#ifndef NDEBUG
-					double dd = currentCellParticles[j].dist2(molecule1, distanceVector);
-					assert(fabs(dd - moleculeDistances[i][j]) < 0.0001);
-					#endif
-					if (moleculeDistances[i][j] < cutoffRadiusSquare) {
+					if (moleculeDistances[i][j] != 0) {
+						#ifndef NDEBUG
+						double dd = currentCellParticles[j].dist2(molecule1, distanceVector);
+						assert(dd < cutoffRadiusSquare);
+						#endif
 						HandlerMoleculeType& molecule2 = currentCellParticles[j];
 						assert(&molecule1 != &molecule2);
 						for (int iii = 0; iii < 3; iii++) {
 							distanceVector[iii] = molecule1.r(iii) - molecule2.r(iii);
 						}
-						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, moleculeDistances[i][j], (moleculeDistances[i][j] < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, 0.0, true);
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (moleculeDistances[i][j] < tersoffCutoffRadiusSquare)) {
 							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 						}
@@ -230,9 +230,9 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 				MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-				MemoryManager::fp_memory_type** moleculeDistances = BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount);
+				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 				global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
-				calculateDistances(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, moleculeDistances);
+				calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
 
 				// loop over all particles in the cell
@@ -242,13 +242,13 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 					for (int j = 0; j < neighbourParticleCount; j++) {
 #ifdef VECTORIZE
-					#ifndef NDEBUG
-					double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
-					assert(fabs(dd - moleculeDistances[i][j]) < 0.0001);
-					#endif
-					if (moleculeDistances[i][j] < cutoffRadiusSquare) {
+					if (moleculeDistances[i][j] != 0) {
+						#ifndef NDEBUG
+						double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
+						assert(dd < cutoffRadiusSquare);
+						#endif
 						HandlerMoleculeType& molecule2 = neighbourCellParticles[j];
-						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, moleculeDistances[i][j], (moleculeDistances[i][j] < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, 0.0, true);
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (moleculeDistances[i][j] < tersoffCutoffRadiusSquare)) {
 							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 						}
@@ -315,9 +315,9 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 		if (currentCell.isBoundaryCell()) {
 #ifdef VECTORIZE
 			MemoryManager::fp_memory_type** moleculePositions = currentCell.getMoleculePositons();
-			MemoryManager::fp_memory_type** moleculeDistances = BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount);
+			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
 			global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << endl;
-			calculateDistances(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, moleculeDistances);
+			calculateInteractionTable(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
 			for (int i = 0; i < currentParticleCount; i++) {
 				HandlerMoleculeType& molecule1 = currentCellParticles[i];
@@ -325,17 +325,17 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 				for (int j = i+1; j < currentParticleCount; j++) {
 #ifdef VECTORIZE
-					#ifndef NDEBUG
-					double dd = currentCellParticles[j].dist2(molecule1, distanceVector);
-					assert(fabs(dd - moleculeDistances[i][j]) < 0.0001);
-					#endif
-					if (moleculeDistances[i][j] < cutoffRadiusSquare) {
+					if (moleculeDistances[i][j] != 0) {
+						#ifndef NDEBUG
+						double dd = currentCellParticles[j].dist2(molecule1, distanceVector);
+						assert(dd < cutoffRadiusSquare);
+						#endif
 						HandlerMoleculeType& molecule2 = currentCellParticles[j];
 						assert(&molecule1 != &molecule2);
 						for (int iii = 0; iii < 3; iii++) {
 							distanceVector[iii] = molecule1.r(iii) - molecule2.r(iii);
 						}
-						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, moleculeDistances[i][j], (moleculeDistances[i][j] < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, MOLECULE_MOLECULE, 0.0, true);
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (moleculeDistances[i][j] < tersoffCutoffRadiusSquare)) {
 							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, false);
 						}
@@ -364,9 +364,9 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 				MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-				MemoryManager::fp_memory_type** moleculeDistances = BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount);
+				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 				global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
-				calculateDistances(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, moleculeDistances);
+				calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
 
 				// loop over all particles in the cell
@@ -376,15 +376,11 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 					for (int j = 0; j < neighbourParticleCount; j++) {
 #ifdef VECTORIZE
-					#ifndef NDEBUG
-					double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
-					if (fabs(dd - moleculeDistances[i][j]) > 0.0001) {
-						std::cout.precision(8);
-						std::cout << "line 381: dd=" << dd << " sse distance=" << moleculeDistances[i][j]  << " i=" << i << " j=" << j << endl;
-					}
-					assert(fabs(dd - moleculeDistances[i][j]) < 0.0001);
-					#endif
-					if (moleculeDistances[i][j] < cutoffRadiusSquare) {
+					if (moleculeDistances[i][j] != 0) {
+						#ifndef NDEBUG
+						double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
+						assert(dd < cutoffRadiusSquare);
+						#endif
 						HandlerMoleculeType& molecule2 = neighbourCellParticles[j];
 
 						PairType pairType = MOLECULE_MOLECULE;
@@ -395,7 +391,7 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 						for (int iii = 0; iii < 3; iii++) {
 							distanceVector[iii] = molecule1.r(iii) - molecule2.r(iii);
 						}
-						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, moleculeDistances[i][j], (moleculeDistances[i][j] < LJCutoffRadiusSquare));
+						particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, 0.0, true);
 						if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (moleculeDistances[i][j] < tersoffCutoffRadiusSquare)) {
 							particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
 						}
@@ -432,9 +428,9 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 #ifdef VECTORIZE
 					MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 					MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-					MemoryManager::fp_memory_type** moleculeDistances = BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount);
+					unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 					global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
-					calculateDistances(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, moleculeDistances);
+					calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
 					// loop over all particles in the cell
 					for (int i = 0; i < currentParticleCount; i++) {
@@ -443,19 +439,19 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 
 						for (int j = 0; j < neighbourParticleCount; j++) {
 #ifdef VECTORIZE
-						#ifndef NDEBUG
-							double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
-							assert(fabs(dd - moleculeDistances[i][j]) < 0.0001);
-						#endif
 
-							if (moleculeDistances[i][j] < cutoffRadiusSquare) {
+							if (moleculeDistances[i][j] != 0) {
+								#ifndef NDEBUG
+								double dd = neighbourCellParticles[j].dist2(molecule1, distanceVector);
+								assert(dd < cutoffRadiusSquare);
+								#endif
 								HandlerMoleculeType& molecule2 = neighbourCellParticles[j];
 
 								PairType pairType = molecule1.isLessThan(molecule2) ? MOLECULE_MOLECULE : MOLECULE_HALOMOLECULE;
 								for (int iii = 0; iii < 3; iii++) {
 									distanceVector[iii] = molecule1.r(iii) - molecule2.r(iii);
 								}
-								particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, moleculeDistances[i][j], (moleculeDistances[i][j] < LJCutoffRadiusSquare));
+								particlePairsHandler->processPair(molecule1, molecule2, distanceVector, pairType, 0.0, true);
 								if ((num_tersoff > 0) && (molecule2.numTersoff() > 0) && (moleculeDistances[i][j] < tersoffCutoffRadiusSquare)) {
 									particlePairsHandler->preprocessTersoffPair(molecule1, molecule2, (pairType == MOLECULE_HALOMOLECULE));
 								}
