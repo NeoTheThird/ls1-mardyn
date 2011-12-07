@@ -52,7 +52,9 @@ CachingMolecule::CachingMolecule(unsigned long id, unsigned int componentid,
 	_D[1] = Dy;
 	_D[2] = Dz;
 	_sites_d = _sites_F =_osites_e = NULL;
+#ifdef TERSOFF_SUPPORT
 	_numTersoffNeighbours = 0;
+#endif
 	fixedx = rx;
 	fixedy = ry;
 	if (components)
@@ -122,7 +124,9 @@ CachingMolecule::CachingMolecule(const CachingMolecule& m) {
 	_dipoles_F = &(_charges_F[numCharges()*3]);
 	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
 	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
+#ifdef TERSOFF_SUPPORT
 	_numTersoffNeighbours = 0;
+#endif
 	fixedx = m.fixedx;
 	fixedy = m.fixedy;
 }
@@ -203,7 +207,9 @@ CachingMolecule& CachingMolecule::operator=(const CachingMolecule& rhs) {
 	_dipoles_F = &(_charges_F[numCharges()*3]);
 	_quadrupoles_F = &(_dipoles_F[numDipoles()*3]);
 	_tersoff_F = &(_quadrupoles_F[numQuadrupoles()*3]);
+#ifdef TERSOFF_SUPPORT
 	_numTersoffNeighbours = 0;
+#endif
 	fixedx = rhs.fixedx;
 	fixedy = rhs.fixedy;
 	return *this;
@@ -356,6 +362,7 @@ void CachingMolecule::write(ostream& ostrm) const {
 }
 
 void CachingMolecule::addTersoffNeighbour(CachingMolecule* m, bool pairType) {
+#ifdef TERSOFF_SUPPORT
 	// this->_Tersoff_neighbours.insert(pair<CachingMolecule*, bool>(m, (pairType > 0)));
 	for (int j = 0; j < _numTersoffNeighbours; j++) {
 		if (m->_id == _Tersoff_neighbours_first[j]->id()) {
@@ -372,6 +379,10 @@ void CachingMolecule::addTersoffNeighbour(CachingMolecule* m, bool pairType) {
 		global_log->error() << "Tersoff neighbour list overflow: CachingMolecule " << m->_id << " has more than " << MAX_TERSOFF_NEIGHBOURS << " Tersoff neighbours." << endl;
 		exit(1);
 	}
+#else
+	std::cout << "CachingMolecule.cpp:382 Tersoff not supported!" << std::endl;
+	exit(-1);
+#endif
 }
 
 double CachingMolecule::tersoffParameters(double params[15]) //returns delta_r

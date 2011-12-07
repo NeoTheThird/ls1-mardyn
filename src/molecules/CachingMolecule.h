@@ -207,9 +207,28 @@ public:
 	/** write information to stream */
 	void write(std::ostream& ostrm) const;
 
-	inline unsigned getCurTN() { return this->_numTersoffNeighbours; }
-	inline CachingMolecule* getTersoffNeighbour(unsigned i) { return this->_Tersoff_neighbours_first[i]; }
-	inline void clearTersoffNeighbourList() { this->_numTersoffNeighbours = 0; }
+	inline unsigned getCurTN() {
+#ifdef TERSOFF_SUPPORT
+		return this->_numTersoffNeighbours;
+#else
+	std::cout << "Error: CachingMolecule.h::214 Tersoff not supported!" << std::endl;
+	return 0;
+#endif
+	}
+
+	inline CachingMolecule* getTersoffNeighbour(unsigned i) {
+#ifdef TERSOFF_SUPPORT
+		return this->_Tersoff_neighbours_first[i];
+#else
+	std::cout << "Error: CachingMolecule.h::223 Tersoff not supported!" << std::endl;
+	return 0;
+#endif
+	}
+	inline void clearTersoffNeighbourList() {
+#ifdef TERSOFF_SUPPORT
+		this->_numTersoffNeighbours = 0;
+#endif
+	}
 	void addTersoffNeighbour(CachingMolecule* m, bool pairType);
 	double tersoffParameters(double params[15]); //returns delta_r
 
@@ -281,9 +300,11 @@ private:
 	double *_ljcenters_F, *_charges_F, *_dipoles_F,
 	       *_quadrupoles_F, *_tersoff_F;
 
+#ifdef TERSOFF_SUPPORT
 	CachingMolecule* _Tersoff_neighbours_first[MAX_TERSOFF_NEIGHBOURS];
 	bool _Tersoff_neighbours_second[MAX_TERSOFF_NEIGHBOURS];
 	int _numTersoffNeighbours;
+#endif
 	double fixedx, fixedy;
 
 	// setup cache values/properties
