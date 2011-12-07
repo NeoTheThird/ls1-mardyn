@@ -46,7 +46,7 @@ public:
 		MPI_CHECK( MPI_Address(&dummyMolecules[0]._r, displacements + 2) ); // Note: it is probably potentially dangerous to
 		                                                                 // assume that the quaternion just takes 4 double values
 		                                                                 // (the compiler might add some vtable pointers, alignment, etc...)
-		MPI_CHECK( MPI_Address(&dummyMolecules[1], displacements + 3) );
+		MPI_CHECK( MPI_Address(&dummyMolecules[1]._id, displacements + 3) );
 
 		for (int i = 0; i < 4; i++) {
 			displacements[i] -= base;
