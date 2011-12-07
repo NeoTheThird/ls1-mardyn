@@ -390,6 +390,11 @@ private:
 	// Timer for final IO
 	Timer* _ioTimer;
 
+	// Timer for update of the particle container
+	Timer* _updateTimer;
+	// Timer for exchange of molecules
+	Timer* _exchangeTimer;
+
 	//! list of output plugins to use
 	std::list<OutputBase*> _outputPlugins;
 

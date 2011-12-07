@@ -107,6 +107,10 @@ Simulation::~Simulation() {
 		delete _perStepIoTimer;
 	if (_ioTimer )
 		delete _ioTimer;
+	if (_updateTimer)
+		delete _updateTimer;
+	if (_exchangeTimer)
+		delete _exchangeTimer;
 }
 
 void Simulation::exit(int exitcode) {
@@ -956,6 +960,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 void Simulation::prepare_start() {
 	global_log->info() << "Initializing simulation" << endl;
+	_updateTimer = new Timer;
+	_exchangeTimer = new Timer;
 	
 	global_log->info() << "Clearing halos" << endl;
 	_moleculeContainer->deleteOuterParticles();
@@ -1268,6 +1274,8 @@ void Simulation::simulate() {
 	global_log->info() << "Computation in main loop took: " << _loopTimer->get_etime() << " sec" << endl;
 	global_log->info() << "IO in main loop  took:         " << _perStepIoTimer->get_etime() << " sec" << endl;
 	global_log->info() << "Final IO took:                 " << _ioTimer->get_etime() << " sec" << endl;
+	global_log->info() << "Container update took: " << _updateTimer->get_etime() << " sec" << endl;
+	global_log->info() << "Particle exchange took: " << _exchangeTimer->get_etime() << " sec" << endl;
 
 }
 
@@ -1312,12 +1320,16 @@ void Simulation::updateParticleContainerAndDecomposition() {
 
 	// The particles have moved, so the neighbourhood relations have
 	// changed and have to be adjusted
+	_updateTimer->start();
 	_moleculeContainer->update();
+	_updateTimer->stop();
+	_exchangeTimer->start();
 	//_domainDecomposition->exchangeMolecules(_moleculeContainer, _domain->getComponents(), _domain);
 	_domainDecomposition->balanceAndExchange(true, _moleculeContainer, _domain->getComponents(), _domain);
 	// The cache of the molecules must be updated/build after the exchange process,
 	// as the cache itself isn't transferred
 	_moleculeContainer->updateMoleculeCaches();
+	_exchangeTimer->stop();
 }
 
 /* FIXME: we shoud provide a more general way of doing this */
