@@ -17,9 +17,11 @@
 #include "particleContainer/ParticleContainer.h"
 #include "common/DropletPlacement.h"
 #include "utils/Logger.h"
+#include "utils/Timer.h"
 
 
 #include <cmath>
+#include <climits>
 #include <iostream>
 
 extern "C" {
@@ -90,6 +92,11 @@ unsigned long DropletGenerator::readPhaseSpace(
 		std::list<ChemicalPotential>* lmu, Domain* domain,
 		DomainDecompBase* domainDecomp) {
 
+	Timer inputTimer;
+	inputTimer.start();
+	_logger->info() << "Reading phase space file (DropletGenerator)." << endl;
+
+	srand(1);
 	vector<double> bBoxMin;
 	vector<double> bBoxMax;
 
@@ -104,7 +111,7 @@ unsigned long DropletGenerator::readPhaseSpace(
 			<< "OneCLJGenerator  generating cluster distribution. " << " T "
 			<< _temperature << " #molecules " << numOfMolecules << " rho_gas "
 			<< gasDensity << " rho_fluid " << fluidDensity << endl;
-	generateMoleculesCluster(particleContainer, bBoxMin, bBoxMax, domain,
+	unsigned long maxID = generateMoleculesCluster(particleContainer, bBoxMin, bBoxMax, domain,
 			domainDecomp);
 
 	vector<Component>& dcomponents = domain->getComponents();
@@ -124,7 +131,9 @@ unsigned long DropletGenerator::readPhaseSpace(
 	domain->setglobalRho(
 			domain->getglobalNumMolecules() / (simBoxLength[0]
 					* simBoxLength[1] * simBoxLength[2]));
-	return domain->getglobalNumMolecules();
+	inputTimer.stop();
+	_logger->info() << "Initial IO took:                 " << inputTimer.get_etime() << " sec" << endl;
+	return maxID;
 }
 
 void DropletGenerator::readLocalClusters(Domain* domain,
@@ -246,7 +255,7 @@ vector<ParameterCollection*> DropletGenerator::getParameters() {
 
 
 
-void DropletGenerator::generateMoleculesCluster(
+unsigned long DropletGenerator::generateMoleculesCluster(
 		ParticleContainer* particleContainer, vector<double> &bBoxMin,
 		vector<double> &bBoxMax, Domain* domain, DomainDecompBase* domainDecomp) {
 
@@ -292,8 +301,10 @@ void DropletGenerator::generateMoleculesCluster(
 	double radius;
 
 	double r_[3];
+	double q_[4];
 
-	int molCount = 0;
+	unsigned long int idOffset = LONG_MAX / domainDecomp->getNumProcs() * domainDecomp->getRank();
+	unsigned long int molCount = idOffset;
 	for (unsigned int cluster = 0; cluster < localClusters.size(); cluster++) {
 		radius = localClusters[cluster][3];
 		for (int dim = 0; dim < 3; dim++) {
@@ -351,16 +362,14 @@ void DropletGenerator::generateMoleculesCluster(
 										sqrt(2.0* randdouble(0,1)* _temperature / I[d]);
 								w[d] = w[d] * MDGenerator::fs_2_mardyn;
 							}
+							getFCCOrientation(fcc, q_);
 
 							vector<double> v = getRandomVelocity(_temperature);
 							Molecule m(molCount, 0, r_[0], r_[1], r_[2], v[0], v[1], v[2],
-									1, 0, 0, 0, w[0], w[1], w[2], &_components);
+									q_[0], q_[1], q_[2], q_[3], w[0], w[1], w[2], &_components);
 							particleContainer->addParticle(m);
-							//std::cout << "XXXXXXX DropletGenerator: added particle with ID=" << molCount << std::endl;
 							molCount++;
 						}
-
-						//molCount++;
 					}
 				}
 			}
@@ -424,18 +433,19 @@ void DropletGenerator::generateMoleculesCluster(
 									 sqrt(2.0* randdouble(0,1)* _temperature / I[d]);
 							 w[d] = w[d] * MDGenerator::fs_2_mardyn;
 						 }
+						 getFCCOrientation(fcc, q_);
 
 						 vector<double> v = getRandomVelocity(_temperature);
 						 Molecule m(molCount, 0, r_[0], r_[1], r_[2], v[0], v[1], v[2],
-								 1, 0, 0, 0, w[0], w[1], w[2], &_components);
+								 q_[0], q_[1], q_[2], q_[3], w[0], w[1], w[2], &_components);
 						 particleContainer->addParticle(m);
-						 //std::cout << "XXXXXXX DropletGenerator: added particle with ID=" << molCount << std::endl;
 						 molCount++;
 					 }
 				}
 			}
 		}
 	}
+	return molCount;
 }
 
 void DropletGenerator::setParameter(Parameter* p) {
@@ -514,3 +524,30 @@ bool DropletGenerator::validateParameters() {
 	return valid;
 }
 
+
+void DropletGenerator::getFCCOrientation(int q_type, double q[4]) {
+	if(q_type==0){ // equals position +0.577/+0.577/0+.577
+		q[0] = 0.578169;
+		q[1] = 0.0351972;
+		q[2] = 0.45825;
+		q[3] = 0.674158;
+	}
+	else if(q_type==1){ // equals position +0.577/-0.577/-0.577
+		q[0] = -0.198151;
+		q[1] = -0.837416;
+		q[2] = 0.295673;
+		q[3] = -0.414787;
+	}
+	else if(q_type==2){ // equals position -0.577/-0.577/+0.577
+		q[0] = 0.303348;
+		q[1] = 0.416554;
+		q[2] = 0.194419;
+		q[3] = -0.834664;
+	}
+	else if(q_type==3){ // equals position -0.577/+0.577/-0.577
+		q[0] = 0.305417;
+		q[1] = -0.886552;
+		q[2] = 0.0518761;
+		q[3] = 0.343593;
+	}
+}

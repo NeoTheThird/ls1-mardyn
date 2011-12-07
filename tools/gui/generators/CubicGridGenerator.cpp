@@ -11,6 +11,7 @@
 #include "common/MardynConfigurationParameters.h"
 #include "common/PrincipalAxisTransform.h"
 #include "Tokenize.h"
+#include "utils/Timer.h"
 #include <cstring>
 
 
@@ -109,6 +110,8 @@ void CubicGridGenerator::calculateSimulationBoxLength() {
 	_simBoxLength[0] = pow(volume, 1./3.);
 	_simBoxLength[1] = _simBoxLength[0];
 	_simBoxLength[2] = _simBoxLength[0];
+
+	double rho = _numMolecules / (_simBoxLength[0] * _simBoxLength[1] * _simBoxLength[2]) / molPerL_2_mardyn;
 }
 
 
@@ -134,7 +137,11 @@ void CubicGridGenerator::readPhaseSpaceHeader(Domain* domain, double timestep) {
 
 unsigned long CubicGridGenerator::readPhaseSpace(ParticleContainer* particleContainer,
 		std::list<ChemicalPotential>* lmu, Domain* domain, DomainDecompBase* domainDecomp) {
-//
+
+	Timer inputTimer;
+	inputTimer.start();
+	_logger->info() << "Reading phase space file (CubicGridGenerator)." << endl;
+
 // create a body centered cubic layout, by creating by placing the molecules on the
 // vertices of a regular grid, then shifting that grid by spacing/2 in all dimensions.
 
@@ -148,10 +155,16 @@ unsigned long CubicGridGenerator::readPhaseSpace(ParticleContainer* particleCont
 	double spacing = _simBoxLength[0] / numMoleculesPerDimension;
 	double origin = spacing / 4.; // origin of the first DrawableMolecule
 
+	//double orientation[4] = {1, 0, 0, 0}; // default: in the xy plane
+	// rotate by 30° along the vector (1/1/0), i.e. the angle bisector of x and y axis
+	// o = cos 30° + (1 1 0) * sin 15°
+	double orientation[4];
+
 	for (int i = 0; i < numMoleculesPerDimension; i++) {
 		for (int j = 0; j < numMoleculesPerDimension; j++) {
 			for (int k = 0; k < numMoleculesPerDimension; k++) {
 				vector<double> velocity = getRandomVelocity(_temperature);
+				getOrientation(15, 10, orientation);
 
 				int componentType = 0;
 				if (_binaryMixture) {
@@ -171,11 +184,18 @@ unsigned long CubicGridGenerator::readPhaseSpace(ParticleContainer* particleCont
 				}
 				/************************** End Copy **************************/
 
-				Molecule m(id, componentType, origin +
-						i * spacing, origin + j * spacing, origin + k * spacing, // position
-						velocity[0], -velocity[1], velocity[2], // velocity
-						1, 0, 0, 0, w[0], w[1], w[2], &_components);
-				particleContainer->addParticle(m);
+				double x = origin + i * spacing;
+				double y = origin + j * spacing;
+				double z = origin + k * spacing;
+				if (domainDecomp->procOwnsPos(x,y,z, domain)) {
+					Molecule m(id, componentType, x, y, z, // position
+							velocity[0], -velocity[1], velocity[2], // velocity
+							orientation[0], orientation[1], orientation[2], orientation[3],
+							w[0], w[1], w[2], &_components);
+					particleContainer->addParticle(m);
+				}
+				// increment id in any case, because this particle will probably
+				// be added by some other process
 				id++;
 			}
 		}
@@ -205,15 +225,34 @@ unsigned long CubicGridGenerator::readPhaseSpace(ParticleContainer* particleCont
 				}
 				/************************** End Copy **************************/
 
-				Molecule m(id, componentType, origin +
-						i * spacing, origin + j * spacing, origin + k * spacing, // position
-						velocity[0], -velocity[1], velocity[2], // velocity
-						1, 0, 0, 0, w[0], w[1], w[2], &_components);
-				particleContainer->addParticle(m);
+				double x = origin + i * spacing;
+				double y = origin + j * spacing;
+				double z = origin + k * spacing;
+				if (domainDecomp->procOwnsPos(x,y,z, domain)) {
+					Molecule m(id, componentType, x, y, z, // position
+							velocity[0], -velocity[1], velocity[2], // velocity
+							orientation[0], orientation[1], orientation[2], orientation[3],
+							w[0], w[1], w[2], &_components);
+					particleContainer->addParticle(m);
+				}
+				// increment id in any case, because this particle will probably
+				// be added by some other process
 				id++;
 			}
 		}
 	}
+
+	unsigned long int globalNumMolecules = particleContainer->getNumberOfParticles();
+	domainDecomp->collCommInit(1);
+
+	domainDecomp->collCommAppendUnsLong(globalNumMolecules);
+	domainDecomp->collCommAllreduceSum();
+	globalNumMolecules = domainDecomp->collCommGetUnsLong();
+	domainDecomp->collCommFinalize();
+
+	domain->setglobalNumMolecules(globalNumMolecules);
+	inputTimer.stop();
+	_logger->info() << "Initial IO took:                 " << inputTimer.get_etime() << " sec" << endl;
 	return id;
 }
 

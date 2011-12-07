@@ -63,8 +63,10 @@ public:
 	 * created
 	 *
 	 * Generates dropplets, called from GenerateDrawableMolecules()
+	 *
+	 * @return the highest id of a molecule generated.
 	 */
-	void generateMoleculesCluster(ParticleContainer* particleContainer,
+	unsigned long generateMoleculesCluster(ParticleContainer* particleContainer,
 			vector<double> &bBoxMin, vector<double> &bBoxMax, Domain* domain,
 			DomainDecompBase* domainDecomp);
 
@@ -121,6 +123,13 @@ public:
 	void setParameter(Parameter* p);
 
 	virtual bool validateParameters();
+
+	/**
+	 * set the orientation of a molecule according to their position on
+	 * an alpha-fcc-lattice (code copied from Martin Buchholz's branch - PartGen.cpp)
+	 * as described in "Molecular Simulation of Liquids".
+	 */
+	void getFCCOrientation(int q_type, double q[4]);
 
 };
 
