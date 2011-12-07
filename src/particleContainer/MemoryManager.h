@@ -13,7 +13,7 @@
 #include <vector>
 #include <list>
 
-#define VECTORIZE
+//#define VECTORIZE
 
 class MemoryManager {
 

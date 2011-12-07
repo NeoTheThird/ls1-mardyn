@@ -93,7 +93,9 @@ void BlockedReorderedBlockTraverse2::assignOffsets(vector<unsigned long>& forwar
 void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 
 	double _cutoffRadius = _moleculeContainer->getCutoff();
-	//double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
+#ifndef VECTORIZE
+	double _LJCutoffRadius = _moleculeContainer->getLJCutoff();
+#endif
 	double _tersoffCutoffRadius = _moleculeContainer->getTersoffCutoff();
 	vector<vector<unsigned long> >& forwardNeighbourOffsets = *_forwardNeighbourOffsets;
 	vector<vector<unsigned long> >& backwardNeighbourOffsets = *_backwardNeighbourOffsets;
@@ -132,7 +134,9 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 
 	// sqare of the cutoff radius
 	double cutoffRadiusSquare = _cutoffRadius * _cutoffRadius;
-	//double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
+#ifndef VECTORIZE
+	double LJCutoffRadiusSquare = _LJCutoffRadius * _LJCutoffRadius;
+#endif
 	double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * _tersoffCutoffRadius;
 
 #ifndef NDEBUG

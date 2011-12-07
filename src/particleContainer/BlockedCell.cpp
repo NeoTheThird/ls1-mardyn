@@ -114,7 +114,7 @@ void BlockedCell::setToHandlerMoleculeType() {
 	#ifndef NDEBUG
 	assert(_currentMoleculeType == BasicMolecule);
 	_currentMoleculeType = HandlerMolecule;
-	std::cout << "Set ptr to HandlerMoleculeArray." << std::endl;
+	//std::cout << "Set ptr to HandlerMoleculeArray." << std::endl;
 	#endif
 	_handlerParticles = reinterpret_cast<HandlerMoleculeTypeArray*>(_particles);
 }
@@ -124,7 +124,7 @@ void BlockedCell::setToMoleculeType() {
 	#ifndef NDEBUG
 	assert(_currentMoleculeType == HandlerMolecule);
 	_currentMoleculeType = BasicMolecule;
-	std::cout << "Release ptr to HandlerMoleculeArray." << std::endl;
+	//std::cout << "Release ptr to HandlerMoleculeArray." << std::endl;
 	#endif
 
 	_handlerParticles = NULL;
