@@ -11,11 +11,14 @@
 #include "molecules/BasicMolecule.h"
 #include "molecules/CachingMolecule.h"
 
-typedef BasicMolecule Molecule;
-//typedef CachingMolecule Molecule;
+//typedef BasicMolecule Molecule;
+typedef CachingMolecule Molecule;
 
 typedef CachingMolecule HandlerMoleculeType;
 //typedef BasicMolecule HandlerMoleculeType;
+
+typedef utils::DynamicArray<HandlerMoleculeType, false, false> HandlerMoleculeTypeArray;
+typedef utils::DynamicArray<Molecule, false, false> MoleculeArray;
 
 /**
  * The following code can be used to determine if the types Molecule and HandlerMoleculeType
