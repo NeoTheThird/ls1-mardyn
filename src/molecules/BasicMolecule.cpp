@@ -43,7 +43,6 @@ BasicMolecule::BasicMolecule(unsigned long id, unsigned int componentid,
 	                 const vector<Component>* components)
 		: _q(q0, q1, q2, q3) /* _ljcenters(NULL), _tersoff(NULL), _components(*components) */ {
 	if (BasicMolecule::components == NULL) {
-		std::cout << "Setting components!" << std::endl;
 		BasicMolecule::components = components;
 	}
 	_id = id;
@@ -129,11 +128,11 @@ void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 		_r[d] += dt * _v[d];
 	}
 
-	double w[3];
+	fp_type w[3];
 	_q.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
 		w[d] *= (*components)[_componentid].invI(d);
-	Quaternion qhalfstep;
+	Quaternion<fp_type> qhalfstep;
 	_q.differentiate(w, qhalfstep);
 	qhalfstep.scale(dt_halve);
 	qhalfstep.add(_q);
@@ -144,7 +143,7 @@ void BasicMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	qhalfstep.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
 		w[d] *= (*components)[_componentid].invI(d);
-	Quaternion qincr;
+	Quaternion<fp_type> qincr;
 	qhalfstep.differentiate(w, qincr);
 	qincr.scale(dt);
 	_q.add(qincr);
@@ -173,7 +172,7 @@ void BasicMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
     assert(!isnan(v2)); // catches NaN
     summv2 += m * v2;
 
-	double w[3];
+    fp_type w[3];
 	_q.rotate(_D, w); // L = D = Iw
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
@@ -185,7 +184,7 @@ void BasicMolecule::upd_postF(double dt_halve, double& summv2, double& sumIw2) {
 }
 
 double BasicMolecule::U_rot() {
-	double w[3];
+	fp_type w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
@@ -198,7 +197,7 @@ double BasicMolecule::U_rot() {
 void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2) {
 	double m = (*components)[_componentid].m();
 	summv2 += m * v2();
-	double w[3];
+	fp_type w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {
@@ -215,7 +214,7 @@ void BasicMolecule::calculate_mv2_Iw2(double& summv2, double& sumIw2, double off
 	double m = (*components)[_componentid].m();
 	summv2 += m * (vcx*vcx + vcy*vcy + vcz*vcz);
 
-	double w[3];
+	fp_type w[3];
 	_q.rotate(_D, w);
 	double Iw2 = 0.;
 	for (unsigned short d = 0; d < 3; ++d) {

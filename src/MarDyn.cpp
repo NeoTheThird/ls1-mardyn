@@ -1,12 +1,14 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <typeinfo>
 
 #include "utils/OptionParser.h"
 #include "utils/Logger.h"
 #include "utils/compile_info.h"
 #include "utils/Testing.h"
 #include "utils/FileUtils.h"
+#include "utils/CProcessMemoryInformation.hpp"
 #include "Simulation.h"
 
 
@@ -63,6 +65,32 @@ int main(int argc, char** argv) {
 	MPI_CHECK( MPI_Comm_size( MPI_COMM_WORLD, &world_size ) );
 	global_log->info() << "Running with " << world_size << " processes." << endl;
 #endif
+
+	std::cout << "XXXXXXXXXXXXXXXXXXXX" << endl;
+	std::cout << "XXX typeof (Molecule) = " << typeid(Molecule).name() << endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXX" << endl;
+	std::cout << "XXX typeof (HandlerMoleculeType) = " << typeid(HandlerMoleculeType).name() << endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXX" << endl;
+	if ( IsSame<BasicMolecule::fp_type,double>::Result::value ) {
+		std::cout << "XXX typeof (Molecule::fp_type) = double" << endl;
+	} else {
+		std::cout << "XXX typeof (Molecule::fp_type) = float" << endl;
+	}
+	std::cout << "XXXXXXXXXXXXXXXXXXXX" << endl;
+
+	#ifdef VECTORIZE
+	std::cout << "XXX Vectorisation == ON" << endl;
+	#else
+	std::cout << "XXX Vectorisation == OFF" << endl;
+	#endif
+	std::cout << "XXXXXXXXXXXXXXXXXXXX" << endl;
+
+	/*for (int i = 0; i < 10; i++) {
+		char* tmp = new char[262144];
+		//tmp[100] = 'x';
+		getchar();
+	}*/
+	CProcessMemoryInformation::outputUsageInformation();
 
 	OptionParser op;
 	Values options = initOptions(argc, argv, op);

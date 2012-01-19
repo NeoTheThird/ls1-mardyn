@@ -171,6 +171,11 @@ void BlockedReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particle
 			} else {
 				_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 			}
+
+#ifdef PROFILE_MEMORY
+			CProcessMemoryInformation::collectMaxUsage();
+#endif
+
 		}
 
 		HandlerMoleculeTypeArray& currentCellParticles = currentCell.getHandlerTypeParticles();

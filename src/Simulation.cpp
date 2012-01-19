@@ -34,6 +34,7 @@
 #include "particleContainer/ReorderedLinkedCells.h"
 #include "particleContainer/BlockedReorderedLinkedCells.h"
 #include "particleContainer/BlockedReorderedLinkedCells2.h"
+#include "particleContainer/HybridReorderedLinkedCells.h"
 #include "particleContainer/AdaptiveSubCells.h"
 #include "parallel/DomainDecompBase.h"
 
@@ -50,7 +51,7 @@
 
 #include "io/io.h"
 #include "io/xmlreader.h"
-#include "io/DynamicGeneratorFactory.h"
+#include "io/GeneratorFactory.h"
 
 #include "ensemble/GrandCanonical.h"
 #include "ensemble/CanonicalEnsemble.h"
@@ -67,6 +68,7 @@
 #include "utils/OptionParser.h"
 #include "utils/Timer.h"
 #include "utils/Logger.h"
+#include "utils/CProcessMemoryInformation.hpp"
 
 using Log::global_log;
 using optparse::OptionParser;
@@ -335,6 +337,9 @@ void Simulation::initConfigXML(const string& inputfilename) {
 						_LJCutoffRadius = _cutoffRadius;
 					_moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 						_tersoffCutoffRadius);
+				} else {
+					global_log->error() << "UNKOWN DATASTRUCTURE: " << datastructype << endl;
+					exit(1);
 				}
 			}
 			inp.changecurrentnode("..");
@@ -385,9 +390,13 @@ void Simulation::initConfigXML(const string& inputfilename) {
 		global_log->error() << "XML config file " << inputfilename << ": no simulation section" << endl;
 	}
 	
+	std::cout << "Before Reading phasespace:" << endl;
+	CProcessMemoryInformation::outputUsageInformation();
 
 	// read particle data
 	unsigned long maxid = _inputReader->readPhaseSpace(_moleculeContainer, &_lmu, _domain, _domainDecomposition);
+	std::cout << "After Reading phasespace:" << endl;
+	CProcessMemoryInformation::outputUsageInformation();
 
 	if (this->_LJCutoffRadius == 0.0)
 		_LJCutoffRadius = this->_cutoffRadius;
@@ -514,7 +523,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				getline(inputfilestream, line);
 				stringstream lineStream(line);
 				lineStream >> generatorName >> inputFile;
-				_inputReader = DynamicGeneratorFactory::loadGenerator(generatorName, inputFile);
+				_inputReader = GeneratorFactory::loadGenerator(generatorName, inputFile);
 				_inputReader->readPhaseSpaceHeader(_domain, timestepLength);
 			} else {
 				global_log->error() << "Don't recognize phasespaceFile reader " << phaseSpaceFileFormat << endl;
@@ -595,7 +604,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				}
 				if (this->_LJCutoffRadius == 0.0)
 					_LJCutoffRadius = this->_cutoffRadius;
-				_moleculeContainer = new BlockedReorderedLinkedCells2(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				_moleculeContainer = new BlockedReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius);
 				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells" << endl;
 			} else if (token == "BlockedReorderedLinkedCells2") {
@@ -612,6 +621,20 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				_moleculeContainer = new BlockedReorderedLinkedCells2(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
 				        _tersoffCutoffRadius, cellsInCutoffRadius);
 				global_log->info() << "PARTICLE CONTAINER is BlockedReorderedLinkedCells2" << endl;
+			} else if (token == "HybridReorderedLinkedCells") {
+				int cellsInCutoffRadius;
+				inputfilestream >> cellsInCutoffRadius;
+				double bBoxMin[3];
+				double bBoxMax[3];
+				for (int i = 0; i < 3; i++) {
+					bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
+					bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
+				}
+				if (this->_LJCutoffRadius == 0.0)
+					_LJCutoffRadius = this->_cutoffRadius;
+				_moleculeContainer = new HybridReorderedLinkedCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius,
+				        _tersoffCutoffRadius, cellsInCutoffRadius);
+				global_log->info() << "PARTICLE CONTAINER is HybridReorderedLinkedCells" << endl;
 			}
 
 			else if (token == "AdaptiveSubCells") {
@@ -626,6 +649,9 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				if (_LJCutoffRadius == 0.0)
 					_LJCutoffRadius = _cutoffRadius;
 				_moleculeContainer = new AdaptiveSubCells(bBoxMin, bBoxMax, _cutoffRadius, _LJCutoffRadius, _tersoffCutoffRadius);
+			} else {
+				global_log->error() << "UNKOWN DATASTRUCTURE: " << token << endl;
+				exit(1);
 			}
 		} else if (token == "output") {
 			inputfilestream >> token;
@@ -916,8 +942,17 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		}
 	}
 
+	std::cout << "Before Reading phasespace:" << endl;
+	CProcessMemoryInformation::outputUsageInformation();
+	std::cout << "Before Reading phasespace: DynamicArrays allocated " << (dynamicArraySize/ 1024) << " KB." << endl;
+
 	// read particle data
 	maxid = _inputReader->readPhaseSpace(_moleculeContainer, &_lmu, _domain, _domainDecomposition);
+
+
+	std::cout << "After Reading phasespace:" << endl;
+	CProcessMemoryInformation::outputUsageInformation();
+	std::cout << "After Reading phasespace: DynamicArrays allocated " << (dynamicArraySize / 1024) << " KB." << endl;
 
 	if (this->_LJCutoffRadius == 0.0)
 		_LJCutoffRadius = this->_cutoffRadius;
@@ -1044,6 +1079,7 @@ void Simulation::prepare_start() {
 //	}
 
 	global_log->info() << "System initialised\n" << endl;
+		global_log->info() << "System contains " << _domain->getglobalNumMolecules() << endl;
 
 	// Print info about molecule size (should be actually done by the StatisticsWriter
 	std::vector<bool> count;
@@ -1059,10 +1095,10 @@ void Simulation::prepare_start() {
 		}
 		tmpMolecule =_moleculeContainer->next();
 	}
-
 }
 
 void Simulation::simulate() {
+	CProcessMemoryInformation::collectMaxUsage();
 
 	Molecule* tM;
 
@@ -1252,6 +1288,7 @@ void Simulation::simulate() {
 		_perStepIoTimer->start();
 		output(_simstep);
 		_perStepIoTimer->stop();
+		CProcessMemoryInformation::collectMaxUsage();
 		_loopTimer->start();
 	}
 	_loopTimer->stop();
@@ -1270,6 +1307,10 @@ void Simulation::simulate() {
 		delete (*outputIter);
 	}
 	_ioTimer->stop();
+
+	global_log->info() << "Maximum memory usage: " << endl;
+	CProcessMemoryInformation::outputMaxUsageInformation();
+	std::cout << "DynamicArrays allocated " << (dynamicArraySize / 1024) << " KB." << endl;
 
 	global_log->info() << "Computation in main loop took: " << _loopTimer->get_etime() << " sec" << endl;
 	global_log->info() << "IO in main loop  took:         " << _perStepIoTimer->get_etime() << " sec" << endl;

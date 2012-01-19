@@ -230,7 +230,7 @@ void CachingMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	_q.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
 		w[d] *= _invI[d];
-	Quaternion qhalfstep;
+	Quaternion<double> qhalfstep;
 	_q.differentiate(w, qhalfstep);
 	qhalfstep.scale(dt_halve);
 	qhalfstep.add(_q);
@@ -241,7 +241,7 @@ void CachingMolecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	qhalfstep.rotate(_D, w);
 	for (unsigned short d = 0; d < 3; ++d)
 		w[d] *= _invI[d];
-	Quaternion qincr;
+	Quaternion<double> qincr;
 	qhalfstep.differentiate(w, qincr);
 	qincr.scale(dt);
 	_q.add(qincr);

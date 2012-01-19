@@ -24,7 +24,7 @@ public:
 
 	static void setMPITypeForBasicMolecule(MPI_Datatype &sendPartType) {
 		int blocklengths[4] = { 1, 1, 13, 1 }; // 1 unsLong value (id), 1 int value (cid), 13 double values (3r, 3v, 4q, 3D)
-		MPI_Datatype types[3];
+		MPI_Datatype types[4];
 		if ( IsSame<BasicMolecule::fp_type,float>::Result::value ) {
 			types[0] = MPI_UNSIGNED_LONG;
 			types[1] = MPI_INT;

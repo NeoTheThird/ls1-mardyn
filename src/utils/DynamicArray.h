@@ -18,6 +18,9 @@ namespace utils {
 	class DynamicArray;
 }
 
+// defined in MemoryManager.cpp
+extern unsigned long dynamicArraySize;
+
 /**
  * This is the implementation of a dynamic array (cfg. std::vector). In contrast
  * to std::vector this implementation may free memory (if shrink == true) if
@@ -117,20 +120,25 @@ public:
 	};
 
 
-	DynamicArray(size_t size = 1, double capacityIncrement = 2.0)
+	DynamicArray(size_t capacity = 1, double capacityIncrement = 2.0)
 		: _start(NULL), _finish(NULL), _endOfStorage(NULL), _capacityIncrement(capacityIncrement) {
-		reallocate(size);
+		reallocate(capacity);
+		//std::cout << "Created DynamicArray with size=" << capacity << std::endl;
 	}
 
 	//! copy construct a DynamicArray from another. The content is copied.
 	DynamicArray(const DynamicArray& other)
 		: _start(NULL), _finish(NULL), _endOfStorage(NULL), _capacityIncrement(other._capacityIncrement) {
-		reallocate(other.size());
+		reallocate(other.capacity());
 		insert(end(), other.begin(), other.end());
+		//std::cout << "Created (by Copy) DynamicArray with size=" << other.capacity() << std::endl;
 	}
 
 
 	virtual ~DynamicArray() {
+
+		dynamicArraySize -= capacity() * sizeof(T);
+
 		// call the destructors for elements stored
 		for (unsigned int i = 0; i < size(); i++) {
 			_start[i].~T();
@@ -289,6 +297,10 @@ private:
 
 	//! perform the reallocation if the capacity should be in- or decreased.
 	void reallocate(size_t newSize) {
+
+		dynamicArraySize += newSize * sizeof (T);
+		dynamicArraySize -= capacity() * sizeof(T);
+
 		T* _newStart;
 		size_t numElements = size();
 

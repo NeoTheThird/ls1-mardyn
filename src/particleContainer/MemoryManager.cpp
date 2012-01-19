@@ -13,7 +13,9 @@
 using namespace std;
 using namespace utils;
 
-#define REUSE_MEMORY
+//#define REUSE_MEMORY
+
+unsigned long dynamicArraySize = 0;
 
 MemoryManager::MemoryManager() {
 	_sizeX = 16;
@@ -22,6 +24,25 @@ MemoryManager::MemoryManager() {
 }
 
 MemoryManager::~MemoryManager() {
+	unsigned long memUsage = 0;
+	// sizeof _scratchMemory
+	memUsage += _sizeX * _sizeY * sizeof(fp_memory_type);
+
+	std::cout << "Number of Molecule arrays=" << _moleculeArrays.size() << endl;
+
+	std::vector<HandlerMoleculeTypeArray*>::iterator it1 =  _moleculeArrays.begin();
+	while (it1 != _moleculeArrays.end()) {
+		memUsage += (*it1)->capacity() * sizeof (HandlerMoleculeType);
+		it1++;
+	}
+
+	std::vector<std::pair<size_t, fp_memory_type*> >::iterator it2 = _freeFPMemory.begin();
+	while (it2 != _freeFPMemory.end()) {
+		memUsage += it2->first * sizeof(fp_memory_type);
+		it2++;
+	}
+	std::cout << "Memory Manager allocated " << (memUsage / 1024) << " kBytes." << endl;
+
 #ifdef REUSE_MEMORY
 	size_t size = _moleculeArrays.size();
 	for (size_t i = 0; i < size; i++) {
@@ -37,20 +58,22 @@ MemoryManager::~MemoryManager() {
 HandlerMoleculeTypeArray* MemoryManager::getMoleculeArray() {
 #ifdef REUSE_MEMORY
 	if (_moleculeArrays.empty()) {
-		return new HandlerMoleculeTypeArray();
+		return new HandlerMoleculeTypeArray(8, 1.2);
 	} else {
 		HandlerMoleculeTypeArray* last = _moleculeArrays.back();
 		_moleculeArrays.pop_back();
 		return last;
 	}
 #else
-	return new HandlerMoleculeTypeArray();
+	return new HandlerMoleculeTypeArray(8);
 #endif
 }
 
 void MemoryManager::releaseMoleculeArray(HandlerMoleculeTypeArray* memory) {
 #ifdef REUSE_MEMORY
 	memory->clear();
+//	std::cout << "Clear memory of capacity " << memory->capacity() << std::endl;
+//	std::cout << "sizeof MoleculeArrays: " << _moleculeArrays.capacity() * sizeof (HandlerMoleculeType) << " Bytes." << endl;
 	_moleculeArrays.push_back(memory);
 #else
 	delete memory;

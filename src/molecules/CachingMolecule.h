@@ -76,7 +76,7 @@ public:
 	/** get the velocity */
 	double v(unsigned short d) const { return _v[d]; }
 	/** get the Orientation */
-	const Quaternion& q() const { return _q; }
+	const Quaternion<double>& q() const { return _q; }
 
 	inline void move(int d, double dr) { _r[d] += dr; }
 
@@ -271,7 +271,7 @@ private:
 	double _r[3];  // position coordinates
 	double _F[3];  // forces
 	double _v[3];  // velocity
-	Quaternion _q; // angular orientation
+	Quaternion<double> _q; // angular orientation
 	double _M[3];  // torsional moment
     // TODO: We should rename _D to _L with respect to the literature.
 	double _D[3];  // angular momentum

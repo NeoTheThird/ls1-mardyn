@@ -14,8 +14,8 @@ BlockedCell::BlockedCell() :	_particles(NULL), _handlerParticles(NULL)
 	_currentMoleculeType = BasicMolecule;
 #endif
 	_particles = new MoleculeArray(2);
+	std::cout << "Created BlockedCell." << endl;
 	_handlerParticles = NULL;
-	//std::cout << "Constructor BlockedCell: _particles at " << _particles << std::endl;
 }
 
 

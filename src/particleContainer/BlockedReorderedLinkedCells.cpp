@@ -168,6 +168,9 @@ void BlockedReorderedLinkedCells::update() {
 
 	unsigned long index;
 	int counter = 0;
+	static long int totalCounter = 0;
+	static long int numIterations = 0;
+	numIterations++;
 
 	for (unsigned i = 0; i < _cells.size(); i++) {
 			BlockedCell& currentCell = _cells[i];
@@ -178,7 +181,7 @@ void BlockedReorderedLinkedCells::update() {
 				index = getCellIndexOfMolecule(moleculeIterator.operator ->());
 				if (index != i) {
 					counter++;
-					global_log->debug() << "moving particle " << moleculeIterator->id() << " from cell " << i << " to " << index << endl;
+					//global_log->debug() << "moving particle " << moleculeIterator->id() << " from cell " << i << " to " << index << endl;
 					_cells[index].addParticle(*moleculeIterator);
 					moleculeIterator = molecules.erase(moleculeIterator);
 				} else {
@@ -187,7 +190,10 @@ void BlockedReorderedLinkedCells::update() {
 			}
 	}
 
-	global_log->debug() << "BlockedReorderedLinkedCell update moved " << counter << " particle(s)." << endl;
+	totalCounter += counter;
+	//global_log->info() << "totalCounter=" << totalCounter << " numIterations=" << numIterations << endl;
+	//global_log->info() << "BlockedReorderedLinkedCell update moved " << counter << " particle(s)." << endl;
+	global_log->info() << "BlockedReorderedLinkedCell update moved " << ((double) totalCounter) / ((double) numIterations) << " on average." << endl;
 	_cellsValid = true;
 }
 

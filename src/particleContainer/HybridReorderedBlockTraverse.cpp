@@ -17,10 +17,10 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#include "BlockedReorderedBlockTraverse2.h"
+#include "HybridReorderedBlockTraverse.h"
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
-#include "BlockedCell.h"
+#include "HybridCell.h"
 #include "MemoryManager.h"
 #include "particleContainer/ParticleContainer.h"
 #include "utils/Logger.h"
@@ -37,9 +37,9 @@ using Log::global_log;
 //################################################
 
 
-BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
+HybridReorderedBlockTraverse::HybridReorderedBlockTraverse(
 		ParticleContainer* moleculeContainer,
-		vector<BlockedCell>& cells,
+		vector<HybridCell>& cells,
         vector<unsigned long>& innerCellIndices, 
         vector<unsigned long>& boundaryCellIndices,
         vector<unsigned long>& haloCellIndices,
@@ -55,9 +55,9 @@ BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
 			_allocatedOffsets(false) {
 }
 
-BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
+HybridReorderedBlockTraverse::HybridReorderedBlockTraverse(
 		ParticleContainer* moleculeContainer,
-		vector<BlockedCell>& cells,
+		vector<HybridCell>& cells,
         vector<unsigned long>& innerCellIndices, 
         vector<unsigned long>& boundaryCellIndices, 
         vector<unsigned long>& haloCellIndices
@@ -74,14 +74,14 @@ BlockedReorderedBlockTraverse2::BlockedReorderedBlockTraverse2(
 	_backwardNeighbourOffsets = new vector<vector<unsigned long> >;
 }
 
-BlockedReorderedBlockTraverse2::~BlockedReorderedBlockTraverse2() {
+HybridReorderedBlockTraverse::~HybridReorderedBlockTraverse() {
 	if (_allocatedOffsets) {
 		delete _forwardNeighbourOffsets;
 		delete _backwardNeighbourOffsets;
 	}
 }
 
-void BlockedReorderedBlockTraverse2::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
+void HybridReorderedBlockTraverse::assignOffsets(vector<unsigned long>& forwardNeighbourOffsets, vector<unsigned long>& backwardNeighbourOffsets,
 		int maxNeighbourOffset, int minNeighbourOffset) {
 	_forwardNeighbourOffsets->assign(_cells.size(), forwardNeighbourOffsets);
 	_backwardNeighbourOffsets->assign(_cells.size(), backwardNeighbourOffsets);
@@ -90,7 +90,7 @@ void BlockedReorderedBlockTraverse2::assignOffsets(vector<unsigned long>& forwar
 	global_log->info() << "BlockedReorderedBlockTraverse::assignOffsets() maxNeighbourOffsets=" << maxNeighbourOffset << "; minNeighbourOffsets=" << minNeighbourOffset << endl;
 }
 
-void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particlePairsHandler) {
+void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particlePairsHandler) {
 
 	double _cutoffRadius = _moleculeContainer->getCutoff();
 	double _tersoffCutoffRadius = _moleculeContainer->getTersoffCutoff();
@@ -102,7 +102,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 	// XXX comment
 	double distanceVector[3];
 	// loop over all cells
-	vector<BlockedCell>::iterator cellIter;
+	vector<HybridCell>::iterator cellIter;
 	MoleculeArray::iterator molIter1;
 	MoleculeArray::iterator molIter2;
 
@@ -116,11 +116,13 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
         // TODO: check if the reset is done twice as leaving this part has no difference on the result.
         //Molecule *moleculePtr;
         for (size_t i = 0; i < _cells.size(); i++) {
-        	MoleculeArray& particles = _cells[i].getParticles();
-        	for (size_t j = 0; j < particles.size(); j++) {
-        		particles[j].setF(zeroVec);
-        		particles[j].setM(zeroVec);
-        		particles[j].clearTersoffNeighbourList();
+        	vector<Molecule*>& particlePointers = _cells[i].getParticlePointers();
+        	for (size_t j = 0; j < particlePointers.size(); j++) {
+        	//for (molIter1 = cells[i].begin(); molIter1 != cells[i].getParticlePointers().end(); molIter1++) {
+        		Molecule& molecule1 = *(particlePointers[j]);
+        		molecule1.setF(zeroVec);
+        		molecule1.setM(zeroVec);
+        		molecule1.clearTersoffNeighbourList();
         	}
         }
 	}
@@ -145,17 +147,14 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 		global_log->debug() << "Opening cached cells window for cell index= " << cellIndex
 				<< " numMolecules()="<<_cells[cellIndex].getMoleculeCount() << endl;
 		#endif
-		if ( IsSame<Molecule,HandlerMoleculeType>::Result::value ) {
-			_cells[cellIndex].setToHandlerMoleculeType();
-		} else {
-			_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
-		}
+
+		_cells[cellIndex].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 	}
 
 	// loop over all inner cells and calculate forces to forward neighbours
 	//for (cellIndexIter = _innerCellIndices.begin(); cellIndexIter != _innerCellIndices.end(); cellIndexIter++) {
 	for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++) {
-		BlockedCell& currentCell = _cells[cellIndex];
+		HybridCell& currentCell = _cells[cellIndex];
 
 		// extend the window of cells with cache activated
 		if (cellIndex + _maxNeighbourOffset < _cells.size()) {
@@ -164,11 +163,8 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 					<< " with numMolecules()="<< _cells[cellIndex + _maxNeighbourOffset].getMoleculeCount()
 					<< " currentCell " << cellIndex << endl;
 			#endif
-			if ( IsSame<Molecule,HandlerMoleculeType>::Result::value ) {
-				_cells[cellIndex + _maxNeighbourOffset].setToHandlerMoleculeType();
-			} else {
-				_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
-			}
+
+			_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 		}
 
 		HandlerMoleculeTypeArray& currentCellParticles = currentCell.getHandlerTypeParticles();
@@ -179,7 +175,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 
 #ifdef VECTORIZE
 			MemoryManager::fp_memory_type** moleculePositions = currentCell.getMoleculePositons();
-			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
+			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (HybridCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
 			global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << endl;
 			calculateInteractionTable(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
@@ -221,14 +217,14 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 
 			// loop over all neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
 				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
 				int neighbourParticleCount = neighbourCellParticles.size();
 
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 				MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
+				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (HybridCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 				global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
 				calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
@@ -291,7 +287,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 					if ((neighbourCellIndex < 0) || (neighbourCellIndex >= (int) (_cells.size())))
 						continue;
 
-					BlockedCell& neighbourCell = _cells[neighbourCellIndex];
+					HybridCell& neighbourCell = _cells[neighbourCellIndex];
 					if (!neighbourCell.isHaloCell())
 						continue;
 
@@ -313,7 +309,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 		if (currentCell.isBoundaryCell()) {
 #ifdef VECTORIZE
 			MemoryManager::fp_memory_type** moleculePositions = currentCell.getMoleculePositons();
-			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
+			unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (HybridCell::memoryManager.getScratchMemory(currentParticleCount, currentParticleCount));
 			global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << endl;
 			calculateInteractionTable(currentParticleCount, moleculePositions, currentParticleCount, moleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
@@ -355,14 +351,14 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 
 			// loop over all forward neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
 				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
 				int neighbourParticleCount = neighbourCellParticles.size();
 
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 				MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
+				unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (HybridCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 				global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
 				calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
@@ -417,7 +413,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 			// loop over all backward neighbours. calculate only forces
 			// to neighbour cells in the halo region, all others already have been calculated
 			for (neighbourOffsetsIter = backwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != backwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
-				BlockedCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
+				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
 				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
 				int neighbourParticleCount = neighbourCellParticles.size();
 
@@ -426,7 +422,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 #ifdef VECTORIZE
 					MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
 					MemoryManager::fp_memory_type** neighbourMoleculePositions = neighbourCell.getMoleculePositons();
-					unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (BlockedCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
+					unsigned int** moleculeDistances = reinterpret_cast<unsigned int**> (HybridCell::memoryManager.getScratchMemory(currentParticleCount, neighbourParticleCount));
 					global_log->debug() << "Calculate SSE currentParticleCount=" << currentParticleCount << " neighbourParticleCount=" << neighbourParticleCount << endl;
 					calculateInteractionTable(currentParticleCount, currentMoleculePositions, neighbourParticleCount, neighbourMoleculePositions, reinterpret_cast<float**>(moleculeDistances), cutoffRadiusSquare);
 #endif
@@ -504,11 +500,7 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 //			if (applyForces)
 //				_cells[cellIndex + _minNeighbourOffset].applyForces();
 
-			if ( IsSame<Molecule,HandlerMoleculeType>::Result::value ) {
-				_cells[cellIndex - _minNeighbourOffset].setToMoleculeType();
-			} else {
-				_cells[cellIndex - _minNeighbourOffset].convertToMoleculeType<Molecule, HandlerMoleculeType>();
-			}
+			_cells[cellIndex - _minNeighbourOffset].convertToMoleculeType<Molecule, HandlerMoleculeType>();
 		}
 
 	} // for (cellIndex = 0; cellIndex < _cells.size(); cellIndex++)
@@ -519,13 +511,9 @@ void BlockedReorderedBlockTraverse2::traversePairs(ParticlePairsHandler* particl
 			global_log->debug() << "Narrowing cached cells window for cell index=" << cellIndex
 					<< " size()="<<_cells[cellIndex].getMoleculeCount() << endl;
 #endif
-			if ( IsSame<Molecule,HandlerMoleculeType>::Result::value ) {
-				_cells[cellIndex].setToMoleculeType();
-			} else {
-				_cells[cellIndex].convertToMoleculeType<Molecule, HandlerMoleculeType>();
-			}
+
+			_cells[cellIndex].convertToMoleculeType<Molecule, HandlerMoleculeType>();
 	}
 
 	particlePairsHandler->finish();
 }
-//}

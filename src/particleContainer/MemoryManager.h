@@ -13,7 +13,13 @@
 #include <vector>
 #include <list>
 
-//#define VECTORIZE
+#define VECTORIZE
+
+#define PROFILE_MEMORY
+
+#ifdef PROFILE_MEMORY
+#include "utils/CProcessMemoryInformation.hpp"
+#endif
 
 class MemoryManager {
 

@@ -79,7 +79,7 @@ public:
 	/** get the velocity */
 	double v(unsigned short d) const { return _v[d]; }
 	/** get the Orientation */
-	const Quaternion& q() const { return _q; }
+	const Quaternion<fp_type>& q() const { return _q; }
 
 	inline void move(int d, double dr) { _r[d] += dr; }
 
@@ -377,7 +377,7 @@ private:
 	unsigned int _componentid;  // IDentification number of its component type
 	fp_type _r[3];  // position coordinates
 	fp_type _v[3];  // velocity
-	Quaternion _q; // angular orientation
+	Quaternion<fp_type> _q; // angular orientation
     // TODO: We should rename _D to _L with respect to the literature.
 	fp_type _D[3];  // angular momentum; the angular velocity;
 	fp_type _F[3];  // forces

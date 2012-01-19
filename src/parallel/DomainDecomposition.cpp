@@ -11,6 +11,8 @@ using Log::global_log;
 using namespace std;
 using namespace utils;
 
+#define SEND_RAWBYTES
+
 DomainDecomposition::DomainDecomposition() {
 
 	int period[DIM]; // 1(true) when using periodic boundary conditions in the corresponding dimension
@@ -147,7 +149,7 @@ void DomainDecomposition::exchangeBasicMolecules(BlockedReorderedLinkedCells* mo
 				// add offsets for particles transfered over the periodic boundary
 				DynamicArray<BasicMolecule, true, false>* arrayPtr = particlesSendBuffs[d][direction];
 				arrayPtr->operator [](partCount).setr( d, arrayPtr->operator [](partCount).r(d) + shift);
-				std::cout << "[At " << _rank << "] Sending Particle index=" << particlesSendBuffs[d][direction]->operator [](partCount).id() << " to [" << _neighbours[d][direction] << std::endl;
+				//std::cout << "[At " << _rank << "] Sending Particle index=" << particlesSendBuffs[d][direction]->operator [](partCount).id() << " to [" << _neighbours[d][direction] << std::endl;
 				partCount++;
 			}
 		}
@@ -164,7 +166,7 @@ void DomainDecomposition::exchangeBasicMolecules(BlockedReorderedLinkedCells* mo
 			MPI_CHECK( MPI_Isend(&((*particlesSendBuffs[d][direction])[0]), numsend, MPI_BYTE, _neighbours[d][direction], 99, _comm, &send_requests[d][direction]) );
 			MPI_CHECK( MPI_Probe(_neighbours[d][(direction + 1) % 2], 99, _comm, &status) );
 			MPI_CHECK( MPI_Get_count(&status, MPI_BYTE, &numrecv) );
-			assert(numrecv % BasicMolecule == 0);
+			assert(numrecv % sizeof(BasicMolecule) == 0);
 			numrecv = numrecv / sizeof(BasicMolecule);
 			// initialize receive buffer
 			particlesRecvBuffs[d][direction] = new BasicMolecule[numrecv];

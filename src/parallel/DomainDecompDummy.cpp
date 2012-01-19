@@ -6,6 +6,7 @@
 #include "molecules/MoleculeTypes.h"
 #include "particleContainer/ParticleContainer.h"
 #include "Domain.h"
+#include "utils/DynamicArray.h"
 #include "utils/Logger.h"
 
 using namespace std;
@@ -37,7 +38,9 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 	double low_limit; // particles below this limit have to be copied or moved to the lower process
 	double high_limit; // particles above(or equal) this limit have to be copied or moved to the higher process
 
-	std::vector<Molecule> moleculesToAdd;
+	// 8192 should be ok as a compromise: should use 1.2 MB for BasicMolecules
+	// in Double Precision and about 4MB for CachingMolecules
+	utils::DynamicArray<Molecule, false, false> moleculesToAdd(8192, 1.5);
 
 	for (unsigned short d = 0; d < 3; ++d) {
 		phaseSpaceSize[d] = rmax[d] - rmin[d];
@@ -101,7 +104,8 @@ void DomainDecompDummy::exchangeMolecules(ParticleContainer* moleculeContainer, 
 	for (size_t i =  0; i < moleculesToAdd.size(); i++) {
 		moleculeContainer->addParticle(moleculesToAdd[i]);
 	}
-
+	global_log->info() << "DomainDecompDummy::exchangeMolecules() Memory of tmpArray: " << (moleculesToAdd.capacity() * sizeof(Molecule) / 1024) << " kB "
+			<< " capacity=" << moleculesToAdd.capacity() << " size=" << moleculesToAdd.size() << endl;
 }
 
 void DomainDecompDummy::balanceAndExchange(bool balance, ParticleContainer* moleculeContainer, const vector<Component>& components, Domain* domain) {
