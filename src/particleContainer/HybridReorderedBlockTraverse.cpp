@@ -167,8 +167,8 @@ void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particleP
 			_cells[cellIndex + _maxNeighbourOffset].convertToHandlerMoleculeType<Molecule, HandlerMoleculeType>();
 		}
 
-		HandlerMoleculeTypeArray& currentCellParticles = currentCell.getHandlerTypeParticles();
-		int currentParticleCount = currentCellParticles.size();
+		HandlerMoleculeType* currentCellParticles = currentCell.getHandlerTypeParticles();
+		int currentParticleCount = currentCell.getMoleculeCount();
 
 		// forces between molecules in the cell
 		if (currentCell.isInnerCell()) {
@@ -218,8 +218,8 @@ void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particleP
 			// loop over all neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
 				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
-				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
-				int neighbourParticleCount = neighbourCellParticles.size();
+				HandlerMoleculeType* neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
+				int neighbourParticleCount = neighbourCell.getMoleculeCount();
 
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
@@ -291,8 +291,8 @@ void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particleP
 					if (!neighbourCell.isHaloCell())
 						continue;
 
-					HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
-					int neighbourParticleCount = neighbourCellParticles.size();
+					HandlerMoleculeType* neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
+					int neighbourParticleCount = neighbourCell.getMoleculeCount();
 					for (int j = 0; j < neighbourParticleCount; j++) {
 						HandlerMoleculeType& molecule2 = neighbourCellParticles[j];
 						if (molecule2.numTersoff() == 0)
@@ -352,8 +352,8 @@ void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particleP
 			// loop over all forward neighbours
 			for (neighbourOffsetsIter = forwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != forwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
 				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
-				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
-				int neighbourParticleCount = neighbourCellParticles.size();
+				HandlerMoleculeType* neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
+				int neighbourParticleCount = neighbourCell.getMoleculeCount();
 
 #ifdef VECTORIZE
 				MemoryManager::fp_memory_type** currentMoleculePositions = currentCell.getMoleculePositons();
@@ -414,8 +414,8 @@ void HybridReorderedBlockTraverse::traversePairs(ParticlePairsHandler* particleP
 			// to neighbour cells in the halo region, all others already have been calculated
 			for (neighbourOffsetsIter = backwardNeighbourOffsets[cellIndex].begin(); neighbourOffsetsIter != backwardNeighbourOffsets[cellIndex].end(); neighbourOffsetsIter++) {
 				HybridCell& neighbourCell = _cells[cellIndex + *neighbourOffsetsIter];
-				HandlerMoleculeTypeArray& neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
-				int neighbourParticleCount = neighbourCellParticles.size();
+				HandlerMoleculeType* neighbourCellParticles = neighbourCell.getHandlerTypeParticles();
+				int neighbourParticleCount = neighbourCell.getMoleculeCount();
 
 
 				if (neighbourCell.isHaloCell()) {

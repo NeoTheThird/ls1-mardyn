@@ -94,6 +94,14 @@ HybridReorderedLinkedCells::HybridReorderedLinkedCells(
 
 
 HybridReorderedLinkedCells::~HybridReorderedLinkedCells() {
+	_cells[0].memoryManager.deleteRingBuffer();
+}
+
+void HybridReorderedLinkedCells::initialize() {
+	size_t size = getNumberOfParticles() / _cells.size();
+	size *= _maxNeighbourOffset - _minNeighbourOffset;
+	std::cout << "average no. of particles per cell = " << size << std::endl;
+	_cells[0].memoryManager.initRingBuffer(4 * size);
 }
 
 void HybridReorderedLinkedCells::rebuild(double bBoxMin[3], double bBoxMax[3]) {
@@ -410,8 +418,8 @@ void HybridReorderedLinkedCells::calculateNeighbourIndices() {
 	double xDistanceSquare;
 	double yDistanceSquare;
 	double zDistanceSquare;
-	int maxNeighbourOffset = 0;
-	int minNeighbourOffset = 0;
+	_maxNeighbourOffset = 0;
+	_minNeighbourOffset = 0;
 	double cutoffRadiusSquare = pow(_cutoffRadius, 2);
 	for (int zIndex = -_haloWidthInNumCells[2]; zIndex <= _haloWidthInNumCells[2]; zIndex++) {
 		// The distance in one dimension is the width of a cell multiplied with the number
@@ -441,14 +449,14 @@ void HybridReorderedLinkedCells::calculateNeighbourIndices() {
 					long offset = cellIndexOf3DIndex(xIndex, yIndex, zIndex);
 					if (offset > 0) {
 						_forwardNeighbourOffsets.push_back(offset);
-						if (offset > maxNeighbourOffset) {
-							maxNeighbourOffset = offset;
+						if (offset > _maxNeighbourOffset) {
+							_maxNeighbourOffset = offset;
 						}
 					}
 					if (offset < 0) {
 						_backwardNeighbourOffsets.push_back(offset);
-						if (offset < minNeighbourOffset) {
-							minNeighbourOffset = offset;
+						if (offset < _minNeighbourOffset) {
+							_minNeighbourOffset = offset;
 						}
 					}
 				}
@@ -458,10 +466,10 @@ void HybridReorderedLinkedCells::calculateNeighbourIndices() {
 
 	#ifndef NDEBUG
 	global_log->info() << "Neighbour offsets are bounded by "
-	<< minNeighbourOffset << ", " << maxNeighbourOffset << endl;
+	<< _minNeighbourOffset << ", " << _maxNeighbourOffset << endl;
 #endif
 	_blockTraverse.assignOffsets(_forwardNeighbourOffsets,
-			_backwardNeighbourOffsets, maxNeighbourOffset, minNeighbourOffset);
+			_backwardNeighbourOffsets, _maxNeighbourOffset, _minNeighbourOffset);
 }
 
 unsigned long HybridReorderedLinkedCells::getCellIndexOfMolecule(Molecule* molecule) const {

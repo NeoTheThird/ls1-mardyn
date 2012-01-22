@@ -23,10 +23,11 @@
 #include "particleContainer/ParticleContainer.h"
 #include "HybridReorderedBlockTraverse.h"
 #include "utils/DynamicArray.h"
+#include "MemoryManager.h"
 
 #include <vector>
 
-class BlockedCell;
+class HybridCell;
 class ChemicalPotential;
 class DomainDecompBase;
 
@@ -79,6 +80,8 @@ public:
 
 	//! Destructor
 	~HybridReorderedLinkedCells();
+
+	virtual void initialize();
 
 	// documentation see father class (ParticleContainer.h)
 	void rebuild(double bBoxMin[3], double bBoxMax[3]);
@@ -271,6 +274,8 @@ private:
 
 	std::vector<unsigned long> _forwardNeighbourOffsets; //!< Neighbours that come in the total ordering after a cell
 	std::vector<unsigned long> _backwardNeighbourOffsets; //!< Neighbours that come in the total ordering before a cell
+	int _minNeighbourOffset;
+	int _maxNeighbourOffset;
 
 	double _haloBoundingBoxMin[3]; //!< low corner of the bounding box around the linked cells (including halo)
 	double _haloBoundingBoxMax[3]; //!< high corner of the bounding box around the linked cells (including halo)

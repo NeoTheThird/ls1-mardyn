@@ -49,9 +49,9 @@ vector<Molecule*>& HybridCell::getParticlePointers() {
 	return this->_particlePointers;
 }
 
-HandlerMoleculeTypeArray& HybridCell::getHandlerTypeParticles() {
+HandlerMoleculeType* HybridCell::getHandlerTypeParticles() {
 	assert(_currentMoleculeType == HandlerMolecule);
-	return *(this->_handlerParticles);
+	return _handlerParticles;
 }
 
 void HybridCell::assingCellToHaloRegion() {

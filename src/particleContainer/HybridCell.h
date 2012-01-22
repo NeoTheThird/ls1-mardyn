@@ -13,6 +13,7 @@
 class HybridCell {
 
 public:
+	friend class HybridReorderedLinkedCells;
 
 	static MemoryManager memoryManager;
 
@@ -22,7 +23,7 @@ private:
 	std::vector<Molecule*> _particlePointers;
 
 	//! the molecules as the handler expects them
-	HandlerMoleculeTypeArray* _handlerParticles;
+	HandlerMoleculeType* _handlerParticles;
 
 	// contains the x, y and z coordinates of the molecules, if converted to HandlerMoleculeType.
 	MemoryManager::fp_memory_type* _moleculePositions[3];
@@ -63,7 +64,7 @@ public:
 
 	//! return a reference to the list of molecules in this cell
 	//! in the representation for the ParticlePairsHandler
-	HandlerMoleculeTypeArray& getHandlerTypeParticles();
+	HandlerMoleculeType* getHandlerTypeParticles();
 
 	//! @todo Return type bool neccessary!?
 	bool deleteMolecule(unsigned long molid);
@@ -123,9 +124,13 @@ void HybridCell::convertToHandlerMoleculeType() {
 	_currentMoleculeType = HandlerMolecule;
 	#endif
 
+//	if (_particlePointers.size() == 0) {
+//		return;
+//	}
+
 	std::vector<Component>& components = global_simulation->getDomain()->getComponents();
 
-	_handlerParticles = memoryManager.getMoleculeArray();
+	_handlerParticles = memoryManager.getMoleculeArray(_particlePointers.size());
 #ifdef VECTORIZE
 	_moleculePositions[0] = memoryManager.getFPMemory(_particlePointers.size());
 	_moleculePositions[1] = memoryManager.getFPMemory(_particlePointers.size());
@@ -134,7 +139,7 @@ void HybridCell::convertToHandlerMoleculeType() {
 
 	for (size_t i = 0; i < _particlePointers.size(); i++) {
 		//_handlerParticles->push_back(HandlerMoleculeType((*_particles)[i]));
-		_handlerParticles->push_back(HandlerMoleculeType (
+		_handlerParticles[i] = HandlerMoleculeType (
 						_particlePointers[i]->id(),
 						_particlePointers[i]->componentid(),
 						_particlePointers[i]->r(0),
@@ -150,8 +155,7 @@ void HybridCell::convertToHandlerMoleculeType() {
 						_particlePointers[i]->D(0),
 						_particlePointers[i]->D(1),
 						_particlePointers[i]->D(2),
-						&components)
-				);
+						&components);
 
 #ifdef VECTORIZE
 		_moleculePositions[0][i] = _particlePointers[i]->r(0);
@@ -161,7 +165,7 @@ void HybridCell::convertToHandlerMoleculeType() {
 	}
 
 	for (size_t i = 0; i < _particlePointers.size(); i++) {
-		(*_handlerParticles)[i].upd_cache();
+		_handlerParticles[i].upd_cache();
 	}
 }
 
@@ -174,32 +178,36 @@ void HybridCell::convertToMoleculeType() {
 	_currentMoleculeType = BasicMolecule;
 	#endif
 
+//	if (_particlePointers.size() == 0) {
+//		return;
+//	}
+
 	for (size_t i = 0; i < _particlePointers.size(); i++) {
-		assert(_particlePointers[i]->id() == (*_handlerParticles)[i].id());
-		assert(_particlePointers[i]->componentid() == (*_handlerParticles)[i].componentid());
-		assert(_particlePointers[i]->r(0) == (*_handlerParticles)[i].r(0));
-		assert(_particlePointers[i]->r(1) == (*_handlerParticles)[i].r(1));
-		assert(_particlePointers[i]->r(2) == (*_handlerParticles)[i].r(2));
-		assert(_particlePointers[i]->v(0) == (*_handlerParticles)[i].v(0));
-		assert(_particlePointers[i]->v(1) == (*_handlerParticles)[i].v(1));
-		assert(_particlePointers[i]->v(2) == (*_handlerParticles)[i].v(2));
+		assert(_particlePointers[i]->id() == _handlerParticles[i].id());
+		assert(_particlePointers[i]->componentid() == _handlerParticles[i].componentid());
+		assert(_particlePointers[i]->r(0) == _handlerParticles[i].r(0));
+		assert(_particlePointers[i]->r(1) == _handlerParticles[i].r(1));
+		assert(_particlePointers[i]->r(2) == _handlerParticles[i].r(2));
+		assert(_particlePointers[i]->v(0) == _handlerParticles[i].v(0));
+		assert(_particlePointers[i]->v(1) == _handlerParticles[i].v(1));
+		assert(_particlePointers[i]->v(2) == _handlerParticles[i].v(2));
 
 
-		(*_handlerParticles)[i].calcFM();
+		_handlerParticles[i].calcFM();
 
 		double force[3];
-		force[0] = (*_handlerParticles)[i].F(0);
-		force[1] = (*_handlerParticles)[i].F(1);
-		force[2] = (*_handlerParticles)[i].F(2);
+		force[0] = _handlerParticles[i].F(0);
+		force[1] = _handlerParticles[i].F(1);
+		force[2] = _handlerParticles[i].F(2);
 		_particlePointers[i]->setF(force);
 		double M[3];
-		M[0] = (*_handlerParticles)[i].M(0);
-		M[1] = (*_handlerParticles)[i].M(1);
-		M[2] = (*_handlerParticles)[i].M(2);
+		M[0] = _handlerParticles[i].M(0);
+		M[1] = _handlerParticles[i].M(1);
+		M[2] = _handlerParticles[i].M(2);
 		_particlePointers[i]->setM(M);
 	}
 
-	memoryManager.releaseMoleculeArray(_handlerParticles);
+	memoryManager.releaseMoleculeArray(_handlerParticles, _particlePointers.size());
 #ifdef VECTORIZE
 	memoryManager.releaseFPMemory(_moleculePositions[0]);
 	memoryManager.releaseFPMemory(_moleculePositions[1]);

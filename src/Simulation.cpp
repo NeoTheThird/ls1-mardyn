@@ -964,6 +964,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 	// test new Decomposition
 	_moleculeContainer->update();
 	_moleculeContainer->deleteOuterParticles();
+	_moleculeContainer->initialize();
 
 	unsigned idi = _lmu.size();
 	unsigned j = 0;

@@ -73,6 +73,8 @@ public:
 	//! @brief The destructor
 	virtual ~ParticleContainer();
 
+	virtual void initialize() {}
+
 	//! @brief rebuild the datastructure
 	//!
 	//! Load-balancing decompositions change the position and size of the local region

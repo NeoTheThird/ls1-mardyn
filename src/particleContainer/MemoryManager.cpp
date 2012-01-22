@@ -23,6 +23,22 @@ MemoryManager::MemoryManager() {
 	allocateScratchMemory(16, 16);
 }
 
+void MemoryManager::initRingBuffer(size_t size) {
+#ifdef REUSE_MEMORY
+	std::cout << " Initialize Ringbuffer to length " << size << ", Bytes=" << size * sizeof(HandlerMoleculeType) << std::endl;
+	_ringBuffer = new HandlerMoleculeType[size];
+	_rbSize = size;
+	_rbFirstFree = 0;
+	_rbFirstAllocated = 0;
+#endif
+}
+
+void MemoryManager::deleteRingBuffer() {
+#ifdef REUSE_MEMORY
+	delete[] _ringBuffer;
+#endif
+}
+
 MemoryManager::~MemoryManager() {
 	unsigned long memUsage = 0;
 	// sizeof _scratchMemory
@@ -53,6 +69,70 @@ MemoryManager::~MemoryManager() {
 
 	deallocateScratchMemory(_sizeX, _sizeY);
 }
+
+
+
+HandlerMoleculeType* MemoryManager::getMoleculeArray(size_t size) {
+#ifdef REUSE_MEMORY
+	// handle overflow at the upper end
+	if (_rbFirstFree < _rbFirstAllocated && _rbFirstFree + size > _rbFirstAllocated) {
+		std::cout << "Error: Ringbuffer is too small! " << std::endl;
+		std::cout << "_rbFirstFree=" << _rbFirstFree << " _rbFirstAllocated=" << _rbFirstAllocated <<
+				" _rbSize=" << _rbSize << " demanded size=" << size << std::endl;
+		exit(-1);
+	}
+
+	if (_rbFirstFree + size > _rbSize) {
+		_rbFirstFree = 0;
+		if (size > _rbFirstAllocated) {
+			std::cout << "Error: Ringbuffer is too small! " << std::endl;
+			std::cout << "_rbFirstFree=" << _rbFirstFree << " _rbFirstAllocated=" << _rbFirstAllocated <<
+					" _rbSize=" << _rbSize << " demanded size=" << size << std::endl;
+			exit(-1);
+		}
+	}
+
+	size_t bufferStartIndex = _rbFirstFree;
+	_rbFirstFree = _rbFirstFree + size;
+	return _ringBuffer + bufferStartIndex;
+
+#else
+	return new HandlerMoleculeType[size];
+#endif
+}
+
+void MemoryManager::releaseMoleculeArray(HandlerMoleculeType* memory, size_t size) {
+#ifdef REUSE_MEMORY
+
+	if (_rbFirstAllocated <= _rbFirstFree && _rbFirstAllocated + size > _rbFirstFree ) {
+		std::cout << "Error: Ringbuffer erronous release?! " << std::endl;
+		std::cout << "_rbFirstFree=" << _rbFirstFree << " _rbFirstAllocated=" << _rbFirstAllocated <<
+				" _rbSize=" << _rbSize << " demanded size=" << size << std::endl;
+		exit(-1);
+	}
+
+	if (_rbFirstAllocated + size > _rbSize) {
+		_rbFirstAllocated = 0;
+		if (size > _rbFirstFree) {
+			std::cout << "Error: Ringbuffer erronous release?! " << std::endl;
+			std::cout << "_rbFirstFree=" << _rbFirstFree << " _rbFirstAllocated=" << _rbFirstAllocated <<
+					" _rbSize=" << _rbSize << " demanded size=" << size << std::endl;
+			exit(-1);
+		}
+	}
+
+	if (memory != _ringBuffer + _rbFirstAllocated) {
+		std::cout << " ERROR: releasing memory not in FIFO-Order!" << endl;
+		std::cout << " _rbFirstAllocated=" << _rbFirstAllocated << " size=" << size
+				<< " _rbSize=" << _rbSize << " memory=" << memory << " rb=" << _ringBuffer << endl;
+		exit(-1);
+	}
+	_rbFirstAllocated = _rbFirstAllocated + size;
+#else
+	delete[] memory;
+#endif
+}
+
 
 
 HandlerMoleculeTypeArray* MemoryManager::getMoleculeArray() {

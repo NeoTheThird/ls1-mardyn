@@ -13,7 +13,7 @@
 #include <vector>
 #include <list>
 
-#define VECTORIZE
+//#define VECTORIZE
 
 #define PROFILE_MEMORY
 
@@ -35,6 +35,16 @@ public:
 
 	void releaseMoleculeArray(HandlerMoleculeTypeArray* memory);
 
+	/* === Methods based on the ring buffer used from HybridReorderedLinkedCells === */
+	void initRingBuffer(size_t size);
+
+	void deleteRingBuffer();
+
+	HandlerMoleculeType* getMoleculeArray(size_t size);
+
+	void releaseMoleculeArray(HandlerMoleculeType* memory, size_t size);
+	/** End RB related methods */
+
 	/**
 	 * return aligned memory (aligned to 16, size is a multiple of 4*sizeof(fp_memory_type)
 	 */
@@ -49,6 +59,11 @@ public:
 
 
 private:
+
+	HandlerMoleculeType* _ringBuffer;
+	size_t _rbSize;
+	size_t _rbFirstAllocated;
+	size_t _rbFirstFree;
 
 	std::vector<HandlerMoleculeTypeArray*> _moleculeArrays;
 
