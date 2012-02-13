@@ -77,7 +77,30 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
       }
 
       if(pairType == 0){
-        if(this->_doRecordRDF) this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
+        if(this->_doRecordRDF)
+        {
+           this->_domain.observeRDF(dd, particle1.componentid(), particle2.componentid());
+           if(this->_domain.siteRDF())
+           {
+              double drs[3];
+              double dr2;
+              unsigned si = particle1.numSites();
+              unsigned sj = particle2.numSites();
+              if(si+sj > 2)
+              {
+                 for(unsigned m = 0; m < si; m++)
+                 {
+                    for(unsigned n = 0; n < sj; n++)
+                    {
+                       const double* dii = particle1.site_d(m);
+                       const double* djj = particle2.site_d(n);
+                       SiteSiteDistance(distanceVector, dii, djj, drs, dr2);
+                       _domain.observeRDF(dr2, particle1.componentid(), particle2.componentid(), m, n);
+                    }
+                 }
+              }
+           }
+        }
 
         PotForce(particle1,particle2,params,distanceVector,_upot6LJ,_upotXpoles,_myRF,_virial,cLJ,_permitWallLJ,_forcex,_forcey,_forcez);
 #ifdef COMPLEX_POTENTIAL_SET
@@ -101,7 +124,12 @@ class datastructures::ParticlePairs2PotForceAdapter: public datastructures::Part
         return _dummy1/6.0 + _dummy2 + _dummy3;
       }
 #endif
-      else exit(666);
+      else
+      {
+         cout << "Error: Invalid pair type " << pairType << " passed to processPair in ParticlePairs2PotForceAdapter.h: Aborting.\n";
+         cout.flush();
+         exit(666);
+      }
     }
     
 #ifdef COMPLEX_POTENTIAL_SET

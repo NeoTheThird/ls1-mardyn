@@ -563,6 +563,7 @@ void parallel::DomainDecomposition::assertIntIdentity(int IX)
          if(recv != IX)
          {
             cout << "SEVERE ERROR: IX is " << IX << " for rank 0, but " << recv << " for rank " << i << ".\n";
+            cout.flush();
             MPI_Finalize();
             exit(911);
          }
@@ -610,6 +611,7 @@ void parallel::DomainDecomposition::assertDisjunctivity(TMoleculeContainer* mm)
                {
                   cout << "\nSEVERE ERROR. Ranks " << check[recv] << " and "
                        << i << " both propagate ID " << recv << ". Aborting.\n";
+                  cout.flush();
                   MPI_Finalize();
                   exit(2674);
                }

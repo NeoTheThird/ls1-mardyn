@@ -95,6 +95,7 @@ Domain::Domain(int rank){
   this->_local2KERot[0] = 0.0; 
   this->_currentTime = 0.0;
   this->_doCollectRDF = false;
+  this->_doCollectSiteRDF = false;
   this->_universalRDFTimesteps = -1;
   this->_universalNVE = false;
   this->_globalUSteps = 0;
@@ -823,6 +824,7 @@ void Domain::specifyComponentSet(unsigned cosetid, double v[3], double tau, doub
       if(this->_universalConstantAccelerationTimesteps == 0)
       {
          cout << "SEVERE ERROR: unknown UCAT!\n";
+         cout.flush();
          exit(77);
       }
       if(this->_universalTauPrime != 0.0)
@@ -846,6 +848,7 @@ void Domain::specifyTauPrime(double tauPrime, double dt)
    if(this->_universalConstantAccelerationTimesteps == 0)
    {
       cout << "SEVERE ERROR: unknown UCAT!\n";
+      cout.flush();
       exit(78);
    }
    unsigned vql = (unsigned)ceil(tauPrime / (dt*this->_universalConstantAccelerationTimesteps));
@@ -1178,8 +1181,10 @@ int Domain::unID(double qx, double qy, double qz)
    }
    else if(!this->_universalSphericalGeometry || ((yun >= 0) && (yun < (int)_universalNProfileUnits[1])))
    {
+      cout.flush();
       cout << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
       cout << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
+      cout.flush();
       exit(707);
    }
    else return -1;
@@ -1212,7 +1217,6 @@ void Domain::recordProfile(datastructures::ParticleContainer<Molecule>* molCont)
             this->_localKineticProfile[cid][unID] += mv2+Iw2;
       }
    }
-   // exit(808);
    this->_globalAccumulatedDatasets++;
 }
 
@@ -1635,8 +1639,8 @@ void Domain::resetProfile()
       this->_localtanPressureVirialProfile[unID] = 0.0;
       this->_globalnormalPressureVirialProfile[unID] = 0.0;
       this->_globaltanPressureVirialProfile[unID] = 0.0;
-      this->_localpairs[unID] = 0.0;
-      this->_globalpairs[unID] = 0.0;
+      this->_localpairs[unID] = 0;
+      this->_globalpairs[unID] = 0;
    }
    this->_globalAccumulatedDatasets = 0;
 }
@@ -1720,10 +1724,11 @@ void Domain::setupRDF(double interval, unsigned bins)
    unsigned numc = this->_components.size();
 
    this->_doCollectRDF = true;
+
    this->_universalInterval = interval;
    this->_universalBins = bins;
    this->_universalRDFTimesteps = -1;
-   this->_universalAccumulatedTimesteps = 0;
+   this->_universalAccumulatedTimesteps = -1;
    this->ddmax = interval*interval*bins*bins;
 
    this->_localCtr = new unsigned long[numc];
@@ -1732,6 +1737,9 @@ void Domain::setupRDF(double interval, unsigned bins)
    this->_localDistribution = new unsigned long**[numc];
    this->_globalDistribution = new unsigned long**[numc];
    this->_globalAccumulatedDistribution = new unsigned long**[numc];
+   this->_localSiteDistribution = new unsigned long****[numc];
+   this->_globalSiteDistribution = new unsigned long****[numc];
+   this->_globalAccumulatedSiteDistribution = new unsigned long****[numc];
    for(unsigned i = 0; i < numc; i++)
    {
       this->_localCtr[i] = 0;
@@ -1741,6 +1749,11 @@ void Domain::setupRDF(double interval, unsigned bins)
       this->_localDistribution[i] = new unsigned long*[numc-i];
       this->_globalDistribution[i] = new unsigned long*[numc-i];
       this->_globalAccumulatedDistribution[i] = new unsigned long*[numc-i];
+
+      unsigned ni = _components[i].numSites();
+      this->_localSiteDistribution[i] = new unsigned long***[numc-i];
+      this->_globalSiteDistribution[i] = new unsigned long***[numc-i];
+      this->_globalAccumulatedSiteDistribution[i] = new unsigned long***[numc-i];
 
       for(unsigned k=0; i+k < numc; k++)
       {
@@ -1754,6 +1767,36 @@ void Domain::setupRDF(double interval, unsigned bins)
             this->_globalDistribution[i][k][l] = 0;
             this->_globalAccumulatedDistribution[i][k][l] = 0;
          }
+
+         unsigned nj = _components[i+k].numSites();
+         if(ni+nj > 2)
+         {
+            this->_doCollectSiteRDF = true;
+
+            this->_localSiteDistribution[i][k] = new unsigned long**[ni];
+            this->_globalSiteDistribution[i][k] = new unsigned long**[ni];
+            this->_globalAccumulatedSiteDistribution[i][k] = new unsigned long**[ni];
+
+            for(unsigned m=0; m < ni; m++)
+            {
+               this->_localSiteDistribution[i][k][m] = new unsigned long*[nj];
+               this->_globalSiteDistribution[i][k][m] = new unsigned long*[nj];
+               this->_globalAccumulatedSiteDistribution[i][k][m] = new unsigned long*[nj];
+               for(unsigned n=0; n < nj; n++)
+               {
+                  this->_localSiteDistribution[i][k][m][n] = new unsigned long[bins];
+                  this->_globalSiteDistribution[i][k][m][n] = new unsigned long[bins];
+                  this->_globalAccumulatedSiteDistribution[i][k][m][n] = new unsigned long[bins];
+                  for(unsigned l=0; l < bins; l++)
+                  {
+                     this->_localSiteDistribution[i][k][m][n][l] = 0;
+                     this->_globalSiteDistribution[i][k][m][n][l] = 0;
+                     this->_globalAccumulatedSiteDistribution[i][k][m][n][l] = 0;
+                     // cout << "init " << i << "\t" << k << "\t" << m << "\t" << n << "\t" << l << "\n";
+                  }
+               }
+            }
+         }
       }
    }
 }
@@ -1765,12 +1808,27 @@ void Domain::resetRDF()
    {
       this->_localCtr[i] = 0;
       this->_globalCtr[i] = 0;
+
+      unsigned ni = _components[i].numSites();
       for(unsigned k=0; i+k < this->_components.size(); k++)
       {
+         unsigned nj = _components[i+k].numSites();
          for(unsigned l=0; l < this->_universalBins; l++)
          {
             this->_localDistribution[i][k][l] = 0;
             this->_globalDistribution[i][k][l] = 0;
+
+            if(ni+nj > 2)
+            {
+               for(unsigned m=0; m < ni; m++)
+               {
+                  for(unsigned n=0; n < nj; n++)
+                  {
+                     this->_localSiteDistribution[i][k][m][n][l] = 0;
+                     this->_globalSiteDistribution[i][k][m][n][l] = 0;
+                  }
+               }
+            }  
          }
       }
    }
@@ -1785,10 +1843,25 @@ void Domain::accumulateRDF()
       for(unsigned i=0; i < this->_components.size(); i++)
       {
          this->_globalAccumulatedCtr[i] += this->_globalCtr[i];
+         unsigned ni = _components[i].numSites();
          for(unsigned k=0; i+k < this->_components.size(); k++)
+         {
+            unsigned nj = _components[i+k].numSites();
             for(unsigned l=0; l < this->_universalBins; l++)
-               this->_globalAccumulatedDistribution[i][k][l]
-                  += this->_globalDistribution[i][k][l];
+            {
+               this->_globalAccumulatedDistribution[i][k][l] += this->_globalDistribution[i][k][l];
+               if(ni + nj > 2)
+               {
+                  for(unsigned m=0; m < ni; m++)
+                  {
+                     for(unsigned n=0; n < nj; n++)
+                     {
+                        this->_globalAccumulatedSiteDistribution[i][k][m][n][l] += this->_globalSiteDistribution[i][k][m][n][l];
+                     }
+                  }
+               }
+            }
+         }
       }
    }
 }
@@ -1804,13 +1877,36 @@ void Domain::collectRDF(parallel::DomainDecompBase* domainDecomp)
       domainDecomp->reducevalues(&dZ, &d0, &d1, &d2);
       if(!this->_localRank) this->_globalCtr[i] = d1;
       
+      unsigned ni = _components[i].numSites();
       for(unsigned k=0; i+k < this->_components.size(); k++)
       {
+         unsigned nj = _components[i+k].numSites();
          for(unsigned l=0; l < this->_universalBins; l++)
          {
             d1 = this->_localDistribution[i][k][l];
+            if(!this->_localRank) cout << "[" << i << "][" << k << "][" << l << "]\t";
+            cout.flush();
+            cout << "(" << d1 << ") ";
             domainDecomp->reducevalues(&dZ, &d0, &d1, &d2);
-            if(!this->_localRank) this->_globalDistribution[i][k][l] = d1;
+            if(!this->_localRank)
+            {
+               this->_globalDistribution[i][k][l] = d1;
+               cout << "\t" << this->_globalDistribution[i][k][l] << "\n";
+               cout.flush();
+            }
+
+            if(ni+nj > 2)
+            {
+               for(unsigned m=0; m < ni; m++)
+               {
+                  for(unsigned n=0; n < nj; n++)
+                  {
+                     d1 = this->_localSiteDistribution[i][k][m][n][l];
+                     domainDecomp->reducevalues(&dZ, &d0, &d1, &d2);
+                     if(!this->_localRank) this->_globalSiteDistribution[i][k][m][n][l] = d1;
+                  }
+               }
+            }
          }
       }
    }
@@ -1819,11 +1915,19 @@ void Domain::collectRDF(parallel::DomainDecompBase* domainDecomp)
 void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
 {
    if(this->_localRank) return;
-   if(5 >= _universalRDFTimesteps) return;
+   if(2 >= _universalRDFTimesteps) return;
+   if(i > j)
+   {
+      this->outputRDF(prefix, j, i);
+      return;
+   }
    string rdfname(prefix);
    rdfname += ".rdf";
    ofstream rdfout(rdfname.c_str());
    if (!rdfout) return;
+
+   unsigned ni = _components[i].numSites();
+   unsigned nj = _components[j].numSites();
 
    double V = _globalLength[0] * _globalLength[1] * _globalLength[2];
    cout << "N_i = " << _globalCtr[i] << " / " << _universalRDFTimesteps << "\n";
@@ -1837,7 +1941,19 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
    double rho_Aj = N_Aj / V;
 
    rdfout.precision(5);
-   rdfout << "# r\tcurr.\taccu.\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)\n";
+   rdfout << "# r\tcurr.\taccu.\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)";
+   if(ni+nj > 2)
+   {
+      for(unsigned m=0; m < ni; m++)
+      {
+         rdfout << "\t";
+         for(unsigned n=0; n < nj; n++)
+         {
+            rdfout << "\t(" << m << ", " << n << ")_curr  (" << m << ", " << n << ")_accu";
+         }
+      }
+   }
+   rdfout << "\n";
    rdfout << "# \n# ctr_i: " << _globalCtr[i] << "\n# ctr_j: " << _globalCtr[j]
           << "\n# V: " << V << "\n# _universalRDFTimesteps: " << _universalRDFTimesteps
           << "\n# _universalAccumulatedTimesteps: " << _universalAccumulatedTimesteps
@@ -1854,9 +1970,8 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
       double r3max = rmax*rmax*rmax;
       double dV = 4.1887902 * (r3max - r3min);
 
-      unsigned long N_pair = _globalDistribution[i][j-i][l] / _universalRDFTimesteps;
-      unsigned long N_Apair = _globalAccumulatedDistribution[i][j-i][l]
-                                 / _universalAccumulatedTimesteps;
+      double N_pair = _globalDistribution[i][j-i][l] / (double)_universalRDFTimesteps;
+      double N_Apair = _globalAccumulatedDistribution[i][j-i][l] / (double)_universalAccumulatedTimesteps;
       double N_pair_norm;
       double N_Apair_norm;
       if(i == j)
@@ -1873,7 +1988,21 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
       rdfout << rmid << "\t" << N_pair/N_pair_norm
                      << "\t" << N_Apair/N_Apair_norm
                      << "\t\t" << dV << "\t" << N_pair << "\t" << N_Apair
-                     << "\t\t" << N_pair_norm << "\t" << N_Apair_norm << "\n";
+                     << "\t\t" << N_pair_norm << "\t" << N_Apair_norm;
+      if(ni+nj > 2)
+      {
+         for(unsigned m=0; m < ni; m++)
+         {
+            rdfout << "\t";
+            for(unsigned n=0; n < nj; n++)
+            {
+               double p = _globalSiteDistribution[i][j-i][m][n][l] / (double)_universalRDFTimesteps;
+               double ap = _globalAccumulatedSiteDistribution[i][j-i][m][n][l] / (double)_universalAccumulatedTimesteps;
+               rdfout << "\t" << p/N_pair_norm << "  " << ap/N_Apair_norm;
+            }
+         }
+      }
+      rdfout << "\n";
    }
    rdfout.close();
 }
@@ -1931,7 +2060,7 @@ void Domain::readPhaseSpaceHeader(
   _inpversion=0;
   if((token != "MDProject") && (token != "MOLDY") && (token != "ls1r1") && (token != "mrdyn") && (token != "mardyn"))
   {
-    if(_localRank == 0) cerr << "Input: NOT A MOLDY INPUT! (starts with " << token << ")" << endl;
+    if(_localRank == 0) { cerr << "Input: NOT A MOLDY INPUT! (starts with " << token << ")" << endl; cerr.flush(); }
     exit(1);
   }
   else
@@ -1947,7 +2076,7 @@ void Domain::readPhaseSpaceHeader(
     _phaseSpaceFileStream >> _inpversion;
     if(_inpversion < REQUIRED_INPUT_VERSION)
     {
-      if(_localRank == 0) cerr << "Input: OLD VERSION (" << _inpversion << ")" << endl;
+      if(_localRank == 0) { cerr << "Input: OLD VERSION (" << _inpversion << ")" << endl; cerr.flush(); }
       exit(1);
     }
   }
@@ -2149,7 +2278,10 @@ void Domain::readPhaseSpaceHeader(
           if(S > cutoffTersoff)
           {
              if(!_localRank)
+             {
                 cout << "severe error:   S = " << S << "  >  rcT = " << cutoffTersoff << "\n";
+                cout.flush();
+             }
              exit(1);
           }
           else if(2.0*S < cutoffTersoff)
@@ -2311,6 +2443,7 @@ unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molec
         if (_localRank == 0) cerr << "Molecule id "
                                   << id << " has wrong componentid: "
                                   << componentid << ">" << numcomponents << endl;
+        cerr.flush();
         exit(1);
       }
       --componentid;
@@ -2347,8 +2480,9 @@ unsigned long Domain::readPhaseSpaceData(datastructures::ParticleContainer<Molec
     _phaseSpaceFileStream.close();
   }
   else {
-    cout << token << "\n";
+    cout << "\nEEE " << token << "\n";
     _log.error("read input file", "Error in the PhaseSpace File"); 
+    cout.flush();
     exit(1);
   }
 

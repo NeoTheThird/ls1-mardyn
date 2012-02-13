@@ -313,7 +313,9 @@ bool ensemble::ChemicalPotential::decideDeletion(double deltaUTilde)
       }
       else
       {
-         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
+         cout.flush();
+         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible (ensemble::ChemicalPotential::decideDeletion).\n";
+         cout.flush();
          exit(1);
       }
    }
@@ -345,7 +347,9 @@ bool ensemble::ChemicalPotential::decideInsertion(double deltaUTilde)
       }
       else
       {
-         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible.\n";
+         cout.flush();
+         cout << "SEVERE ERROR on rank " << ownrank << ": no decision is possible (ensemble::ChemicalPotential::decideInsertion).\n";
+         cout.flush();
          exit(1);
       }
    }
@@ -390,10 +394,14 @@ void ensemble::ChemicalPotential::setControlVolume(
 ) {
    if((x0 >= x1) || (y0 >= y1) || (z0 >= z1))
    {
+      cout.flush();
       if(!ownrank)
+      {
          cout << "\nInvalid control volume (" << x0 << " / " << y0 
 	      << " / " << z0 << ") to (" << x1 << " / " << y1 << " / "
 	      << z1 << ").\n\n";
+         cout.flush();
+      }
       exit(611);
    }
    

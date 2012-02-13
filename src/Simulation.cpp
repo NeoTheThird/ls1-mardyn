@@ -39,6 +39,7 @@ Simulation::Simulation(int argc, char **argv){
     if(ownrank == 0) {
       cout << "Usage: " << argv[0] << " <configfilename> <number of timesteps> <outputprefix> [-Y2]" << endl;
       cout << "Detected argc: " << argc << "\n";
+      cout.flush();
     }
     delete _domainDecomposition;
     exit(1);
@@ -108,7 +109,7 @@ Simulation::Simulation(int argc, char **argv){
   // The first line of the config file has to contain the token "MDProjectConfig"
   inputfilestream >> token;
   if((token != "MDProjectConfig") && (token != "mardynconfig")) {
-    if(ownrank == 0) cerr << "Not a mardynconfig file! " << token << endl;
+    if(ownrank == 0) { cerr << "Not a mardynconfig file! " << token << endl; cerr.flush(); }
     exit(1);
   } 
   if((ownrank == 0) && (token != "mardynconfig"))
@@ -130,6 +131,7 @@ Simulation::Simulation(int argc, char **argv){
       if(timestepLength == 0.0)
       {
          cout << "timestep missing.\n";
+         cout.flush();
          exit(1);
       }
       if(this->_LJCutoffRadius == 0.0) _LJCutoffRadius = this->_cutoffRadius;
@@ -238,7 +240,7 @@ Simulation::Simulation(int argc, char **argv){
 #endif
       if(token != "comp")
       {
-         if(ownrank == 0) cout << "Expected 'comp' instead of '" << token << "'.\n";
+         if(ownrank == 0) { cout << "Expected 'comp' instead of '" << token << "'.\n"; cout.flush(); }
          exit(1);
       }
       int cid = 0;
@@ -262,7 +264,7 @@ Simulation::Simulation(int argc, char **argv){
 #endif
       if(token != "towards")
       {
-         if(ownrank == 0) cout << "Expected 'towards' instead of '" << token << "'.\n";
+         if(ownrank == 0) { cout << "Expected 'towards' instead of '" << token << "'.\n"; cout.flush(); }
          exit(1);
       }
       double dir[3];
@@ -284,7 +286,7 @@ Simulation::Simulation(int argc, char **argv){
 #endif
       if(token != "within")
       {
-         if(ownrank == 0) cout << "Expected 'within' instead of '" << token << "'.\n";
+         if(ownrank == 0) { cout << "Expected 'within' instead of '" << token << "'.\n"; cout.flush(); }
          exit(1);
       }
       double tau;
@@ -299,7 +301,7 @@ Simulation::Simulation(int argc, char **argv){
 #endif
       if(token != "from")
       {
-         if(ownrank == 0) cout << "Expected 'from' instead of '" << token << "'.\n";
+         if(ownrank == 0) { cout << "Expected 'from' instead of '" << token << "'.\n"; cout.flush(); }
          exit(1);
       }
       double ainit[3];
@@ -307,6 +309,7 @@ Simulation::Simulation(int argc, char **argv){
       if(timestepLength == 0.0)
       {
          cout << "timestep missing.\n";
+         cout.flush();
          exit(1);
       }
       this->_domain->specifyComponentSet(cosetid, dir, tau, ainit, timestepLength);
@@ -330,6 +333,7 @@ Simulation::Simulation(int argc, char **argv){
        if(timestepLength == 0.0)
        {
           cout << "timestep missing.\n";
+          cout.flush();
           exit(1);
        }
        this->_domain->specifyTauPrime(tauPrime, timestepLength);
@@ -346,6 +350,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Input failure.\n";
              cout << "Expected 'to' instead of '" << token << "'.\n\n";
              cout << "Syntax: flowControl <x0> <y0> <z0> to <x1> <y1> <z1>\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -365,6 +370,7 @@ Simulation::Simulation(int argc, char **argv){
                   << "Expected 'on' or 'off' instead of '" << token << "'.\n\n";
              cout << "Syntax: wallLJ [on|off]\n";
           }
+          cout.flush();
           exit(1);
        }
        _domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius, _wallLJ);
@@ -394,6 +400,7 @@ Simulation::Simulation(int argc, char **argv){
        double interval;
        unsigned bins;
        inputfilestream >> interval >> bins;
+       this->_numberOfComponents = _domain->getComponents().size();
        this->_domain->setupRDF(interval, bins);
        this->_doRecordRDF = true;
     }
@@ -457,6 +464,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Syntax: chemicalPotential <mu> component <cid> "
 	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		  << "conduct <ntest> tests every <nstep> steps\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -480,6 +488,7 @@ Simulation::Simulation(int argc, char **argv){
                 cout << "Syntax: chemicalPotential <mu> component <cid> "
 	             << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		     << "conduct <ntest> tests every <nstep> steps\n";
+                cout.flush();
              }
              exit(1);
           }
@@ -495,6 +504,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Syntax: chemicalPotential <mu> component <cid> "
 	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		  << "conduct <ntest> tests every <nstep> steps\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -510,6 +520,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Syntax: chemicalPotential <mu> component <cid> "
 	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		  << "conduct <ntest> tests every <nstep> steps\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -523,6 +534,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Syntax: chemicalPotential <mu> component <cid> "
 	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		  << "conduct <ntest> tests every <nstep> steps\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -538,6 +550,7 @@ Simulation::Simulation(int argc, char **argv){
              cout << "Syntax: chemicalPotential <mu> component <cid> "
 	          << "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
 		  << "conduct <ntest> tests every <nstep> steps\n";
+             cout.flush();
           }
           exit(1);
        }
@@ -694,6 +707,7 @@ void Simulation::initialize(){
   if(!this->_domain->ownrank()) cout << "   * clearing the halo\n";
   _moleculeContainer->deleteOuterParticles();
 
+  this->_numberOfComponents = _domain->getComponents().size();
   if(this->_doRecordRDF) this->_domain->resetRDF();
 
 #ifdef COMPLEX_POTENTIAL_SET
@@ -774,7 +788,6 @@ void Simulation::initialize(){
   for(outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++){
     (*outputIter)->initOutput(_moleculeContainer, _domainDecomposition, _domain, _TWFcoordination); 
   }
-  if((this->_initSimulation > this->_initStatistics) && this->_doRecordRDF) this->_domain->tickRDF();
 
   if(!this->_domain->ownrank()) cout << "system is initialised.\n\n";
 }
@@ -800,6 +813,7 @@ void Simulation::simulate()
 
   this->_initSimulation = (unsigned long)(this->_domain->getCurrentTime()
                              / _integrator->getTimestepLength());
+  if((this->_initSimulation > this->_initStatistics) && this->_doRecordRDF) this->_domain->tickRDF();
 
   for( unsigned long simstep = this->_initSimulation;
        simstep <= this->_numberOfTimesteps;
@@ -979,9 +993,9 @@ void Simulation::simulate()
 #endif
        if(this->_doRecordRDF)
        {
-          this->_domain->tickRDF();
           this->_particlePairsHandler->recordRDF();
           this->_moleculeContainer->countParticles(this->_domain);
+          this->_domain->tickRDF();
        }
     }
 
@@ -1129,8 +1143,12 @@ void Simulation::output(unsigned long simstep){
 #endif
   }
 
+
   if(this->_doRecordRDF && !(simstep % this->_RDFOutputTimesteps))
   {
+#ifndef NDEBUG
+    if(!ownrank) cout << "            => RDF output: ";
+#endif
     this->_domain->collectRDF(this->_domainDecomposition);
     if(!ownrank)
     {
@@ -1144,12 +1162,18 @@ void Simulation::output(unsigned long simstep){
           osstrm.fill('0');
           osstrm.width(9);
           osstrm << right << simstep;
+#ifndef NDEBUG
+          if(!ownrank) cout << i << "-" << j << " (" << osstrm.str().c_str() << ") ";
+#endif
           this->_domain->outputRDF(osstrm.str().c_str(), i, j);
           osstrm.str(""); osstrm.clear();
         }
       }
     }
     this->_domain->resetRDF();
+#ifndef NDEBUG
+    if(!ownrank) cout << "\n";
+#endif
   }
 #ifdef COMPLEX_POTENTIAL_SET
 #ifndef NDEBUG

@@ -413,8 +413,8 @@ class Domain{
         datastructures::ParticleContainer<Molecule>* molCont
     );
 
-    double N() {return this->_globalNumMolecules;}
-    double N(unsigned cid) { return this->_components[cid].numMolecules(); }
+    unsigned long N() {return this->_globalNumMolecules;}
+    unsigned long N(unsigned cid) { return this->_components[cid].numMolecules(); }
 #ifdef GRANDCANONICAL
     void Nadd(unsigned cid, int N, int localN);
 #endif
@@ -426,7 +426,12 @@ class Domain{
    void collectRDF(parallel::DomainDecompBase* domainDecomp);
    void outputRDF(const char* prefix, unsigned i, unsigned j);
    void accumulateRDF();
-   void tickRDF() { this->_universalRDFTimesteps++; }
+   void tickRDF() {
+      this->_universalRDFTimesteps++;
+#ifndef NDEBUG
+      // cout << "RDF timestep no. " << this->_universalRDFTimesteps << ", acc. at " << _universalAccumulatedTimesteps << " (rank " << _localRank << ").\n";
+#endif
+   }
    inline void observeRDF(unsigned i) { this->_localCtr[i] ++; }
    inline void observeRDF(double dd, unsigned i, unsigned j)
    {
@@ -435,7 +440,17 @@ class Domain{
       if(i > j) { this->observeRDF(dd, j, i); return; }
       unsigned l = (unsigned)floor(sqrt(dd)/(double)_universalInterval);
       this->_localDistribution[i][j-i][l] ++;
+      // if (i == 1) cout << "RDF\t" << i << "\t" << j-i << "\t(" << j << ")\t" << l << "\t(" << _localDistribution[i][j-i][l] << ")\n";
    }
+   inline void observeRDF(double dd, unsigned i, unsigned j, unsigned m, unsigned n)
+   {
+      if(this->_universalRDFTimesteps < 0) return;
+      if(dd > this->ddmax) return;
+      if(i > j) { this->observeRDF(dd, j, i, n, m); return; }
+      unsigned l = (unsigned)floor(sqrt(dd)/(double)_universalInterval);
+      this->_localSiteDistribution[i][j-i][m][n][l] ++;
+   }
+   bool siteRDF() { return this->_doCollectSiteRDF; }
    void thermostatOff() { this->_universalNVE = true; }
    void thermostatOn() { this->_universalNVE = false; }
    bool NVE() { return this->_universalNVE; }
@@ -635,12 +650,14 @@ class Domain{
 #endif
 
     bool _doCollectRDF;
+    bool _doCollectSiteRDF;
     double _universalInterval;
     unsigned _universalBins;
     int _universalRDFTimesteps, _universalAccumulatedTimesteps;
     double ddmax;
     unsigned long *_localCtr, *_globalCtr, *_globalAccumulatedCtr;
     unsigned long ***_localDistribution, ***_globalDistribution, ***_globalAccumulatedDistribution;
+    unsigned long *****_localSiteDistribution, *****_globalSiteDistribution, *****_globalAccumulatedSiteDistribution;
 
     int _universalSelectiveThermostatCounter;
     int _universalSelectiveThermostatWarning;

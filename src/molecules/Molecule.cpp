@@ -1,5 +1,5 @@
 /***************************************************************************
- *   Copyright (C) 2008 by Martin Bernreuther and colleagues               *
+ *   Copyright (C) 2011 by Martin Bernreuther and colleagues               *
  *   bernreuther@hlrs.de                                                   *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -308,6 +308,7 @@ void Molecule::upd_postF(double dt_halve, double& summv2, double& sumIw2)
           << "r = (" << m_r[0] << " / " << m_r[1] << " / " << m_r[2] << "), "
           << "F = (" << m_F[0] << " / " << m_F[1] << " / " << m_F[2] << "), "
           << "v = (" << m_v[0] << " / " << m_v[1] << " / " << m_v[2] << ").\n";
+     cout.flush();
      exit(5);
   }
 #endif
@@ -438,7 +439,9 @@ void Molecule::addTersoffNeighbour(Molecule* m, bool pairType)
    if(m_curTN > MAXTN)
    {
       cout << "A severe error occurred. ID " << m->m_id << " has more than " << MAXTN << " Tersoff neighbours.\n";
+      cout.flush();
       cerr << "<Error> Tersoff neighbour list overflow.\n";
+      cerr.flush();
       exit(17);
    }
 }
@@ -494,6 +497,7 @@ inline void Molecule::setupCache(const vector<Component>* components)
      cout << "\nmolecule " << m_id << " (" << m_r[0] << " / "
           << m_r[1] << " / "<< m_r[2]
           << ") \nSEVERE TERSOFF VECTOR NULL POINTER ERROR (cf. Molecule::setupCache()).\n";
+     cout.flush();
      exit(1);
   }
 #endif

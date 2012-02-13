@@ -102,6 +102,7 @@ void datastructures::LinkedCells<ParticleType>::update(){
     index=getCellIndexOfMolecule(&(*pos));
     if(index >= this->_cells.size())
     {
+      cout.flush();
       cout << "\nSEVERE ERROR\n";
       cout << "ID " << pos->id() << "\nr:" << pos->r(0) << " / "  << pos->r(1) << " / "  << pos->r(2) << endl;
       cout << "v:" << pos->v(0) << " / "  << pos->v(1) << " / "  << pos->v(2) << endl;
@@ -114,8 +115,9 @@ void datastructures::LinkedCells<ParticleType>::update(){
            << "/" << _haloBoundingBoxMax[1] << "/" << _haloBoundingBoxMax[2] << ").\n";
       cout << "removing m" << pos->id() << " (internal component number " << pos->componentid()
            << ", Utrans=" << pos->Utrans() << ").\n";
-      _log.error("update()", "SEVERE INDEX ERROR in LinkedCells.cpph method update:\nAolecule left the bounding box and will be deleted.\n");
+      _log.error("update()", "SEVERE INDEX ERROR in LinkedCells.cpph method update:\nA molecule left the bounding box and will be deleted.\n");
       cout << "\n\n";
+      cout.flush();
       this->_particles.erase(pos);
       exit(1);
     }
@@ -295,36 +297,6 @@ void datastructures::LinkedCells<ParticleType>::traversePairs()
   double tersoffCutoffRadiusSquare = _tersoffCutoffRadius * this->_tersoffCutoffRadius;
 #endif
   double dd;
-
-  /*
-#ifndef NDEBUG
-  for(int i=0; i < _cells.size(); i++)
-  {
-    Cell<ParticleType>& currentCell = _cells[i];
-    cout.precision(3);
-    cout << "cell /" << i << "/ (" << currentCell.getParticlePointers().size() << " molecules).\n";
-    if(currentCell.getParticlePointers().size() == 0) continue;
-    for(molIter1=currentCell.getParticlePointers().begin(); molIter1!=currentCell.getParticlePointers().end(); molIter1++)
-    {
-      ParticleType& molecule1 = **molIter1;
-      cout << "molecule " << molecule1.id() << "[" << ((unsigned long)&molecule1) % 1000 << "] at ("
-           << molecule1.r(0) << " / " << molecule1.r(1) << " / " << molecule1.r(2) << ")\n";
-    }
-    cout << "backward neigbours of cell /" << i << "/:  ";
-    for(neighbourOffsetsIter=_backwardNeighbourOffsets.begin(); neighbourOffsetsIter!=_backwardNeighbourOffsets.end(); neighbourOffsetsIter++)
-    {
-      cout << "/" << (int)(i+*neighbourOffsetsIter) << "/  ";
-    }
-    cout << "\nforward neigbours of cell /" << i << "/:  ";
-    for(neighbourOffsetsIter=_forwardNeighbourOffsets.begin(); neighbourOffsetsIter!=_forwardNeighbourOffsets.end(); neighbourOffsetsIter++)
-    {
-      cout << "/" << (int)(i+*neighbourOffsetsIter) << "/  ";
-    }
-    cout << "\n\n";
-  }
-  exit(1);
-#endif
-  */
 
   for(unsigned i=0; i < _cells.size(); i++)
   {
@@ -813,7 +785,6 @@ unsigned long datastructures::LinkedCells<ParticleType>::getCellIndexOfMolecule(
   // cerr << _cellLength[0] << " " << _cellLength[1] << " " << _cellLength[2] << "\n";
   // cerr << cellIndex[0] << " " << cellIndex[1] << " " << cellIndex[2] << "\n";
   // cerr << "return " << (cellIndex[2]*_cellsPerDimension[1]+cellIndex[1]) * _cellsPerDimension[0] + cellIndex[0] << ";\n";
-  // exit(1);
   return (cellIndex[2]*_cellsPerDimension[1]+cellIndex[1]) * _cellsPerDimension[0] + cellIndex[0]; 
 }
 
@@ -901,13 +872,17 @@ void datastructures::LinkedCells<ParticleType>::deleteMolecule
    unsigned long hash = this->cellIndexOf3DIndex(ix, iy, iz);
    if(hash >= this->_cells.size())
    {
+      cout.flush();
       cout << "SEVERE ERROR: coordinates for atom deletion lie outside bounding box.\n";
+      cout.flush();
       exit(1);
    }
    bool found = this->_cells[hash].deleteMolecule(molid);
    if(!found)
    {
+      cout.flush();
       cout << "SEVERE ERROR: could not delete molecule " << molid << ".\n";
+      cout.flush();
       exit(1);
    }
 }
