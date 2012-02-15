@@ -1941,7 +1941,7 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
    double rho_Aj = N_Aj / V;
 
    rdfout.precision(5);
-   rdfout << "# r\tcurr.\taccu.\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)";
+   rdfout << "# r\tcurr.{loc, int}\taccu.{loc, int}\t\tdV\tNpair(curr.)\tNpair(accu.)\t\tnorm(curr.)\tnorm(accu.)";
    if(ni+nj > 2)
    {
       for(unsigned m=0; m < ni; m++)
@@ -1949,7 +1949,7 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
          rdfout << "\t";
          for(unsigned n=0; n < nj; n++)
          {
-            rdfout << "\t(" << m << ", " << n << ")_curr  (" << m << ", " << n << ")_accu";
+            rdfout << "\t(" << m << ", " << n << ")_curr{loc, int}   (" << m << ", " << n << ")_accu{loc, int}";
          }
       }
    }
@@ -1961,6 +1961,9 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
           << "\n# rho_j: " << rho_j << " (acc. " << rho_Aj << ")"
           << "\n# \n";
 
+   double N_pair_int = 0.0;
+   double N_Apair_int = 0.0;
+   map< unsigned, map<unsigned, double> > Nsite_pair_int, Nsite_Apair_int;
    for(unsigned l=0; l < this->_universalBins; l++)
    {
       double rmin = l * _universalInterval;
@@ -1971,22 +1974,27 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
       double dV = 4.1887902 * (r3max - r3min);
 
       double N_pair = _globalDistribution[i][j-i][l] / (double)_universalRDFTimesteps;
+      N_pair_int += N_pair;
       double N_Apair = _globalAccumulatedDistribution[i][j-i][l] / (double)_universalAccumulatedTimesteps;
-      double N_pair_norm;
-      double N_Apair_norm;
+      N_Apair_int += N_Apair;
+      double N_pair_norm, N_Apair_norm, N_pair_int_norm, N_Apair_int_norm;
       if(i == j)
       {
-         N_pair_norm = 0.5*N_i*rho_i*dV;
-         N_Apair_norm = 0.5*N_Ai*rho_Ai*dV;
+         N_pair_norm = 0.5*N_i*(N_i-1.0) * dV/V;
+         N_Apair_norm = 0.5*N_Ai*(N_Ai-1.0) * dV/V;
+         N_pair_int_norm = 0.5*N_i*(N_i-1.0) * 4.1887902*r3max/V;
+         N_Apair_int_norm = 0.5*N_Ai*(N_Ai-1.0) * 4.1887902*r3max/V;
       }
       else
       {
-         N_pair_norm = N_i*rho_j*dV;
-         N_Apair_norm = N_Ai*rho_Aj*dV;
+         N_pair_norm = N_i*N_j * dV/V;
+         N_Apair_norm = N_Ai*N_Aj * dV/V;
+         N_pair_int_norm = N_i*N_j * 4.1887902*r3max/V;
+         N_Apair_int_norm = N_Ai*N_Aj * 4.1887902*r3max/V;
       }
 
-      rdfout << rmid << "\t" << N_pair/N_pair_norm
-                     << "\t" << N_Apair/N_Apair_norm
+      rdfout << rmid << "\t" << N_pair/N_pair_norm << " " << N_pair_int/N_pair_int_norm
+                     << "\t" << N_Apair/N_Apair_norm << " " << N_Apair_int/N_Apair_int_norm
                      << "\t\t" << dV << "\t" << N_pair << "\t" << N_Apair
                      << "\t\t" << N_pair_norm << "\t" << N_Apair_norm;
       if(ni+nj > 2)
@@ -1997,8 +2005,11 @@ void Domain::outputRDF(const char* prefix, unsigned i, unsigned j)
             for(unsigned n=0; n < nj; n++)
             {
                double p = _globalSiteDistribution[i][j-i][m][n][l] / (double)_universalRDFTimesteps;
+               Nsite_pair_int[m][n] += p;
                double ap = _globalAccumulatedSiteDistribution[i][j-i][m][n][l] / (double)_universalAccumulatedTimesteps;
-               rdfout << "\t" << p/N_pair_norm << "  " << ap/N_Apair_norm;
+               Nsite_Apair_int[m][n] += ap;
+               rdfout << "\t" << p/N_pair_norm << " " << Nsite_pair_int[m][n]/N_pair_int_norm
+                      << "   " << ap/N_Apair_norm << " " << Nsite_Apair_int[m][n]/N_Apair_int_norm;
             }
          }
       }
