@@ -718,7 +718,7 @@ void Domain::sesDrop(){
 	_universalInvProfileUnit[0] = this->_universalNProfileUnits[0]/(2*PI);                   // delta_phi
 	_universalInvProfileUnit[1] = this->_universalNProfileUnits[1]/(this->_universalR2max);  // delta_R^2
 	_universalInvProfileUnit[2] = this->_universalNProfileUnits[2]/(this->_globalLength[1]); // delta_H
-	cout << "\nInv Profile unit for sessile drop: (phi,R2,H) = (" << _universalInvProfileUnit[0] <<", " <<_universalInvProfileUnit[1]<<", "<<_universalInvProfileUnit[2]<<") \n";
+	global_log->info() << "\nInv Profile unit for sessile drop: (phi,R2,H) = (" << _universalInvProfileUnit[0] <<", " <<_universalInvProfileUnit[1]<<", "<<_universalInvProfileUnit[2]<<") \n";
 }
 
 // author: Stefan Becker. Method called by Simulation::output() in order to decide wheter or not a cylindrical profile is to be written out,
@@ -761,8 +761,8 @@ int Domain::unID(double qx, double qy, double qz){
 	       }
 	       else if((yun >= 0) && (yun > (int)_universalNProfileUnits[1]))
 	       {
-	          cout << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
-	          cout << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
+	          global_log->error() << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
+	          global_log->error() << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
 	          exit(707);
 	       }
 	       return unID;
@@ -935,7 +935,7 @@ void Domain::outputCylProfile(const char* prefix){
 
 	   	         if(!this->_universalCylindricalGeometry)
 	   	         {
-	   	           cout << "Incorrect call of method \"outputCylProfile()\" !";
+	   	           global_log->error() << "Incorrect call of method \"outputCylProfile()\" !";
 	   	         }
 
 	   	         rhoProfName += ((cid%10));
