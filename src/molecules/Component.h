@@ -122,6 +122,11 @@ public:
 	double E() const { return _E_trans + _E_rot; }
 	double T() const { return _T; }
 
+	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>
+	//! purpose: obtaining these values. They are used in the density output file.
+	double getEps(unsigned int i) const {return _ljcenters[i].eps();}
+	double getSigma(unsigned int i) const {return _ljcenters[i].sigma();}
+
 private:
 
 	void updateMassInertia(Site& site);

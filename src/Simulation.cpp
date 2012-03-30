@@ -726,7 +726,12 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> _profileRecordingTimesteps;
 		} else if (token == "profileOutputTimesteps") {
 			inputfilestream >> _profileOutputTimesteps;
-		} else if (token == "RDF") {
+		}
+		// by Stefan Becker <stefan.becker@mv.uni-kl.de>, token determining the corrdinate system of the density profile
+		else if (token == "SessileDrop"){
+			this->_domain->sesDrop();
+		}
+		else if (token == "RDF") {
 			double interval;
 			unsigned bins;
 			inputfilestream >> interval >> bins;
@@ -1238,7 +1243,12 @@ void Simulation::output(unsigned long simstep) {
 			osstrm.fill('0');
 			osstrm.width(9);
 			osstrm << right << simstep;
+			if(this->_domain->isCylindrical()){
+				this->_domain->outputCylProfile(osstrm.str().c_str());
+			}
+			else{
 			_domain->outputProfile(osstrm.str().c_str());
+			}
 			osstrm.str("");
 			osstrm.clear();
 		}

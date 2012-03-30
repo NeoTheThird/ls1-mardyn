@@ -39,6 +39,8 @@ class ParticleContainer;
 class DomainDecompBase; 
 class PressureGradient;
 
+extern const float PI; // by Stefan Becker <stefan.becker@mv.uni-kl.de>
+
 //! @brief This class is used to read in the phasespace and to handle macroscopic values
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2011)
 //!
@@ -344,6 +346,19 @@ public:
 	void outputProfile(const char* prefix);
 	void resetProfile();
 
+	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods employed for setting up a density profile in cylindrical coordinates
+	//begin
+	// prerequisite for the cylindrical coordinate system: R2max, centre, InvProfileUnit[3] => counterpart of setupProfile(), beyond that recordProfile() is extended
+	void sesDrop();
+	// number of the current bin a particle is located in. Actual parameters: global cartesian coordinates of the particle with respect to the simulation box coordinate system
+	int unID(double qx, double qy, double qz);
+	// returning the parameter that controls wheter or not a cylindrical profile is created. method called by Simulation::output()
+	bool isCylindrical();
+	// writing out a 3-dimensional density profile in cylindrical coordinates, counterpart of outputProfile.
+	void outputCylProfile(const char* prefix);
+	// end
+
+
 	unsigned long N() {return _globalNumMolecules;}
 	unsigned long N(unsigned cid) { return _components[cid].getNumMolecules(); }
 
@@ -460,6 +475,17 @@ private:
 	unsigned _globalAccumulatedDatasets;
 	//! which components should be considered?
 	std::map<unsigned, bool> _universalProfiledComponents;
+
+	//! by Stefan Becker <stefan.becker@mv.uni-kl.de> => concerning the density profile
+	// begin
+	//! writing out a density profile in cylindrical coordinates?
+	bool _universalCylindricalGeometry;
+	//! centre of the cylindrical coordinate system
+	double _universalCentre[3];
+	//! outermost radial distance up to which the binning is applied
+	double _universalR2max;
+	// end
+
 
 	int _universalSelectiveThermostatCounter;
 	int _universalSelectiveThermostatWarning;

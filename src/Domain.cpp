@@ -35,6 +35,8 @@ using Log::global_log;
 
 using namespace std;
 
+extern const float PI = 3.1415926535897;
+
 
 Domain::Domain(int rank, PressureGradient* pg){
 	_localRank = rank;
@@ -681,6 +683,8 @@ void Domain::setupProfile(unsigned xun, unsigned yun, unsigned zun)
 	this->_universalNProfileUnits[0] = xun;
 	this->_universalNProfileUnits[1] = yun;
 	this->_universalNProfileUnits[2] = zun;
+	// comment by Stefan Becker: the next operation is always carried out.
+	// In case the profile is to be cylindircal, the method "void SesDrop()"is called afterwards and "_universalInvProfileUnit[d]" is changed accordingly.
 	for(unsigned d = 0; d < 3; d++)
 	{
 		_universalInvProfileUnit[d] = _universalNProfileUnits[d] / _globalLength[d];
@@ -688,9 +692,80 @@ void Domain::setupProfile(unsigned xun, unsigned yun, unsigned zun)
 	this->resetProfile();
 }
 
+// author: Stefan Becker, counterpart of method setupProfile(xun,yun,zun) => to be used for profile in cylindrical coordinates
+// the radial component is located in the x,z-plane, the axial component is parallel to the y-direction.
+// In the radial direction the spacing is linear in R^2 in order to obtain equal areas with increasing radius.
+// @TODO: in the input file the token "profile" immedeatly causes a call of "setupProfile(xun,yun,zun)". This in turn sets up a cubic grid
+// by default.
+// Proposal: an enquiry that checks wheter a cubic, or cylindrical, sperical, etc. grid has to be set up. This first requires a check of
+// the input file (what additional token is set that controls the kind of grid beeing used). => code more modular
+void Domain::sesDrop(){
+	this->_universalCylindricalGeometry = true;
+
+	// R^2_max: (squared) maximum radius up to which the profile is recorded
+	// (otherwise erroneous densities recorded at the boundary of the RECTANGULAR simulation box)
+	double minXZ = this->_globalLength[0];
+	if(this->_globalLength[2]<minXZ){
+		minXZ = this->_globalLength[2];
+	}
+	this->_universalR2max = 0.25*minXZ*minXZ;
+
+	// origin of the cylindrical coordinate system
+	this->_universalCentre[0] = 0.5*this->_globalLength[0];
+	this->_universalCentre[1] = 0;
+	this->_universalCentre[2] = 0.5*this->_globalLength[2];
+
+	_universalInvProfileUnit[0] = this->_universalNProfileUnits[0]/(2*PI);                   // delta_phi
+	_universalInvProfileUnit[1] = this->_universalNProfileUnits[1]/(this->_universalR2max);  // delta_R^2
+	_universalInvProfileUnit[2] = this->_universalNProfileUnits[2]/(this->_globalLength[1]); // delta_H
+	cout << "\nInv Profile unit for sessile drop: (phi,R2,H) = (" << _universalInvProfileUnit[0] <<", " <<_universalInvProfileUnit[1]<<", "<<_universalInvProfileUnit[2]<<") \n";
+}
+
+// author: Stefan Becker. Method called by Simulation::output() in order to decide wheter or not a cylindrical profile is to be written out,
+//i.e. wheter the method outputCylProfile() (isCylindrical==true) or the method outputProfile() (isCylindrical==false) is called.
+bool Domain::isCylindrical(){
+	return this->_universalCylindricalGeometry;
+}
+
 void Domain::considerComponentInProfile(int cid)
 {
 	this->_universalProfiledComponents[cid] = true;
+}
+
+// author: Stefan Becker, method to determine the integer value of unID, extra method in order to not inflating the method "recordProfile()"
+// method only matched for the case of a cylindrical profile (i.e. sessile drop)
+int Domain::unID(double qx, double qy, double qz){
+		int xun,yun,zun,unID; // (xun,yun,zun): bin number in a special direction, e.g. yun==5 corresponds to the 5th bin in the radial direction, unID: as usual
+		double xc,yc,zc; // distance of a particle with respect to the origin of the cylindrical coordinate system
+
+		unID = -1; // initialization, causes an error message, if unID is not calculated in this method but used in record profile
+
+		xc = qx - this->_universalCentre[0];
+	    yc = qy - this->_universalCentre[1];
+	    zc = qz - this->_universalCentre[2];
+
+	    // transformation in polar coordinates
+	    double R2 = xc*xc + zc*zc;
+	    double phi = asin(zc/sqrt(R2)) + ((xc>=0.0) ? 0:PI);
+	    if(phi<0.0) {phi = phi + 2.0*PI;}
+
+	    xun = (int)floor(phi * this->_universalInvProfileUnit[0]);   // bin no. in phi-direction
+	    yun = (int)floor(R2 *  this->_universalInvProfileUnit[1]);   // bin no. in R-direction
+	    zun = (int)floor(yc *  this->_universalInvProfileUnit[2]);   // bin no. in H-direction
+
+	    if((xun >= 0) && (yun >= 0) && (zun >= 0) &&
+	          (xun < (int)_universalNProfileUnits[0]) && (yun < (int)_universalNProfileUnits[1]) && (zun < (int)_universalNProfileUnits[2]))
+	       {
+	          unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
+	               + yun * this->_universalNProfileUnits[2] + zun;
+	       }
+	       else if((yun >= 0) && (yun > (int)_universalNProfileUnits[1]))
+	       {
+	          cout << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
+	          cout << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
+	          exit(707);
+	       }
+	       return unID;
 }
 
 void Domain::recordProfile(ParticleContainer* molCont)
@@ -703,11 +778,26 @@ void Domain::recordProfile(ParticleContainer* molCont)
 		cid = thismol->componentid();
 		if(this->_universalProfiledComponents[cid])
 		{
+// by Stefan Becker: enquiry if(_universalCylindricalGeometry) ... implemented
+// possible???: if no cylindrical profile is recorded => permanent calculation (before the "if..." ) of "distFor_unID" slows down the code
+// if the profile is however recorded in cylindrical coordinates, the current implementation is fast (?)   => solution?
+			double distFor_unID = pow((thismol->r(0)- this->_universalCentre[0]),2.0) + pow((thismol->r(2)- this->_universalCentre[2]),2.0);
+			if(this->_universalCylindricalGeometry && distFor_unID <= this->_universalR2max){
+				unID = this->unID(thismol->r(0), thismol->r(1), thismol->r(2));
+				if(unID < 0) cerr << "ERROR: in Domain.cpp/recordProfile: unID < 0!!! Was not calculated in unID() but initialized with -1!";
+			}
+			else if(!this->_universalCylindricalGeometry){
 			xun = (unsigned)floor(thismol->r(0) * this->_universalInvProfileUnit[0]);
 			yun = (unsigned)floor(thismol->r(1) * this->_universalInvProfileUnit[1]);
 			zun = (unsigned)floor(thismol->r(2) * this->_universalInvProfileUnit[2]);
 			unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
 				+ yun * this->_universalNProfileUnits[2] + zun;
+			}
+			else{
+				continue;
+			}
+
+// @TODO: (by Stefan Becker)  differentiation of _localNProfile by the component number cid => _localNProfile[cid][unID]!!!
 			this->_localNProfile[unID] += 1.0;
 			for(int d=0; d<3; d++) this->_localvProfile[d][unID] += thismol->v(d);
 			this->_localDOFProfile[unID] += 3.0 + (long double)(_components[cid].getRotationalDegreesOfFreedom());
@@ -822,6 +912,79 @@ void Domain::outputProfile(const char* prefix)
 	Tpry.close();
 }
 
+// author: Stefan Becker, method called in the case of a density profile established in cylindrical coordinates. Counterpart of outputProfile(...).
+// reason for a sperate method (in addition to "outputProfile(...)"): method neatly matched to the particular needs of the (cylindrical density) profile, otherwise outpuProfile would be inflated, structure became too compilcated.
+void Domain::outputCylProfile(const char* prefix){
+
+	if(this->_localRank) return;
+
+	   unsigned IDweight[3];
+	   IDweight[0] = this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2];
+	   IDweight[1] = this->_universalNProfileUnits[2];
+	   IDweight[2] = 1;
+
+	   for( map<unsigned, bool>::iterator pcit = _universalProfiledComponents.begin();    // Loop ueber alle Komponenten
+	   	           pcit != _universalProfiledComponents.end();
+	   	           pcit++ )
+	   	      {
+	   	         if(!pcit->second) continue;  // ->second weist auf den key-value von map, d.h. den bool-Wert
+	   	         unsigned cid = pcit->first;
+
+	   	         string rhoProfName(prefix);
+	   	         rhoProfName += ".rhpr.";
+
+	   	         if(!this->_universalCylindricalGeometry)
+	   	         {
+	   	           cout << "Incorrect call of method \"outputCylProfile()\" !";
+	   	         }
+
+	   	         rhoProfName += ((cid%10));
+	   	         ofstream* rhoProf = new ofstream(rhoProfName.c_str());
+
+	   	         if (!(*rhoProf )) // geaendert durch M. Horsch, by Stefan Becker: wozu?
+	   	         {
+	   	            return;
+	   	         }
+	   	         rhoProf->precision(6);
+
+	   	         double segmentVolume; // volume of a single bin, in a0^3 (atomic units)
+	   	      	 segmentVolume = PI/this->_universalInvProfileUnit[1]/this->_universalInvProfileUnit[2]/this->_universalNProfileUnits[0];  // adapted to cylindrical coordinates
+
+	   	         *rhoProf << "//Local profile of the number density. Output file generated by the \"outputCylProfile\" method, located in Domain.cpp. \n";
+	   	         *rhoProf << "//local density profile: Each matrix corresponds to a single value of \"phi_i\", measured in [rad]\n";
+	   	         *rhoProf << "//one single matrix of the local number density rho'(phi_i;r_i',h_i') \n//      | r_i'\n//---------------------\n//  h_i'| rho'(r_i',h_i')\n//      | \n";
+	   	         *rhoProf << "// T' \t sigma_ii' \t eps_ii' \t N_C_lays \t DELTA_phi \t DELTA_r2' \t DELTA_h' \t quantities in atomic units are denoted by an apostrophe '\n";
+	   	         *rhoProf << this->_universalTargetTemperature[_components.size()] <<"\t"<<_components[0].getSigma(0)<<"\t"<<_components[0].getEps(0)<<"\t";
+	   	         *rhoProf << _components.size()-1 << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n // ";
+	   	         // info: getSigma() und getEps() implementiert in Component.h
+	   	         // end of header, start of the data-part of the density file
+	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
+	   	         {
+	   	        	 *rhoProf << (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0";
+	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
+	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
+	   	        	 }
+	   	        	 *rhoProf << "\n";
+	   	        	for(unsigned n_h = 0; n_h < this->_universalNProfileUnits[2]; n_h++)
+	   	        	{
+
+	   	        		double hval = (n_h + 0.5) / this->_universalInvProfileUnit[2];
+	   	        		*rhoProf << hval<< "  \t";
+	   	        		for(unsigned n_r2 = 0; n_r2< this->_universalNProfileUnits[1]; n_r2++)
+	   	        		{
+	   	        			unsigned unID = n_phi * IDweight[0] + n_r2 * IDweight[1]
+	   	        				                                    + n_h * IDweight[2];
+	   	        		   	double rho_loc = this->_globalNProfile[unID] / (segmentVolume * this->_globalAccumulatedDatasets);
+	   	        		   	*rhoProf << rho_loc << "\t";
+	   	        		}
+	   	        		*rhoProf << "\n";
+	   	        	}
+	   	         }
+	   	         rhoProf->close();
+	   	         delete rhoProf;
+	   	      }
+}
+
 void Domain::resetProfile()
 {
 	unsigned unIDs = this->_universalNProfileUnits[0] * this->_universalNProfileUnits[1]
@@ -842,7 +1005,6 @@ void Domain::resetProfile()
 	}
 	this->_globalAccumulatedDatasets = 0;
 }
-
 
 void Domain::Nadd(unsigned cid, int N, int localN)
 {

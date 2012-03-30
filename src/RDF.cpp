@@ -177,10 +177,10 @@ void RDF::writeToFile(const Domain* domain, const char* prefix, unsigned i, unsi
 	}
 
 	double V = domain->getGlobalVolume();
-	double N_i = _globalCtr[i] / _numberOfRDFTimesteps;
-	double N_Ai = _globalAccumulatedCtr[i] / _accumulatedNumberOfRDFTimesteps;
-	double N_j = _globalCtr[j] / _numberOfRDFTimesteps;
-	double N_Aj = _globalAccumulatedCtr[j] / _accumulatedNumberOfRDFTimesteps;
+	double N_i = _globalCtr[i] / (double)_numberOfRDFTimesteps;
+	double N_Ai = _globalAccumulatedCtr[i] / (double)_accumulatedNumberOfRDFTimesteps;
+	double N_j = _globalCtr[j] / (double)_numberOfRDFTimesteps;
+	double N_Aj = _globalAccumulatedCtr[j] / (double)_accumulatedNumberOfRDFTimesteps;
 	double rho_i = N_i / V;
 	double rho_Ai = N_Ai / V;
 	double rho_j = N_j / V;
@@ -203,9 +203,9 @@ void RDF::writeToFile(const Domain* domain, const char* prefix, unsigned i, unsi
 		double r3max = rmax*rmax*rmax;
 		double dV = (4.0 / 3.0) * M_PI * (r3max - r3min);
 
-		unsigned long N_pair = _globalDistribution[i][j-i][l] / _numberOfRDFTimesteps;
-		unsigned long N_Apair = _globalAccumulatedDistribution[i][j-i][l]
-		                                                               / _accumulatedNumberOfRDFTimesteps;
+		double N_pair = _globalDistribution[i][j-i][l] / (double)_numberOfRDFTimesteps;
+		double N_Apair = _globalAccumulatedDistribution[i][j-i][l]
+		                                                               / (double)_accumulatedNumberOfRDFTimesteps;
 		double N_pair_norm;
 		double N_Apair_norm;
 		if(i == j)
