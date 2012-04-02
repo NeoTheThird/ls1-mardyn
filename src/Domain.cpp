@@ -929,7 +929,7 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         unsigned cid = pcit->first;
 
 	   	         string rhoProfName(prefix);
-	   	         rhoProfName += ".rhpr.";
+	   	         rhoProfName += ".rhpr";
 
 	   	         if(!this->_universalCylindricalGeometry)
 	   	         {
@@ -953,12 +953,12 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         *rhoProf << "//one single matrix of the local number density rho'(phi_i;r_i',h_i') \n//      | r_i'\n//---------------------\n//  h_i'| rho'(r_i',h_i')\n//      | \n";
 	   	         *rhoProf << "// T' \t sigma_ii' \t eps_ii' \t N_C_lays \t DELTA_phi \t DELTA_r2' \t DELTA_h' \t quantities in atomic units are denoted by an apostrophe '\n";
 	   	         *rhoProf << this->_universalTargetTemperature[_components.size()] <<"\t"<<_components[0].getSigma(0)<<"\t"<<_components[0].getEps(0)<<"\t";
-	   	         *rhoProf << _components.size()-1 << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n // ";
+	   	         *rhoProf << _components.size()-1 << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n ";
 	   	         // info: getSigma() und getEps() implementiert in Component.h
 	   	         // end of header, start of the data-part of the density file
 	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
 	   	         {
-	   	        	 *rhoProf << (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0";
+	   	        	 *rhoProf <<"// "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0";
 	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
 	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
 	   	        	 }
