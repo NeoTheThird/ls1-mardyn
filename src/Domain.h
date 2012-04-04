@@ -24,6 +24,18 @@
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
+// by Stefan Becker <stefan.becker@uni-kl.de>
+// The following two namespaces are employed by the realign tool
+/*
+namespace particleContainer{
+  template<class ParticleType>
+  class ParticleContainer;
+}
+namespace parallel{
+  class DomainDecompBase; 
+}
+*/
+
 
 /* 
  * TODO add comments for variables 
@@ -357,6 +369,20 @@ public:
 	// writing out a 3-dimensional density profile in cylindrical coordinates, counterpart of outputProfile.
 	void outputCylProfile(const char* prefix);
 	// end
+	
+	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods providing a shift of the particles in the simulation box so that 
+	// the center of mass is placed in the middle of the box with respect of the x- and z-direction ( 0- and 2-direction), i.e. the y-direction is free!
+	void determineShift
+	(
+        DomainDecompBase* domainDecomp,
+        ParticleContainer* molCont,
+        double fraction
+	);
+	
+	void realign
+	(
+        ParticleContainer* molCont
+	);
 
 
 	unsigned long N() {return _globalNumMolecules;}
@@ -485,6 +511,13 @@ private:
 	//! outermost radial distance up to which the binning is applied
 	double _universalR2max;
 	// end
+	
+	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>  => concerning the realignment tool: realignment to the centre of mass
+	// begin 
+	double _globalRealignmentMass;
+	double _globalRealignmentBalance[3];
+	double _universalRealignmentMotion[3];
+	//end
 
 
 	int _universalSelectiveThermostatCounter;

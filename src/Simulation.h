@@ -386,11 +386,21 @@ private:
 
 	//! prefix for the names of all output files
 	std::string _outputPrefix;
+	
+	// by Stefan Becker <stefan.becker@mv.uni-kl.de>
+	//! flags that control the realign tool
+	//! if _doAlignCentre == true => the alignment is carried out
+	bool _doAlignCentre;
+	//! number of discrete timesteps after which the realignemt is carried out 
+	unsigned long _alignmentInterval;
+	//! strength of the realignment
+	double _alignmentCorrection;
 
-public:
-    void setOutputPrefix( std::string prefix ) { _outputPrefix = prefix; }
-    void setOutputPrefix( char *prefix ) { _outputPrefix = std::string( prefix ); }
-    std::string getOutputPrefix() { return _outputPrefix; }
+	
+public:	
+	void setOutputPrefix( std::string prefix ) { _outputPrefix = prefix; }
+	void setOutputPrefix( char *prefix ) { _outputPrefix = std::string( prefix ); }
+	std::string getOutputPrefix() { return _outputPrefix; }
 
 private:
 

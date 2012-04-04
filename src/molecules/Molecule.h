@@ -91,6 +91,10 @@ public:
 
 
 	inline void move(int d, double dr) { _r[d] += dr; } /* TODO: is this realy needed? */
+	
+	// by Stefab Becker <stefan.becker@mv.uni-kl.de> 
+	// method returns the total mass of a particle
+	double gMass(){return _m;}
 
 
 	/** calculate and return the square velocity */

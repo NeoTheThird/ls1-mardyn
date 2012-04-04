@@ -262,7 +262,7 @@ void Domain::calculateGlobalValues(
 			this->_universalBRot[thermit->first] = 1.0;
 		}
 
-		// heuristic handling of the unfortunate special case of an explosion in the system
+		// heuristice handling of the unfortunate special case of an explosion in the system
 		if( ( (_universalBTrans[thermit->first] < MIN_BETA) || (_universalBRot[thermit->first] < MIN_BETA) )
 				&& (0 >= _universalSelectiveThermostatError) )
 		{
@@ -769,7 +769,8 @@ int Domain::unID(double qx, double qy, double qz){
 void Domain::recordProfile(ParticleContainer* molCont)
 {
 	int cid;
-	unsigned xun, yun, zun, unID;
+	unsigned xun, yun, zun;
+	int unID;
 	double mv2, Iw2;
 	for(Molecule* thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
 	{
@@ -1003,6 +1004,78 @@ void Domain::resetProfile()
 	}
 	this->_globalAccumulatedDatasets = 0;
 }
+
+/*
+ *By Stefan Becker: 
+ *realign tool, borrowed from Martin Horsch: it effects that the center of mass of all the particles (in the (x,z)-plane) corresponds with the box center (in the (x,z)plane)
+ *Basically the current centre of mass of all the particles is determined and then all the particles are moved towards x==0 and z==0
+ *The method is frequently applied when the specified span of time (i.e. timesteps) is reached. 
+ *Part of this tool in Domain.cpp: (i) determineShift() => determines the vector by which the particles are shifted
+ *                                 (ii) realign() => carries out the actual realignment / shift
+ * when this method is called, the halo should NOT be present
+ */
+void Domain::determineShift(
+    DomainDecompBase* domainDecomp,
+    ParticleContainer* molCont,
+   double fraction
+) 
+{
+   double localBalance[3];
+   double localMass = 0.0;
+   for(unsigned d = 0; d < 3; d++) localBalance[d] = 0.0; // initialising the array by zeros
+   for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
+   {
+      double tmass = tm->gMass();
+      localMass += tmass;
+      for(unsigned d = 0; d < 3; d=d+2) // counting d=d+2 causes the value d==1 to be skipped, not necessary since no motion in y-direction desired!
+         localBalance[d] += tm->r(d) * tmass;
+   }
+   for(unsigned d = 0; d < 3; d++) _globalRealignmentBalance[d] = localBalance[d];
+   _globalRealignmentMass = localMass;
+   // determining the global values by the use of collectiveCommunication
+   domainDecomp->collCommInit(4);
+   for(unsigned d = 0; d < 3; d++)  domainDecomp->collCommAppendDouble(_globalRealignmentBalance[d]);
+   domainDecomp->collCommAppendDouble(_globalRealignmentMass);
+   domainDecomp->collCommAllreduceSum();
+   for(unsigned d = 0; d < 3; d++)  _globalRealignmentBalance[d] = domainDecomp->collCommGetDouble();
+   _globalRealignmentMass = domainDecomp->collCommGetDouble();
+   domainDecomp->collCommFinalize();
+   
+   //! alter code von branch Horsch
+   /*
+   domainDecomp->triple(_globalRealignmentBalance);
+   _globalRealignmentMass = localMass;
+   domainDecomp->reducevalues(&_globalRealignmentMass, (double*)0);
+   */
+
+   for(unsigned d = 0; d < 3; d=d+2)
+      _universalRealignmentMotion[d]
+         = -fraction*((_globalRealignmentBalance[d] / _globalRealignmentMass) - 0.5*_globalLength[d]);
+      _universalRealignmentMotion[1] = 0.0; // no motion in y-direction!
+}
+
+/*
+ * By Stefa Becker, see above comment on determineShift().
+ * this method REQUIRES the presence of the halo
+ */
+void Domain::realign(
+   ParticleContainer* molCont
+) {
+   if(!this->_localRank)
+   {
+      global_log->info() << "Centre of mass: (" << _globalRealignmentBalance[0]/_globalRealignmentMass << " / " << _globalRealignmentBalance[1]/_globalRealignmentMass << " / " << _globalRealignmentBalance[2]/_globalRealignmentMass << ") "
+			 << "=> adjustment: (" << _universalRealignmentMotion[0] << ", " << _universalRealignmentMotion[1] << ", " << _universalRealignmentMotion[2] << ").\n";
+      // cout << "If required, shifting by +- (" << _globalLength[0] << ", " << _globalLength[1] << ", " << _globalLength[2] << ").\n";
+   }
+   for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
+   {
+     for(unsigned d=0; d<3; d=d+2){
+       tm->move(d, _universalRealignmentMotion[d]);
+      // tm->move(_universalRealignmentMotion, _globalLength);
+     }
+   }
+}
+
 
 void Domain::Nadd(unsigned cid, int N, int localN)
 {

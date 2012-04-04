@@ -762,6 +762,11 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			_zoscillation = true;
 			inputfilestream >> _zoscillator;
 		}
+		else if(token == "AlignCentre2D")
+		{	
+			this->_doAlignCentre = true;
+			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
+		}
 		// chemicalPotential <mu> component <cid> [control <x0> <y0> <z0>
 		// to <x1> <y1> <z1>] conduct <ntest> tests every <nstep> steps
 		else if (token == "chemicalPotential") {
@@ -1136,6 +1141,14 @@ void Simulation::simulate() {
 		if (_zoscillation) {
 			global_log->debug() << "alert z-oscillators" << endl;
 			_integrator->zOscillation(_zoscillator, _moleculeContainer);
+		}
+		
+		// by Stefan Becker <stefan.becker@mv.uni-kl.de> 
+		//! realignment tools borrowed from Martin Horsch
+		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
+		{
+			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			_domain->realign(_moleculeContainer);
 		}
 
 		// Inform the integrator about the calculated forces
