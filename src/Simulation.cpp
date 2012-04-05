@@ -764,8 +764,15 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		}
 		else if(token == "AlignCentre2D")
 		{	
-			this->_doAlignCentre = true;
+			_doAlignCentre = true;
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
+		}
+		else if(token == "ComponentForYShift")
+		{
+		    unsigned cidYShift;
+		    inputfilestream  >> cidYShift >> _wallHeightForYShift;
+		    cidYShift --; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
+		    _domain->considerComponentForYShift(cidYShift);
 		}
 		// chemicalPotential <mu> component <cid> [control <x0> <y0> <z0>
 		// to <x1> <y1> <z1>] conduct <ntest> tests every <nstep> steps
@@ -1147,7 +1154,7 @@ void Simulation::simulate() {
 		//! realignment tools borrowed from Martin Horsch
 		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
-			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection, _wallHeightForYShift);
 			_domain->realign(_moleculeContainer);
 		}
 

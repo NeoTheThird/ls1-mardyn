@@ -984,6 +984,10 @@ void Domain::outputCylProfile(const char* prefix){
 	   	      }
 }
 
+void Domain::considerComponentForYShift(unsigned cid){
+    _componentForYShift[cid] = true;
+}
+
 void Domain::resetProfile()
 {
 	unsigned unIDs = this->_universalNProfileUnits[0] * this->_universalNProfileUnits[1]
@@ -1014,21 +1018,25 @@ void Domain::resetProfile()
  *                                 (ii) realign() => carries out the actual realignment / shift
  * when this method is called, the halo should NOT be present
  */
-void Domain::determineShift(
-    DomainDecompBase* domainDecomp,
-    ParticleContainer* molCont,
-   double fraction
-) 
+void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
+			     double fraction, double wallHeight) 
 {
    double localBalance[3];
    double localMass = 0.0;
+   int cid;
    for(unsigned d = 0; d < 3; d++) localBalance[d] = 0.0; // initialising the array by zeros
    for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
    {
       double tmass = tm->gMass();
       localMass += tmass;
-      for(unsigned d = 0; d < 3; d=d+2) // counting d=d+2 causes the value d==1 to be skipped, not necessary since no motion in y-direction desired!
+      for(unsigned d = 0; d < 3; d=d+2){ // counting d=d+2 causes the value d==1 to be skipped, not necessary since no motion in y-direction desired!
          localBalance[d] += tm->r(d) * tmass;
+      }
+      // for shift in y-direction: only wall component considered so that the wall is always placed at the bottom of the simulation box
+      cid = tm->componentid();
+      if(_componentForYShift[cid]){ 
+	  localBalance[1] += tm->r(1)*tmass;
+      }
    }
    for(unsigned d = 0; d < 3; d++) _globalRealignmentBalance[d] = localBalance[d];
    _globalRealignmentMass = localMass;
@@ -1041,17 +1049,20 @@ void Domain::determineShift(
    _globalRealignmentMass = domainDecomp->collCommGetDouble();
    domainDecomp->collCommFinalize();
    
-   //! alter code von branch Horsch
+   //! alter code von branch Horsch: obsolete
    /*
    domainDecomp->triple(_globalRealignmentBalance);
    _globalRealignmentMass = localMass;
    domainDecomp->reducevalues(&_globalRealignmentMass, (double*)0);
    */
 
-   for(unsigned d = 0; d < 3; d=d+2)
+   for(unsigned d = 0; d < 3; d=d+2){
       _universalRealignmentMotion[d]
          = -fraction*((_globalRealignmentBalance[d] / _globalRealignmentMass) - 0.5*_globalLength[d]);
-      _universalRealignmentMotion[1] = 0.0; // no motion in y-direction!
+   }
+   // the realignment motion in y-direction so that the wall is always at the bottom of the simulation box
+   _universalRealignmentMotion[1] = -fraction*((_globalRealignmentBalance[1] / _globalRealignmentMass) - 0.5*wallHeight);
+   
 }
 
 /*
