@@ -575,12 +575,12 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				inputfilestream >> writeFrequency >> outputPathAndPrefix;
 				_outputPlugins.push_back(new XyzWriter(writeFrequency, outputPathAndPrefix, _numberOfTimesteps, true));
 				global_log->debug() << "XyzWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
-            } else if (token == "CheckpointWriter") {
-                unsigned long writeFrequency;
-                string outputPathAndPrefix;
-                inputfilestream >> writeFrequency >> outputPathAndPrefix;
-                _outputPlugins.push_back(new CheckpointWriter(writeFrequency, outputPathAndPrefix, _numberOfTimesteps, true));
-                global_log->debug() << "CheckpointWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
+			} else if (token == "CheckpointWriter") {
+				unsigned long writeFrequency;
+				string outputPathAndPrefix;
+				inputfilestream >> writeFrequency >> outputPathAndPrefix;
+				_outputPlugins.push_back(new CheckpointWriter(writeFrequency, outputPathAndPrefix, _numberOfTimesteps, true));
+				global_log->debug() << "CheckpointWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 			} else if (token == "PovWriter") {
 				unsigned long writeFrequency;
 				string outputPathAndPrefix;
@@ -640,6 +640,15 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					global_log->warning() << "StatisticsWriter only supported with LinkedCells!" << std::endl;
 					global_log->warning() << "Generating no statistics output for the grid!" << std::endl;
 				}
+			}
+			// by Stefan Becker <stefan.becker@mv.uni-kl.de>
+			// output for the MegaMol Simple Particle Data File Format (*.mmspd)
+			else if (token == "MmspdWriter"){
+			      unsigned long writeFrequency = 0;
+			      string outputPathAndPrefix;
+			      inputfilestream >> writeFrequency >> outputPathAndPrefix;
+			      _outputPlugins.push_back(new MmspdWriter(writeFrequency, outputPathAndPrefix, _numberOfTimesteps, true));
+			      global_log->debug() << "MmspdWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 			}
 		} else if (token == "accelerate") {
 			cosetid++;
@@ -761,14 +770,11 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		} else if (token == "zOscillator") {
 			_zoscillation = true;
 			inputfilestream >> _zoscillator;
-		}
-		else if(token == "AlignCentre2D")
-		{	
+		} else if(token == "AlignCentre2D"){	
 			_doAlignCentre = true;
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
 		}
-		else if(token == "ComponentForYShift")
-		{
+		else if(token == "ComponentForYShift"){
 		    unsigned cidYShift;
 		    inputfilestream  >> cidYShift >> _wallHeightForYShift;
 		    cidYShift --; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
