@@ -959,7 +959,7 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         // end of header, start of the data-part of the density file
 	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
 	   	         {
-	   	        	 *rhoProf <<"// "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0";
+	   	        	 *rhoProf <<"// "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0 \t";
 	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
 	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
 	   	        	 }
