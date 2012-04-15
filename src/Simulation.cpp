@@ -770,7 +770,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		} else if (token == "zOscillator") {
 			_zoscillation = true;
 			inputfilestream >> _zoscillator;
-		} else if(token == "AlignCentre2D"){	
+		} else if(token == "AlignCentre"){	
 			_doAlignCentre = true;
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
 		}
