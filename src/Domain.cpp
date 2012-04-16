@@ -984,8 +984,8 @@ void Domain::outputCylProfile(const char* prefix){
 	   	      }
 }
 
-void Domain::considerComponentForYShift(unsigned cid){
-    _componentForYShift[cid] = true;
+void Domain::considerComponentForYShift(unsigned cidMin, unsigned cidMax){
+    for (unsigned i = 0; i <= cidMax-cidMin; i++) _componentForYShift[cidMin+i] = true;
 }
 
 void Domain::resetProfile()
@@ -1049,13 +1049,7 @@ void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* 
    _globalRealignmentMass = domainDecomp->collCommGetDouble();
    domainDecomp->collCommFinalize();
    
-   //! alter code von branch Horsch: obsolete
-   /*
-   domainDecomp->triple(_globalRealignmentBalance);
-   _globalRealignmentMass = localMass;
-   domainDecomp->reducevalues(&_globalRealignmentMass, (double*)0);
-   */
-
+   
    for(unsigned d = 0; d < 3; d=d+2){
       _universalRealignmentMotion[d]
          = -fraction*((_globalRealignmentBalance[d] / _globalRealignmentMass) - 0.5*_globalLength[d]);

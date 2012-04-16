@@ -24,17 +24,7 @@
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
-// by Stefan Becker <stefan.becker@uni-kl.de>
-// The following two namespaces are employed by the realign tool
-/*
-namespace particleContainer{
-  template<class ParticleType>
-  class ParticleContainer;
-}
-namespace parallel{
-  class DomainDecompBase; 
-}
-*/
+
 
 
 /* 
@@ -377,7 +367,7 @@ public:
 	// carrying out the actual shift of ALL particles
 	void realign( ParticleContainer* molCont);
 	// method defining the component that is employed for determining the shift distance in y-direction
-	void considerComponentForYShift(unsigned cid);
+	void considerComponentForYShift(unsigned cidMin, unsigned cidMax);
 	
 	// by Stefan Becker <stefan.becker@mv.uni-kl.de>
 	/* method returning the sigma parameter of a component 

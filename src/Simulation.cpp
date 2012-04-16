@@ -775,10 +775,11 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
 		}
 		else if(token == "ComponentForYShift"){
-		    unsigned cidYShift;
-		    inputfilestream  >> cidYShift >> _wallHeightForYShift;
-		    cidYShift --; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
-		    _domain->considerComponentForYShift(cidYShift);
+		    unsigned cidMin, cidMax;
+		    inputfilestream  >> cidMin >> cidMax >> _wallHeightForYShift;
+		    cidMin--; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
+		    cidMax--;
+		    _domain->considerComponentForYShift(cidMin, cidMax);
 		}
 		// chemicalPotential <mu> component <cid> [control <x0> <y0> <z0>
 		// to <x1> <y1> <z1>] conduct <ntest> tests every <nstep> steps
