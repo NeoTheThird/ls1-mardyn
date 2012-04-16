@@ -1019,8 +1019,10 @@ void Domain::resetProfile()
  * when this method is called, the halo should NOT be present
  */
 void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
-			     double fraction, double wallHeight) 
+			     double fraction) 
 {
+   static unsigned timesCalled = 0;
+   static double initialCentreOfMassY = 0;
    double localBalance[3];
    double localMass = 0.0;
    int cid;
@@ -1049,13 +1051,23 @@ void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* 
    _globalRealignmentMass = domainDecomp->collCommGetDouble();
    domainDecomp->collCommFinalize();
    
+   /* 
+   The centre of mass of the wall (solely the wall!) is determined once at the beginning of the simulation. 
+   Then the realignment with respect to the y-direction is always carried out so that the wall remains at the initial posistion 
+   (initial y-coordinate)
+   */
+   if (!timesCalled){
+     initialCentreOfMassY = _globalRealignmentBalance[1] / _globalRealignmentMass;
+   }
+   timesCalled++;
+   //global_log->info() <<"initialCentreOfMassY = " << initialCentreOfMassY << endl;
    
    for(unsigned d = 0; d < 3; d=d+2){
       _universalRealignmentMotion[d]
          = -fraction*((_globalRealignmentBalance[d] / _globalRealignmentMass) - 0.5*_globalLength[d]);
    }
    // the realignment motion in y-direction so that the wall is always at the bottom of the simulation box
-   _universalRealignmentMotion[1] = -fraction*((_globalRealignmentBalance[1] / _globalRealignmentMass) - 0.5*wallHeight);
+   _universalRealignmentMotion[1] = -fraction*((_globalRealignmentBalance[1] / _globalRealignmentMass) - initialCentreOfMassY);
    
 }
 
@@ -1074,7 +1086,7 @@ void Domain::realign(
    }
    for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
    {
-     for(unsigned d=0; d<3; d=d+2){
+     for(unsigned d=0; d<3; d++){
        tm->move(d, _universalRealignmentMotion[d]);
       // tm->move(_universalRealignmentMotion, _globalLength);
      }
