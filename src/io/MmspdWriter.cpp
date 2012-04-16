@@ -40,12 +40,12 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   
   /* writing the header of the mmspd file, i.e. writing the format marker (UTF-8),  the header line and defining the particle types */
   // format marker
-  mmspdfstream << "MMSPDu 1.0" << endl;
+  mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
   mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
 		       << particleContainer->getBoundingBoxMin(2) << " " << particleContainer->getBoundingBoxMax(0) << " " 
 		       << particleContainer->getBoundingBoxMax(1) << " " << particleContainer->getBoundingBoxMax(2) << " "
-		       << _numberOfTimesteps / _writeFrequency    << " " << domain-> getNumberOfComponents() << " " << "0" << endl;
+		       << _numberOfTimesteps / _writeFrequency    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
 		       
   // particle definitions every single line specifies a particular particle type
   for(unsigned i = 0; i < domain->getNumberOfComponents() ; i++){
@@ -67,7 +67,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
       else {
 	mmspdfstream << "**************** Error: Unspecified component!*************\n Possible reason: more than 5 components?\n"; 
       }
-      mmspdfstream<< setprecision(4) << domain->getSigma(i,0) << " x f x f x f" << endl;
+      mmspdfstream<< setprecision(4) << domain->getSigma(i,0) << " x f x f x f" << "\n";
   } // end of particle definitions		
   
   mmspdfstream.close();
@@ -81,7 +81,7 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 	ofstream mmspdfstream(_filename.c_str(), ios::out|ios::app);
 	int rank = domainDecomp->getRank();
 	if (rank == 0){
-	mmspdfstream << "> " << domain->getglobalNumMolecules() << endl;
+	mmspdfstream << "> " << domain->getglobalNumMolecules() << "\n";
 	for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next()) {
 			bool halo = false;
 			for (unsigned short d = 0; d < 3; d++) {
@@ -94,7 +94,7 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 				mmspdfstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(3)
 				            << pos->componentid() << setprecision(3) << " ";
 				for (unsigned short d = 0; d < 3; d++) mmspdfstream << setw(7) << pos->r(d) << " " ;
-				mmspdfstream << endl;
+				mmspdfstream << "\n";
 			}
 		}
 	}
