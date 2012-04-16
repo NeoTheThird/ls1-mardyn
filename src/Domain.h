@@ -363,7 +363,7 @@ public:
 	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods providing a shift of the particles in the simulation box so that 
 	// the center of mass is placed in the middle of the box with respect of the x- and z-direction ( 0- and 2-direction), i.e. the y-direction is free!
 	void determineShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
-			     double fraction, double wallHeight );
+			     double fraction);
 	// carrying out the actual shift of ALL particles
 	void realign( ParticleContainer* molCont);
 	// method defining the component that is employed for determining the shift distance in y-direction
