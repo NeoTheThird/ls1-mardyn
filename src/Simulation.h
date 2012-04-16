@@ -395,9 +395,7 @@ private:
 	unsigned long _alignmentInterval;
 	//! strength of the realignment
 	double _alignmentCorrection;
-	//! wall height needed to shift the particles so that the centre of mass 
-	//! of the wall only remains at the same posistion (i.e. the initial one) which corresponds to the wall beeing placed at the bottom of the simulation box.
-	double _wallHeightForYShift;
+	
 
 	
 public:	

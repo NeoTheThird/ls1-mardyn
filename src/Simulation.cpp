@@ -776,7 +776,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		}
 		else if(token == "ComponentForYShift"){
 		    unsigned cidMin, cidMax;
-		    inputfilestream  >> cidMin >> cidMax >> _wallHeightForYShift;
+		    inputfilestream  >> cidMin >> cidMax;
 		    cidMin--; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
 		    cidMax--;
 		    _domain->considerComponentForYShift(cidMin, cidMax);
@@ -1161,7 +1161,7 @@ void Simulation::simulate() {
 		//! realignment tools borrowed from Martin Horsch
 		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
-			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection, _wallHeightForYShift);
+			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
 			_domain->realign(_moleculeContainer);
 		}
 
