@@ -36,23 +36,6 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 			_filename = _filename + gettimestring();
 		} 
 	_filename = _filename +  ".mmspd";
-		/*
-	// generating the *.mmspd file 
-	stringstream filenamestream;
-		if (_filenameisdate) {
-			filenamestream << "mardyn" << gettimestring();
-		}
-		else {
-			filenamestream << _filename;
-		}
-
-		if (_incremental) {
-			// align file numbers with preceding '0's in the required range from 0 to _numberOfTimesteps. 
-			int num_digits = (int) ceil(log(double(_numberOfTimesteps / _writeFrequency)) / log(10.));
-			filenamestream << aligned_number(simstep / _writeFrequency, num_digits, '0');
-		}
-		filenamestream << ".mmspd";*/
-		
 	ofstream mmspdfstream(_filename.c_str(), ios::binary|ios::out);
   
   /* writing the header of the mmspd file, i.e. writing the format marker (UTF-8),  the header line and defining the particle types */
@@ -97,8 +80,8 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 	
 	ofstream mmspdfstream(_filename.c_str(), ios::out|ios::app);
 	int rank = domainDecomp->getRank();
-	if (rank == 0) mmspdfstream << "> " << domain->getglobalNumMolecules() << endl;
-	
+	if (rank == 0){
+	mmspdfstream << "> " << domain->getglobalNumMolecules() << endl;
 	for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next()) {
 			bool halo = false;
 			for (unsigned short d = 0; d < 3; d++) {
@@ -108,11 +91,13 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 				}
 			}
 			if (!halo) {
-				mmspdfstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(2)
-				            << pos->componentid() << setprecision(3);
-				for (unsigned short d = 0; d < 3; d++) mmspdfstream << setw(7) << pos->r(d);
+				mmspdfstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(3)
+				            << pos->componentid() << setprecision(3) << " ";
+				for (unsigned short d = 0; d < 3; d++) mmspdfstream << setw(7) << pos->r(d) << " " ;
+				mmspdfstream << endl;
 			}
 		}
+	}
 	
 	mmspdfstream.close();
 } // end doOutput
