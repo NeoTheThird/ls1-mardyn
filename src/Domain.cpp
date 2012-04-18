@@ -757,10 +757,11 @@ int Domain::unID(double qx, double qy, double qz){
 	          unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
 	               + yun * this->_universalNProfileUnits[2] + zun;
 	       }
-	       else if((yun >= 0) && (yun > (int)_universalNProfileUnits[1]))
+	       else 
 	       {
 	          global_log->error() << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
 	          global_log->error() << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
+		  global_log->error() << "unID = " << unID << "\n";
 	          exit(707);
 	       }
 	       return unID;
@@ -783,7 +784,9 @@ void Domain::recordProfile(ParticleContainer* molCont)
 			double distFor_unID = pow((thismol->r(0)- this->_universalCentre[0]),2.0) + pow((thismol->r(2)- this->_universalCentre[2]),2.0);
 			if(this->_universalCylindricalGeometry && distFor_unID <= this->_universalR2max){
 				unID = this->unID(thismol->r(0), thismol->r(1), thismol->r(2));
-				if(unID < 0) cerr << "ERROR: in Domain.cpp/recordProfile: unID < 0!!! Was not calculated in unID() but initialized with -1!";
+				if(unID < 0){
+				  global_log->error() << "ERROR: in Domain.cpp/recordProfile: unID < 0!!! Was not calculated in unID() but initialized with -1!\n";
+				}
 			}
 			else if(!this->_universalCylindricalGeometry){
 			xun = (unsigned)floor(thismol->r(0) * this->_universalInvProfileUnit[0]);
