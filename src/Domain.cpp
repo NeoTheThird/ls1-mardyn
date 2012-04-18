@@ -732,8 +732,9 @@ void Domain::considerComponentInProfile(int cid)
 
 // author: Stefan Becker, method to determine the integer value of unID, extra method in order to not inflating the method "recordProfile()"
 // method only matched for the case of a cylindrical profile (i.e. sessile drop)
-int Domain::unID(double qx, double qy, double qz){
-		int xun,yun,zun,unID; // (xun,yun,zun): bin number in a special direction, e.g. yun==5 corresponds to the 5th bin in the radial direction, unID: as usual
+long int Domain::unID(double qx, double qy, double qz){
+		int xun,yun,zun;// (xun,yun,zun): bin number in a special direction, e.g. yun==5 corresponds to the 5th bin in the radial direction, 
+		long int unID;	// as usual
 		double xc,yc,zc; // distance of a particle with respect to the origin of the cylindrical coordinate system
 
 		unID = -1; // initialization, causes an error message, if unID is not calculated in this method but used in record profile
@@ -762,7 +763,7 @@ int Domain::unID(double qx, double qy, double qz){
 	          global_log->error() << "Severe error!! Invalid profile unit (" << xun << " / " << yun << " / " << zun << ").\n\n";
 	          global_log->error() << "Coordinates (" << qx << " / " << qy << " / " << qz << ").\n";
 		  global_log->error() << "unID = " << unID << "\n";
-	          exit(707);
+	          //exit(707);
 	       }
 	       return unID;
 }
@@ -771,7 +772,7 @@ void Domain::recordProfile(ParticleContainer* molCont)
 {
 	int cid;
 	unsigned xun, yun, zun;
-	int unID;
+	long int unID;
 	double mv2, Iw2;
 	for(Molecule* thismol = molCont->begin(); thismol != molCont->end(); thismol = molCont->next())
 	{

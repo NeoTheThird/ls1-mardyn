@@ -353,7 +353,7 @@ public:
 	// prerequisite for the cylindrical coordinate system: R2max, centre, InvProfileUnit[3] => counterpart of setupProfile(), beyond that recordProfile() is extended
 	void sesDrop();
 	// number of the current bin a particle is located in. Actual parameters: global cartesian coordinates of the particle with respect to the simulation box coordinate system
-	int unID(double qx, double qy, double qz);
+	long int unID(double qx, double qy, double qz);
 	// returning the parameter that controls wheter or not a cylindrical profile is created. method called by Simulation::output()
 	bool isCylindrical();
 	// writing out a 3-dimensional density profile in cylindrical coordinates, counterpart of outputProfile.
