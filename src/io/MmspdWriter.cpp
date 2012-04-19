@@ -10,6 +10,10 @@
 #include <sstream>
 #include <iomanip>
 
+#ifdef ENABLE_MPI
+#include <mpi.h>
+#include <mpi.h>
+#endif
 
 using namespace std;
 
@@ -77,12 +81,14 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 		   DomainDecompBase* domainDecomp, Domain* domain,
 		   unsigned long simstep, std::list<ChemicalPotential>* lmu){
   
-	
-	ofstream mmspdfstream(_filename.c_str(), ios::out|ios::app);
+#ifdef ENABLE_MPI
 	int rank = domainDecomp->getRank();
+	int tag = 4711;
 	if (rank == 0){
-	mmspdfstream << "> " << domain->getglobalNumMolecules() << "\n";
-	for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next()) {
+#endif
+		ofstream mmspdfstream(_filename.c_str(), ios::out|ios::app);
+		mmspdfstream << "> " << domain->getglobalNumMolecules() << "\n";
+		for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next()) {
 			bool halo = false;
 			for (unsigned short d = 0; d < 3; d++) {
 				if ((pos->r(d) < particleContainer->getBoundingBoxMin(d)) || (pos->r(d) > particleContainer->getBoundingBoxMax(d))) {
@@ -92,14 +98,50 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 			}
 			if (!halo) {
 				mmspdfstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(3)
-				            << pos->componentid() << setprecision(3) << " ";
+					<< pos->componentid() << setprecision(3) << " ";
 				for (unsigned short d = 0; d < 3; d++) mmspdfstream << setw(7) << pos->r(d) << " " ;
 				mmspdfstream << "\n";
 			}
 		}
+#ifdef ENABLE_MPI
+		for(int fromrank = 1; fromrank < domainDecomp->getNumProcs(); fromrank++) {
+			MPI_Status status_probe;
+			MPI_Status status_recv;
+			MPI_Probe(fromrank, tag, MPI_COMM_WORLD, &status_probe);
+			int numchars;
+			MPI_Get_count(&status_probe, MPI_CHAR, &numchars);
+			char *recvbuff = new char[numchars];
+			MPI_Recv(recvbuff, numchars, MPI_CHAR, fromrank, tag, MPI_COMM_WORLD, &status_recv);
+			mmspdfstream << string(recvbuff);
+			delete recvbuff;
+		}
+#endif
+		mmspdfstream.close();
+#ifdef ENABLE_MPI
 	}
-	
-	mmspdfstream.close();
+	else {
+		stringstream mmspdfstream;
+		for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next()) {
+			bool halo = false;
+			for (unsigned short d = 0; d < 3; d++) {
+				if ((pos->r(d) < particleContainer->getBoundingBoxMin(d)) || (pos->r(d) > particleContainer->getBoundingBoxMax(d))) {
+					halo = true;
+					break;
+				}
+			}
+			if (!halo) {
+				mmspdfstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(3)
+					<< pos->componentid() << setprecision(3) << " ";
+				for (unsigned short d = 0; d < 3; d++) mmspdfstream << setw(7) << pos->r(d) << " " ;
+				mmspdfstream << "\n";
+			}
+		}
+		
+		string sendbuff;
+		sendbuff = mmspdfstream.str();
+		MPI_Send((char*)sendbuff.c_str(), sendbuff.length() + 1, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
+	}
+#endif
 } // end doOutput
 
 void MmspdWriter::finishOutput(ParticleContainer* particleContainer,
