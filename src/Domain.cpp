@@ -1015,8 +1015,10 @@ void Domain::resetProfile()
 
 /*
  *By Stefan Becker: 
- *realign tool, borrowed from Martin Horsch: it effects that the center of mass of all the particles (in the (x,z)-plane) corresponds with the box center (in the (x,z)plane)
- *Basically the current centre of mass of all the particles is determined and then all the particles are moved towards x==0 and z==0
+ *realign tool, borrowed from Martin Horsch: it effects that the center of mass of all the particles (with respect to the (x,z)-plane)
+ *corresponds with the box center (in the (x,z)plane). With respect to the y-direction, the shift is carried out so 
+ *that the wall remains at the initial position.
+ *Basically the current centre of mass of all the particles is determined and then all the particles are moved towards x==0.5*Lx and z==0*Lz
  *The method is frequently applied when the specified span of time (i.e. timesteps) is reached. 
  *Part of this tool in Domain.cpp: (i) determineShift() => determines the vector by which the particles are shifted
  *                                 (ii) realign() => carries out the actual realignment / shift

@@ -1078,12 +1078,19 @@ void Simulation::simulate() {
 			this->_particlePairsHandler->setRDF(_rdf);
 			this->_rdf->accumulateNumberOfMolecules(_domain->getComponents());
 		}
+		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
+		 *realignment tools borrowed from Martin Horsch, for the determination of the centre of mass 
+		 *the halo MUST NOT be present*/
+		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
+		{
+			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
 		global_log->debug() << "Updating container and decomposition" << endl;
 		loopTimer.stop();
 		decompositionTimer.start();
-		updateParticleContainerAndDecomposition();
+		updateParticleContainerAndDecomposition(); // includes the creation of the halo
 		decompositionTimer.stop();
 		loopTimer.start();
 
@@ -1116,6 +1123,14 @@ void Simulation::simulate() {
 
 				j++;
 			}
+		}
+		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
+		  * realignment tools borrowed from Martin Horsch
+		  * For the actual shift the halo MUST be present!
+		  */
+		if(_doAlignCentre && !(_simstep % _alignmentInterval))
+		{
+			_domain->realign(_moleculeContainer);
 		}
 
 		// clear halo
@@ -1156,15 +1171,6 @@ void Simulation::simulate() {
 			global_log->debug() << "alert z-oscillators" << endl;
 			_integrator->zOscillation(_zoscillator, _moleculeContainer);
 		}
-		
-		// by Stefan Becker <stefan.becker@mv.uni-kl.de> 
-		//! realignment tools borrowed from Martin Horsch
-		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
-		{
-			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
-			_domain->realign(_moleculeContainer);
-		}
-
 		// Inform the integrator about the calculated forces
 		global_log->debug() << "Inform the integrator" << endl;
 		_integrator->eventForcesCalculated(_moleculeContainer, _domain);
