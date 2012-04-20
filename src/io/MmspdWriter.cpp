@@ -33,8 +33,6 @@ MmspdWriter::~MmspdWriter(){}
 
 void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 			   DomainDecompBase* domainDecomp, Domain* domain){
-	
-  
 	if (_filenameisdate) {
 			_filename = _filename + "mardyn";
 			_filename = _filename + gettimestring();
@@ -80,7 +78,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 		   DomainDecompBase* domainDecomp, Domain* domain,
 		   unsigned long simstep, std::list<ChemicalPotential>* lmu){
-  
+	if (simstep % _writeFrequency == 0) {
 #ifdef ENABLE_MPI
 	int rank = domainDecomp->getRank();
 	int tag = 4711;
@@ -142,6 +140,7 @@ void MmspdWriter::doOutput( ParticleContainer* particleContainer,
 		MPI_Send((char*)sendbuff.c_str(), sendbuff.length() + 1, MPI_CHAR, 0, tag, MPI_COMM_WORLD);
 	}
 #endif
+  }
 } // end doOutput
 
 void MmspdWriter::finishOutput(ParticleContainer* particleContainer,
