@@ -358,6 +358,8 @@ public:
 	bool isCylindrical();
 	// writing out a 3-dimensional density profile in cylindrical coordinates, counterpart of outputProfile.
 	void outputCylProfile(const char* prefix);
+	// setting the offset in y-direction (obtained from the config file), needed in the density profile output file 
+	void sYOffset(double in_yOff);
 	// end
 	
 	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods providing a shift of the particles in the simulation box so that 
@@ -501,6 +503,8 @@ private:
 	double _universalCentre[3];
 	//! outermost radial distance up to which the binning is applied
 	double _universalR2max;
+	//! offset in y-direction => to be written out along with the density profile
+	double _yOff;
 	// end
 	
 	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>  => concerning the realignment tool: realignment to the centre of mass

@@ -731,6 +731,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> xun >> yun >> zun;
 			_domain->setupProfile(xun, yun, zun);
 			_doRecordProfile = true;
+		} else if (token == "yOffset") {
+			double yOffset;
+			inputfilestream >> yOffset;
+			_domain->sYOffset(yOffset);
 		} else if (token == "profileRecordingTimesteps") {
 			inputfilestream >> _profileRecordingTimesteps;
 		} else if (token == "profileOutputTimesteps") {
