@@ -8,6 +8,7 @@ Documentation available:
 | "Mardyn Input Files" |  Description of the Mardyn input file
 | "Unit Tests"           |  Description on how to build, execute and write unit tests
 | <a href="../doc/styleguide.pdf">Style Guide</a> | The Mardyn Styleguide
+|"Visualizatioin with Megamol"| Describes how to produce .mmspd data and how to visualize it with MegaMol TM
 | "Visualisation with Paraview" | Describes how to produce vtk data and how to visualize it with paraview
 | "Scenario Generator" | Describes how to build and run the graphical scenario generator
 | "TODOs and Open Issues" | Collection open issues concerning code design or functionality
