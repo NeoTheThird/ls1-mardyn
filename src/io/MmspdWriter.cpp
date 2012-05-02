@@ -69,7 +69,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
       else {
 	mmspdfstream << "**************** Error: Unspecified component!*************\n Possible reason: more than 5 components?\n"; 
       }
-      mmspdfstream<< setprecision(4) << domain->getSigma(i,0) << " x f x f x f" << "\n";
+      mmspdfstream<< setprecision(4) << domain->getSigma(i,0) << " x f y f z f" << "\n";
   } // end of particle definitions		
   
   mmspdfstream.close();
