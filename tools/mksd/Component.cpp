@@ -35,7 +35,7 @@ extern const string WALL_MAT_AKA_FIT = "MatAkaFit";
 const double EPS_CU = 4.36704e-02;  // a hundred times the fluid epsilon (in this case of argon)
 //const double SIGMA_CU =7.03753 ;//4.37472;
 const double CU_MASS = 0.063546;
-extern const double LATTICE_CONST_CU = 10.174;  // zero temperature lattice constant of of the LJ solid
+extern const double LATTICE_CONST_CU = 10.1922;  // zero temperature lattice constant of of the LJ solid
 
 /*
 Component::Component(string in_substance, double refNRG, double refLgth, double refM)
