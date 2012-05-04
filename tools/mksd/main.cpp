@@ -320,11 +320,12 @@ if(stripes == true)
 */
 
 //@todo: input in Lennard-Jones units
+/*
 if(LJunits == true)
 {
 	cout<<"Input in Lennard-Jones units not enabled yet. Atomic units to be used instead. \n\n" << usage;
 	return 13;
-}
+}*/
 
 
 // setting the default values
@@ -343,19 +344,8 @@ if(!in_wallModel) wall = WALL_CU_LJ;
 
 
 
-// @brief: reference values, used to perform a unit conversion from LJ-units to atomic units
-double refTime, refMass, refLength, refEnergy;
-// if atomic units are used for the input (default) the reference values are 1.0 (no conversion in atomic units needed)
-// in case of an input in LJ units, the reference values are the ones in atomic units
-refMass = 1.0;
-refLength = 1.0;
-refEnergy = 1.0;
-/*if(LJunits){
-	refMass = fluidMass;
-	refLength = sigFluid;
-	refEnergy = epsFluid;
-}*/
-refTime = refLength * sqrt(refMass / refEnergy);
+
+
 
 //@brief: defining the cutoff radii of the different interactions/models
 double  chargeCutoffRadius;
@@ -365,12 +355,13 @@ chargeCutoffRadius = 30;
 
 prefixStr = prefix;
 //cout << "prefixStr: " << prefixStr<< "\n";
-PhaseSpaceWriter PSW(prefixStr, temp, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, stripes, numberOfStripes, LJShifted);
+PhaseSpaceWriter PSW(prefixStr, temp, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, stripes, numberOfStripes, LJShifted, LJunits);
 PSW.write();
-
 //@todo: the call of Configwriter is not done in a wrong way: the wall LJ cut off radius does not exist!!! the fluid r_c is used instead!
 // the same holds for the overall cutoff radius!!!
-Component fluidComp(fluid);
+Component fluidComp(fluid, LJunits);
+double refTime;
+refTime = fluidComp.gRefTime(LJunits);
 double boxLengthY = PSW.gBoxLengthY();
 if(!in_numProfileUnits){
 	profilePhi = DEFAULT_PROFILE_PHI;

@@ -35,7 +35,8 @@ extern const string WALL_MAT_AKA_FIT = "MatAkaFit";
 const double EPS_CU = 4.36704e-02;  // a hundred times the fluid epsilon (in this case of argon)
 //const double SIGMA_CU =7.03753 ;//4.37472;
 const double CU_MASS = 0.063546;
-extern const double LATTICE_CONST_CU = 10.1922;  // zero temperature lattice constant of of the LJ solid
+double LATTICE_CONST_WALL_LJTS = 10.1922; // zero temperature lattice constant of of the LJ solid
+//extern const double LATTICE_CONST_WALLLJTS  = 10.1922;  // zero temperature lattice constant of of the LJ solid
 
 /*
 Component::Component(string in_substance, double refNRG, double refLgth, double refM)
@@ -53,11 +54,21 @@ Component::Component(string in_substance, double refNRG, double refLgth, double 
 		}
 }
 */
-Component::Component(string in_substance){
+Component::Component(string in_substance, bool in_LJunits){
 	_substance = in_substance;
-	//_refEnergy = 1.0;
-	//_refLength = 1.0;
-	//_refMass = 1.0;
+	if (in_LJunits){
+	_refEnergy = EPS_AR;
+	_refLength = SIGMA_AR;
+	_refMass = AR_MASS;
+	LATTICE_CONST_WALL_LJTS = 10.1922/SIGMA_AR;
+	}
+	else{	// i.e. atomic units
+		_refEnergy = 1.0;
+		_refLength = 1.0;
+		_refMass = 1.0;
+		LATTICE_CONST_WALL_LJTS = 10.1922;
+	}
+	//_refTime = _refLength*sqrt(_refMass/_refEnergy);
 
 	if( _substance == FLUID_AR || _substance == FLUID_CH4 || _substance == WALL_CU_LJ){
 		init1CLJ(_substance);
@@ -151,32 +162,33 @@ double Component::gSigmaMin()
 			temp = _vecLJSigma[i];
 		}
 	}
-	return temp;
+	return temp/_refLength;
 }
 
 double Component::gSigma(unsigned i){
-	return _vecLJSigma.at(i);
+	return _vecLJSigma.at(i)/_refLength;
 }
 
 double Component::gEps(unsigned i){
-	return _vecLJEps.at(i);
+	return _vecLJEps.at(i)/_refEnergy;
 }
 
 double Component::gMass(unsigned i){
-	return _vecLJMass.at(i);
+	return _vecLJMass.at(i)/_refMass;
 }
 
 double Component::gRCutLJ(){
-	return _TSLJCutOff;
+	return _TSLJCutOff/_refLength;
 }
 
 double Component::calculateLiquidDensity(double T){
 	double rhoLiq;
+	cout << "Calculating rhoLiq in Component. gSigma(0) = " << gSigma(0) << "\n";
 	if(_substance == FLUID_AR || _substance == FLUID_CH4){
 		// @brief: calculation of the bulk densities in the liquid and vapor phase of a 1CLJ fluid, respectively;
 		// 		   according to Kedia et al. in:  Molecular Physics, vol. 104, Issue 9, p.1509-1527
-		rhoLiq =(RHO_CRITICAL_1CLJ + 0.5649* pow(T_CRITICAL_1CLJ - T, 1/3)
-				+ 0.1314 * (T_CRITICAL_1CLJ - T) + 0.0413 * pow(T_CRITICAL_1CLJ - T, 3/2) )
+		rhoLiq =(RHO_CRITICAL_1CLJ + 0.5649* pow(T_CRITICAL_1CLJ - T, (1.0/3.0))
+				+ 0.1314 * (T_CRITICAL_1CLJ - T) + 0.0413 * pow(T_CRITICAL_1CLJ - T, 1.5) )
 				/ (gSigma(0)*gSigma(0)*gSigma(0));
 	}
 	else{
@@ -191,13 +203,27 @@ double Component::calculateVaporDensity(double T){
 	if(_substance == FLUID_AR || _substance == FLUID_CH4){
 		// @brief: calculation of the bulk densities in the liquid and vapor phase of a 1CLJ fluid, respectively;
 		// 		   according to Kedia et al. in:  Molecular Physics, vol. 104, Issue 9, p.1509-1527
-		rhoVap = ( RHO_CRITICAL_1CLJ - 0.5649* pow(T_CRITICAL_1CLJ - T, 1/3)
-				 + 0.2128 * (T_CRITICAL_1CLJ - T) + 0.0702 * pow(T_CRITICAL_1CLJ - T, 3/2) )
+		rhoVap = ( RHO_CRITICAL_1CLJ - 0.5649* pow(T_CRITICAL_1CLJ - T, 1.0/3.0)
+				  + 0.2128 * (T_CRITICAL_1CLJ - T) + 0.0702 * pow(T_CRITICAL_1CLJ - T, 1.5) )
 				 / (gSigma(0)*gSigma(0)*gSigma(0));
 	}
 	else{
 			cerr << "Error in Component class: Claculation of the liquid density. Liquid density of the 1C LJ model not calculated!";
 			exit(-202);
 		}
+	cout << "Calculating rhoVap in Component. gSigma(0) = " << (gSigma(0)*gSigma(0)*gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
+	cout << "Calculating rhoVap in Component. rhoVap = " << rhoVap << "\n";
 	return rhoVap;
+}
+
+
+double Component::gRefTime(bool in_LJunits){
+	double refTime;
+	if(in_LJunits){
+		refTime = _refLength *sqrt(_refMass/_refEnergy);
+	}
+	else{
+		refTime = 1.0;
+	}
+	return refTime;
 }

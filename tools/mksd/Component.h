@@ -47,6 +47,12 @@ private:
 	double _iyy;
 	double _izz;
 
+	// reference quantities
+	double _refLength;
+	double _refEnergy;
+	double _refMass;
+	//double _refTime;
+
 
 public:
 	// the constructor and destructor, respectively
@@ -55,7 +61,7 @@ public:
 	// second Constructor, in case reference quantities different from atomic units are allowed
 //	Component(string in_substance, double refNRG, double refLgth, double refM);
 	// another constructor, called if the reference quantities are atomic units
-	Component(string in_substance);
+	Component(string in_substance, bool in_LJunits);
 	~Component();
 
 	// the methods
@@ -76,6 +82,7 @@ public:
 
 	// for use in unit reduction by LJ units => the reference length corresponds to the smallest sigma
 	double gSigmaMin();
+	double gRefTime(bool in_LJunits);
 
 	// (ii) the set methods
 	/*void sNumberLJCenters(unsigned nCLJ);

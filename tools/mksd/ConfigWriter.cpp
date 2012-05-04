@@ -13,7 +13,8 @@ const double DT = 0.030620;
 
 extern const string WALL_TERSOFF;
 extern const string WALL_CU_LJ;
-extern const double  LATTICE_CONST_CU;
+extern double LATTICE_CONST_WALL_LJTS;
+//extern const double  LATTICE_CONST_CU;
 
 
 // @brief: implementing the constructor and destructor, respectively
@@ -107,7 +108,7 @@ void ConfigWriter::write(){
 	  wOutputMmspdWriter();
 	}
 	wProfile();
-	confStrm << "yOffset\t" << 0.5*wallLays *LATTICE_CONST_CU + sigFluid << "\n";
+	confStrm << "yOffset\t" << 0.5*wallLays *LATTICE_CONST_WALL_LJTS + sigFluid << "\n";
 	wProfileRecordingTimesteps();
 	wProfileOutputTimesteps();
 	confStrm <<"profiledComponent\t1\n";

@@ -12,7 +12,8 @@
 
 const unsigned PRECISION = 5; // the number of times the loops are run determining the fill array _fill[i][j][k][l]
 
-extern const double LATTICE_CONST_CU;
+extern double LATTICE_CONST_WALL_LJTS;
+//extern const double LATTICE_CONST_CU;
 
 //@brief: zero temperature lattice constant of the LJ model used for copper, needed to build up the wall
 //@todo: more robust way necessary: example of a problem: if sigma of the LJ wall is changed => Lattice Constant will change, too!
@@ -29,6 +30,7 @@ GlobalStartGeometry::GlobalStartGeometry(unsigned in_nFluid, double in_rhoLiq, d
 	_gamma = in_gamma;
 	_nLiq = _nFluid / (1+ (_alpha*_beta*_gamma-1.0) *_rhoVap/_rhoLiq );
 	_nVap = _nFluid - _nLiq;
+	cout << "rhoVap = "<< _rhoVap << "\t rhoLiq = " << _rhoLiq << "\n";
 	cout << "N liquid: " << _nLiq << "\n";
 	cout << "N vapor: " << _nVap << "\n";
 }
@@ -47,13 +49,13 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 
 	// @brief: 2nd step: determining the simulation box, offset and fluid cuboid dimensions
 	aApprox = pow(_nLiq/_rhoLiq, 1.0/3.0);
-	nEkX = round(_alpha*aApprox / LATTICE_CONST_CU); 	// the number of lattices in the x-direction (Ek == elementary cristal)
-	nEkZ = ceil(_gamma*aApprox /  LATTICE_CONST_CU);	// the number of lattices in the z-direction (Ek == elementary cristal)
+	nEkX = round(_alpha*aApprox / LATTICE_CONST_WALL_LJTS); 	// the number of lattices in the x-direction (Ek == elementary cristal)
+	nEkZ = ceil(_gamma*aApprox /  LATTICE_CONST_WALL_LJTS);	// the number of lattices in the z-direction (Ek == elementary cristal)
 	//cout << "nEKx = "<< nEkX << " \t nEkz = "<< nEkZ << "\n";
 
 
-	_box[0] = nEkX * LATTICE_CONST_CU;
-	_box[2] = nEkZ * LATTICE_CONST_CU;
+	_box[0] = nEkX * LATTICE_CONST_WALL_LJTS;
+	_box[2] = nEkZ * LATTICE_CONST_WALL_LJTS;
 
 	effLiq[0] = _box[0] / _alpha;
 	effLiq[2] = _box[2] / _gamma;
