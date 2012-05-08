@@ -88,7 +88,7 @@ void PhaseSpaceWriter::write()
 		cerr << "error in PhaseSpaceWriter.write(): no lattice const available for this wall model.";
 		exit(102);
 	}
-	hWall = 0.5*latticeConst * _wallLayers;
+	hWall = latticeConst * (_wallLayers-0.5);
 	double shielding = fluidComp.gSigma(0);
 	geometry.calculateBoxFluidOffset(hWall, shielding);
 
@@ -259,55 +259,3 @@ void PhaseSpaceWriter::write()
 double PhaseSpaceWriter::gBoxLengthY(){
 	return _boxLengthY;
 }
-/*
-void PhaseSpaceWriter::writeBody()
-{
-	unsigned cid = 1;	// component ID
-	unsigned id = 1;	// molecule ID
-
-	// fluid phase slots are filled
-	unsigned ii[4];		// four different counters used in the for loops following
-	double positionVec[3];
-	GlobalStartGeometry geometry
-
-	for(ii[0] = 0; ii[0] < geometry.gFluidUnits(0); ii[0]++){
-		for(ii[1] = 0; ii[1] < geometry.gFluidUnits(1); ii[1]++){
-			for(ii[2] = 0; ii[2] < geometry.gFluidUnits(2); ii[2]++){
-				for(unsigned ii[3] = 0; ii[3] < 3; ii[3]++){			// thre slots per elementary fluid box
-					if(_fill[ii[0]][ii[1]][ii[2]][ii[3]]){
-						for(unsigned j = 0; j < 3; j++){
-							positionVec[j] = geometry.gOffset[j] + geometry.gFluidUnit(j)*
-																	(ii[k] + 0.02*rdm.randNum() + (j==ii[3])? 0.24 : 0.74);
-						}	// end for(j...)
-						for(unsigned j = 0; j < 3; j++){ // in case the molecule is placed outside the simulation box it is shifted
-							if(_goemtry.gBoxLnegthX() < positionVec[j]) positionVec[k] -= geometry.gBoxLength(j);
-							else if(positionVec[j] < 0) positionVec[j] += geometry.gBoxLength(j);
-						}// end for
-						double absVelocity = sqrt(3.0*_Temperature/fluidComponent.gMass(1));
-						double phi = 2.0*PI*rdm.randNum();
-						double omega = 2.0*PI*rdm.randNum();
-						double velocity[3];
-						psstrm << id << " " << cid <<"\t" << positionVec[0] << " " << positionVec[1] << positionVec[2]
-						        << "\t" << absVelocity * cos(phi)*cos(omega) << " " << absVelocity *cos(phi)*sin(omega)<< " " << absVelocity *sin(phi)
-								<<"\t 1.0 0.0 0.0 0.0\t0 0 0\n";
-						id++;
-					}	// end if(_fill)
-					else psstrm << "\n";
-				}	// end for ii[4]
-			}	// end for ii[2]
-		} 	// end for ii[1]
-	}	// end for ii[0]
-	cid ++;
-	psstrm << "###################################################################\n\n";
-
-	// wall molecules are filled
-	_wallMolecules.calculateVelocities();
-	unsigned numberOfWallMolecules = _wallMolecules.gNumberOfMolecules();
-	for (unsigned i = 0; i < numberOfWallMolecules; i++){
-		psstrm << id <<" "<< cid <<"\t"<< _wallMolecules.gXPos(i) <<" "<< _wallMolecules.gYPos(i) <<" "<< _wallMolecules.gZPos(i) <<
-				"\t"<< _wallMolecules.gXVelocity(i) <<" "<< _wallMolecules.gYVelocity(i) <<" "<< _wallMolecules.gZVelocity(i)
-				<<"\t1.0 0.0 0.0 0.0 0 0 0\n";
-	id++;
-	} // end for(i...)
-}	// end method
-*/
