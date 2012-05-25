@@ -80,7 +80,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "effFluid[2]: " << effFluid[2]<< "\n";
 */
 	_off[0] = 0.5*(_box[0] - effFluid[0]);
-	_off[1] = hWall + shielding;
+	_off[1] = hWall + shielding + 2*LATTICE_CONST_WALL_LJTS;
 	_off[2] = 0.5*(_box[2]-effFluid[2]);
 
 	// @brief: 3rd step: setting up a cuboid containing all the fluid particles at liquid phase density
