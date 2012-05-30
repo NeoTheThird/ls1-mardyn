@@ -1045,9 +1045,11 @@ void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* 
          localBalance[d] += tm->r(d) * tmass;
       }
       // for shift in y-direction: only wall component considered so that the wall is always placed at the bottom of the simulation box
+      /* acounts explicitely for peridoic boundary conditions, which means, a wall particle at the top of the simulation box 
+	 is treated as a part of the wall placed at the bottom of the box; otherwise the wall's centre of mass is calculated erroneously*/
       cid = tm->componentid();
       if(_componentForYShift[cid]){ 
-	  localBalance[1] += tm->r(1)*tmass;
+	  localBalance[1] += (tm->r(1) - _globalLength[1]*floor(2.0* tm->r(1)/ _globalLength[1]))*tmass;
       }
    }
    for(unsigned d = 0; d < 3; d++) _globalRealignmentBalance[d] = localBalance[d];
