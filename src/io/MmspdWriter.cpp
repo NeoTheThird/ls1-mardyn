@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <iostream>
 
 #ifdef ENABLE_MPI
 #include <mpi.h>
@@ -39,15 +40,29 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 		} 
 	_filename = _filename +  ".mmspd";
 	ofstream mmspdfstream(_filename.c_str(), ios::binary|ios::out);
+	cout << "Ofstream zum 1. mal erzeugt.\n";
   
-  /* writing the header of the mmspd file, i.e. writing the format marker (UTF-8),  the header line and defining the particle types */
+  /* writing the header of the mmspd file, i.e. writing the BOM, the format marker (UTF-8),  the header line and defining the particle types */
+  // BOM
+  short int bom1,bom2,bom3;
+  bom1 = 0xef;
+  bom2 = 0xbb;
+  bom3 = 0xbf;
+  
+  mmspdfstream.write(reinterpret_cast<const char*>(& bom1), 1);
+  mmspdfstream.write(reinterpret_cast<const char*>(& bom2), 1);
+  mmspdfstream.write(reinterpret_cast<const char*>(& bom3), 1);
+  mmspdfstream.close();
+  cout << "BOM geschrieben und stream geschlossen\n";
   // format marker
+  mmspdfstream.open(_filename.c_str(), ios::out|ios::app);
+  " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
   mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
   mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
 		       << particleContainer->getBoundingBoxMin(2) << " " << particleContainer->getBoundingBoxMax(0) << " " 
 		       << particleContainer->getBoundingBoxMax(1) << " " << particleContainer->getBoundingBoxMax(2) << " "
-		       << _numberOfTimesteps / _writeFrequency    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
+		       << _numberOfTimesteps / _writeFrequency+1    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
 		       
   // particle definitions every single line specifies a particular particle type
   for(unsigned i = 0; i < domain->getNumberOfComponents() ; i++){
