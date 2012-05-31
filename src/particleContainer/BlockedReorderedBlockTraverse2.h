@@ -26,15 +26,11 @@ class ParticleContainer;
 class ParticlePairsHandler;
 class BlockedCell;
 
-//! @brief BlockTraverse datastructure
-//! @author Johannes Weißl
-//!
-//! This datastructure is there to prevent code duplication in LinkedCells and AdaptiveSubCells classes.
-//! The traversePairs() method in these classes are very similar, except for
-//! - naming (cells <-> subCells), etc.
-//! - offsets (NeighbourOffsets equal for every cell <-> different for every cell)
-//! This class contains a generic traversePairs() method and all needed member variables. There are two
-//! constructors to deal with the different datastructures for the offsets in LinkedCells and AdaptiveSubCells.
+/**
+ * If VECTORIZE is defined, not only the distance calculation between molecule
+ * pairs is vectorized, but the comparison to the cutoff radius is performed
+ * in SSE, the result is cast to int.
+ */
 class BlockedReorderedBlockTraverse2 {
 public:
 	//! @brief initialize BlockTraverse structure
