@@ -56,7 +56,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   cout << "BOM geschrieben und stream geschlossen\n";
   // format marker
   mmspdfstream.open(_filename.c_str(), ios::out|ios::app);
-  " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
+  cout << " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
   mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
   mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
