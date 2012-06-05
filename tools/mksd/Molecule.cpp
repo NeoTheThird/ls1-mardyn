@@ -58,12 +58,12 @@ double Molecule::gNumberOfMolecules(){
 }
 
 
-// used there's a single set of fluid wall interaction parameters, in contrast to the stripes shaped wall, e.g.
+// used if there's a single set of fluid wall interaction parameters, in contrast to the stripes shaped wall, e.g.
 void Molecule::calculateCoordinatesOfWallMolecule(double xLength, double zLength, double off1,
 												  double latticeConstant, double shielding){
 	xLength = xLength;
 	zLength = zLength;
-	double yLength = off1 - shielding - 2*latticeConstant;
+	double yLength = off1 - shielding;
 	double pos[3][3]; 	// 3 vectors which are added to the current position in order to set three new particles
 	for(unsigned i = 0; i<3; i++){    // !!!this initialisation of the 3 vectors is valid only for equilateral lattices!!! => see sketch!
 		for(unsigned j= 0; j<3; j++){
@@ -109,7 +109,7 @@ void Molecule::calculateCoordinatesOfWallMolecule(double xLength, double zLength
 												  double latticeConstant, double shielding, unsigned numberOfStripes){
 	xLength = xLength;
 	zLength = zLength;
-	double yLength = off1 - shielding - 2.0*latticeConstant;
+	double yLength = off1 - shielding;
 	double pos[3][3]; 	// 3 vectors which are added to the current position in order to set three new particles
 	for(unsigned i = 0; i<3; i++){    // !!!this initialisation of the 3 vectors is valid only for equilateral lattices!!! => see sketch!
 		for(unsigned j= 0; j<3; j++){

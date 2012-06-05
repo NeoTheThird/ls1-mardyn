@@ -18,7 +18,7 @@ extern double LATTICE_CONST_WALL_LJTS;
 //@brief: zero temperature lattice constant of the LJ model used for copper, needed to build up the wall
 //@todo: more robust way necessary: example of a problem: if sigma of the LJ wall is changed => Lattice Constant will change, too!
 //@todo: CU_LC to be shifted to the class PhaseSpaceWriter
-const double CU_LC = 6.83325;
+//const double CU_LC = 6.83325;
 
 GlobalStartGeometry::GlobalStartGeometry(unsigned in_nFluid, double in_rhoLiq, double in_rhoVap, double in_alpha, double in_beta, double in_gamma)
 {
@@ -30,6 +30,7 @@ GlobalStartGeometry::GlobalStartGeometry(unsigned in_nFluid, double in_rhoLiq, d
 	_gamma = in_gamma;
 	_nLiq = _nFluid / (1+ (_alpha*_beta*_gamma-1.0) *_rhoVap/_rhoLiq );
 	_nVap = _nFluid - _nLiq;
+	cout << "\n**********************************\n";
 	cout << "rhoVap = "<< _rhoVap << "\t rhoLiq = " << _rhoLiq << "\n";
 	cout << "N liquid: " << _nLiq << "\n";
 	cout << "N vapor: " << _nVap << "\n";
@@ -80,7 +81,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "effFluid[2]: " << effFluid[2]<< "\n";
 */
 	_off[0] = 0.5*(_box[0] - effFluid[0]);
-	_off[1] = hWall + shielding + 2*LATTICE_CONST_WALL_LJTS;
+	_off[1] = hWall + shielding;
 	_off[2] = 0.5*(_box[2]-effFluid[2]);
 
 	// @brief: 3rd step: setting up a cuboid containing all the fluid particles at liquid phase density
