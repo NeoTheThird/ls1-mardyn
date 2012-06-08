@@ -9,7 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <iostream>
+//#include <iostream>
 
 #ifdef ENABLE_MPI
 #include <mpi.h>
@@ -40,7 +40,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 		} 
 	_filename = _filename +  ".mmspd";
 	ofstream mmspdfstream(_filename.c_str(), ios::binary|ios::out);
-	cout << "Ofstream zum 1. mal erzeugt.\n";
+  //	  cout << "Ofstream zum 1. mal erzeugt.\n";
   
   /* writing the header of the mmspd file, i.e. writing the BOM, the format marker (UTF-8),  the header line and defining the particle types */
   // BOM
@@ -52,11 +52,11 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   mmspdfstream.write(reinterpret_cast<const char*>(& bom1), 1);
   mmspdfstream.write(reinterpret_cast<const char*>(& bom2), 1);
   mmspdfstream.write(reinterpret_cast<const char*>(& bom3), 1);
-  mmspdfstream.close();
-  cout << "BOM geschrieben und stream geschlossen\n";
+  //mmspdfstream.close();
+  //cout << "BOM geschrieben und stream geschlossen\n";
   // format marker
-  mmspdfstream.open(_filename.c_str(), ios::out|ios::app);
-  cout << " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
+  //mmspdfstream.open(_filename.c_str(), ios::out|ios::app);
+  //cout << " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
   mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
   mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
