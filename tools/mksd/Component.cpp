@@ -60,13 +60,13 @@ Component::Component(string in_substance, bool in_LJunits){
 	_refEnergy = EPS_AR;
 	_refLength = SIGMA_AR;
 	_refMass = AR_MASS;
-	LATTICE_CONST_WALL_LJTS = 9.920468/SIGMA_AR;;//10.1922/SIGMA_AR;
+	LATTICE_CONST_WALL_LJTS = 9.92234/SIGMA_AR;;
 	}
 	else{	// i.e. atomic units
 		_refEnergy = 1.0;
 		_refLength = 1.0;
 		_refMass = 1.0;
-		LATTICE_CONST_WALL_LJTS = 9.920468;//10.1922;
+		LATTICE_CONST_WALL_LJTS = 9.92234;
 	}
 	//_refTime = _refLength*sqrt(_refMass/_refEnergy);
 
