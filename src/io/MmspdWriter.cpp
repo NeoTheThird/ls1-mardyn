@@ -60,10 +60,15 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   // format marker
   mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
-  mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
+  mmspdfstream << "1 " << "0 0 0 " << domain->getGlobalLength(0) <<" "<< domain->getGlobalLength(1)<< " " << domain->getGlobalLength(2) << " "
+		       << _numberOfTimesteps / _writeFrequency+1    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
+		       
+  
+  
+  /*mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
 		       << particleContainer->getBoundingBoxMin(2) << " " << particleContainer->getBoundingBoxMax(0) << " " 
 		       << particleContainer->getBoundingBoxMax(1) << " " << particleContainer->getBoundingBoxMax(2) << " "
-		       << _numberOfTimesteps / _writeFrequency+1    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
+		       << _numberOfTimesteps / _writeFrequency+1    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";*/
 		       
   // particle definitions every single line specifies a particular particle type
   for(unsigned i = 0; i < domain->getNumberOfComponents() ; i++){
