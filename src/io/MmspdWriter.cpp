@@ -34,13 +34,17 @@ MmspdWriter::~MmspdWriter(){}
 
 void MmspdWriter::initOutput(ParticleContainer* particleContainer,
 			   DomainDecompBase* domainDecomp, Domain* domain){
+#ifdef ENABLE_MPI
+	int rank = domainDecomp->getRank();
+	if (rank == 0){
+#endif  
 	if (_filenameisdate) {
 			_filename = _filename + "mardyn";
 			_filename = _filename + gettimestring();
 		} 
 	_filename = _filename +  ".mmspd";
 	ofstream mmspdfstream(_filename.c_str(), ios::binary|ios::out);
-  //	  cout << "Ofstream zum 1. mal erzeugt.\n";
+  
   
   /* writing the header of the mmspd file, i.e. writing the BOM, the format marker (UTF-8),  the header line and defining the particle types */
   // BOM
@@ -52,11 +56,8 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   mmspdfstream.write(reinterpret_cast<const char*>(& bom1), 1);
   mmspdfstream.write(reinterpret_cast<const char*>(& bom2), 1);
   mmspdfstream.write(reinterpret_cast<const char*>(& bom3), 1);
-  //mmspdfstream.close();
-  //cout << "BOM geschrieben und stream geschlossen\n";
+  
   // format marker
-  //mmspdfstream.open(_filename.c_str(), ios::out|ios::app);
-  //cout << " ofstream wieder geoeffnet zum neuen Schreiben d. Headers\n";
   mmspdfstream << "MMSPDu 1.0" << "\n";
   // header line
   mmspdfstream << "1 " << particleContainer->getBoundingBoxMin(0) << " " << particleContainer->getBoundingBoxMin(1) << " " 
@@ -88,6 +89,9 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   } // end of particle definitions		
   
   mmspdfstream.close();
+#ifdef ENABLE_MPI
+	}
+#endif
 } // end initOutput()
 
 void MmspdWriter::doOutput( ParticleContainer* particleContainer,
