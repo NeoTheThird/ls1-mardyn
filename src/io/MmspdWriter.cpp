@@ -73,10 +73,10 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   // particle definitions every single line specifies a particular particle type
   for(unsigned i = 0; i < domain->getNumberOfComponents() ; i++){
       if (i == 0){
-	mmspdfstream << "s 4 3 cr b 255 cg b 255 cb b 0 r f "; 
+	mmspdfstream << "s 4 3 cr b 255 cg b 0 cb b 0 r f "; 
       }
       else if (i == 1){
-	mmspdfstream << "s 4 3 cr b 50 cg b 50 cb b 50 r f "; 
+	mmspdfstream << "s 4 3 cr b 0 cg b 102 cb b 0 r f "; 
       }
       else if (i == 2){
 	mmspdfstream << "s 4 3 cr b 0 cg b 255 cb b 255 r f "; 
@@ -90,7 +90,7 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
       else {
 	mmspdfstream << "**************** Error: Unspecified component!*************\n Possible reason: more than 5 components?\n"; 
       }
-      mmspdfstream<< setprecision(4) << domain->getSigma(i,0) << " x f y f z f" << "\n";
+      mmspdfstream<< setprecision(4) << domain->getSigma(i,0)*0.7 << " x f y f z f" << "\n";
   } // end of particle definitions		
   
   mmspdfstream.close();
