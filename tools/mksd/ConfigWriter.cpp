@@ -8,7 +8,7 @@
 
 #include"ConfigWriter.h"
 
-const double DT = 0.030620;
+const double DT = 0.030620; // corresponds to 1 fs
 
 
 extern const string WALL_TERSOFF;
@@ -57,9 +57,9 @@ ConfigWriter::ConfigWriter(
 	sProfile (in_profilePhi, in_profileR, in_profile_H);
 	sProfileOutputTimesteps(in_profileOutputTimesteps);
 	// values set as default, if required they can be passed by main.cpp, i.e. as a user input => additional constructor
-	sInitCanonical(700);					// temperature raise during equilibration applied? (ask M.Horsch) => short equilibration time needed otherwise vaporisation of the drop
-	sInitStatistics(100000);
-	sProfileRecordingTimesteps(1);
+	sInitCanonical(2000);					// temperature raise during equilibration applied? (ask M.Horsch) => short equilibration time needed otherwise vaporisation of the drop
+	sInitStatistics(500000);
+	sProfileRecordingTimesteps(2);
 	sOutputResWriter(40);
 	sOutputXyzWriter(500000);
 	// if no movie is to be made, there's no need for the visitt-writer, by default: movie = false; then also no VisItt output is generated: if(movie) wOutputVisittWriter();

@@ -86,7 +86,7 @@ bool stripes = false;			// -S => strpies shaped plane wall, the stripes exhibit 
 bool in_xi12 = false;			// -xi12 => the standard argument to specify the xi of the Berthelot combining rule for two components
 bool in_xi13 = false;			// -xi13 => to be set only if the flag -S (stripes shaped wall) is set. Then, (kind of)three components are present!
 bool in_temperature = false;	// -T => Temperature in atomic units
-bool LJunits = false; 			// -u => input in Lennard-Jones units
+bool LJunits = true; 			// -u => input in Lennard-Jones units
 bool in_wallThick = false;		// -w => wall thickness as a multiple of 0.5 times cristal lattice constant (fcc cristal presumed!) @todo: realization/significance for different kinds of cristal lattices
 bool in_wallModel = false;		// -W => choice of models describing the solid wall: first LJ-wall (fcc), representing copper, @todo: other models to be implemented!!!
 //bool in_xi = false;			// -x => xi_fluid_wall of the Berthelot combining rule
@@ -336,7 +336,7 @@ if(!in_density) densFac = 1.0;
 if(!in_eta12) eta12 = 1.0;
 if(!in_xi13) xi13 = 0.0;
 if(!in_fluid) fluid = FLUID_AR;
-if(!in_outputTime) outTimeSteps = 500*1000;
+if(!in_outputTime) outTimeSteps = 1500*1000;
 if(!in_wallModel) wall = WALL_CU_LJ;
 
 
@@ -366,7 +366,7 @@ double boxLengthY = PSW.gBoxLengthY();
 if(!in_numProfileUnits){
 	profilePhi = DEFAULT_PROFILE_PHI;
 	profileR = DEFAULT_PROFILE_R;
-	profileH = (int)2.0*boxLengthY / fluidComp.gSigma(0); // default profile spacing in y-direction: 0.5*sigma
+	profileH = (int)10.0*boxLengthY / fluidComp.gSigma(0); // default profile spacing in y-direction: 0.5*sigma
 }
 
 // generating an instance of ConfigWriter and calling the write method
