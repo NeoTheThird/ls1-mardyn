@@ -114,7 +114,7 @@ void ConfigWriter::write(){
 	confStrm <<"profiledComponent\t1\n";
 	confStrm << "SessileDrop\n";
 	wProfileOutputPrefix();
-	confStrm << "AlignCentre\t200\t1\n" ;
+	confStrm << "AlignCentre\t50\t1\n" ;
 	confStrm << "ComponentForYShift\t2 3\n";
 //	cout << "\n**********************************\nwrite() method of Configwriter finished\n**********************************\n";
 
