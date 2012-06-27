@@ -22,7 +22,7 @@ ConfigWriter::ConfigWriter(
 		char* in_prefix, string in_wall, int in_wallLays, double in_sigFluid,
 		double in_refTime, double in_cutoffRadius, double in_ljCutoffRadius, double in_wallCutoffRadius,
 		unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
-		unsigned in_profileOutputTimesteps, bool in_movie
+		unsigned in_profileOutputTimesteps, unsigned initCanon, bool in_movie
 		)
 {
 	cout << "\n**********************************\nConfigwriter opened\n**********************************\n";
@@ -57,7 +57,7 @@ ConfigWriter::ConfigWriter(
 	sProfile (in_profilePhi, in_profileR, in_profile_H);
 	sProfileOutputTimesteps(in_profileOutputTimesteps);
 	// values set as default, if required they can be passed by main.cpp, i.e. as a user input => additional constructor
-	sInitCanonical(2000);					// temperature raise during equilibration applied? (ask M.Horsch) => short equilibration time needed otherwise vaporisation of the drop
+	sInitCanonical(initCanon);					// temperature raise during equilibration applied? (ask M.Horsch) => short equilibration time needed otherwise vaporisation of the drop
 	sInitStatistics(500000);
 	sProfileRecordingTimesteps(2);
 	sOutputResWriter(40);

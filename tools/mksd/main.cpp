@@ -37,12 +37,13 @@ const unsigned DEFAULT_PROFILE_R = 200;
 
 
 int main(int argc, char** argv){
-	const char* usage = "usage: \nmkSD -p <prefix> [-a <alpha>] [-b <beta>] [-g <gamma>] [-d <vapor density factor>] [-e <eta12 Lorentz>] [-f <fluid>] [-m] "
+	const char* usage = "usage: \nmkSD -p <prefix> [-a <alpha>] [-b <beta>] [-g <gamma>] [-c initCanonical] [-d <vapor density factor>] [-e <eta12 Lorentz>] [-f <fluid>] [-m] "
 			"-N <fluid_number> [-o <output time steps>]\n [-P <n_phi n_r n_h>] [-s <sigma wall-wall>] [-S <number of stripes>] -T <temperatur>  [-u <LJ units>] "
 			"-w <wall thickness> [-W <wall interaction model>]\n -x12 <xi_12 Berthelot> [-x13 <xi_13 Berthelot>]\n\n"
 			"-a \t alpha: box length in x- direction as a mulitple of the liquid cuboid length in x-direction, default: alpha == 3\n"
 			"-b \t beta: effective width of the fluid space in y-direction as a multiple of the liquid cuboid length in y-direction, default: beta ==3 \n"
 			"-g \t gamma: box length in z-direction as a mulitple of the liquid cuboid length in z-direction, default: gamma == 3\n"
+			"-c \t Init Canonical: number of time steps\n"
 			"-d \t vapor density factor: correction factor for the vapor density (initial thought: metastable states?) \n"
 			"-e \t eta_12 according to the extended Lorentz combining rule. \n"
 			"-f \t fluid: choosing different types of fluids, Ar is the default, other options: CH4, C2H6, N2, CO2, C6H14. So far not implemented! \n"
@@ -74,6 +75,7 @@ bool in_prefix = false;			// -p => prefix of the output file
 bool in_alpha = false;			// -a => width of the simulation box in x-direction as a multiple of the liquid cuboid width (in x-direction), allowed stepwidth: 0.1
 bool in_beta = false;			// -b => height of the simulation box in y-direction as a multiple of the liquid cuboid height (in y-direction), stepwidth: 0.1
 bool in_gamma = false;			// -g => width of the simulation box in z-direction as a multiple of the liquid cuboid width (in z-direction), allowed stepwidth: 0.1
+bool in_initCanon = false;		// -c => number of time steps used for init canonical => simulated annealing
 bool in_density = false;		// -d => factor changing the vapor density in the start configuration, allowing for start density different from Kedia et al.
 bool in_eta12 = false;			// -e => eta12_fluid_wall of the Lorentz combinig rule
 bool in_fluid = false;			// -f => type of fluid: Argon by default
@@ -94,6 +96,7 @@ bool LJShifted = true;			// by default a LJTS potential is used
 
 // declaration of global variables
 unsigned N;
+unsigned initCanon;
 unsigned profilePhi, profileR, profileH; // number of discrete (density-) profile elements in the corresponding direction
 unsigned numberOfStripes;
 int outTimeSteps, wallThick;
@@ -139,6 +142,13 @@ for(int i = 1; i < argc; i++){
 				cout << "Value chosen for gamma too small! Choose value bigger than 1.1!\n\n";
 				return 14;
 			}
+			break;
+		}
+		else if(argv[i][j] == 'c')
+		{
+			in_initCanon = true;
+			i++;
+			initCanon = atof(argv[i]);
 			break;
 		}
 		else if(argv[i][j] == 'd')
@@ -338,6 +348,7 @@ if(!in_xi13) xi13 = 0.0;
 if(!in_fluid) fluid = FLUID_AR;
 if(!in_outputTime) outTimeSteps = 1500*1000;
 if(!in_wallModel) wall = WALL_CU_LJ;
+if(!in_initCanon) initCanon = 5000;
 
 
 
@@ -371,7 +382,7 @@ if(!in_numProfileUnits){
 
 // generating an instance of ConfigWriter and calling the write method
 ConfigWriter CfgWriter(prefix, wall, wallThick, fluidComp.gSigma(0), refTime, fluidComp.gRCutLJ(), fluidComp.gRCutLJ(), fluidComp.gRCutLJ(),
-					profilePhi, profileR, profileH, outTimeSteps, movie);
+					profilePhi, profileR, profileH, outTimeSteps, initCanon, movie);
 CfgWriter.write();
 //cout << "\n**********************************\nConfig file written\n**********************************\n";
 } // end main

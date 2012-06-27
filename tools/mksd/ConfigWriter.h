@@ -24,7 +24,7 @@ public:
 			char* prefix, string in_wall, int in_wallLays, double in_sigFluid,
 			double in_refTime, double in_cutoffRadius, double in_ljCutoffRadius, double in_wallCutoffRadius,
 			unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
-			unsigned in_profileOutputTimesteps, bool movie
+			unsigned in_profileOutputTimesteps, unsigned initCanon, bool movie
 			);
 	~ConfigWriter();
 
