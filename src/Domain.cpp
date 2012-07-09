@@ -974,7 +974,7 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         // end of header, start of the data-part of the density file
 	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
 	   	         {
-	   	        	 *rhoProf <<"> "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0 \t";
+	   	        	 *rhoProf <<"> "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\n0 \t";
 	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
 	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
 	   	        	 }
@@ -1005,7 +1005,7 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         *tmpProf << "// T \t sigma_ii \t eps_ii \t yOffset \t DELTA_phi \t DELTA_r2 \t DELTA_h \n";
 	   	         *tmpProf << this->_universalTargetTemperature[_components.size()] <<"\t"<<_components[0].getSigma(0)<<"\t"<<_components[0].getEps(0)<<"\t";
 	   	         *tmpProf << _yOff << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n";
-	   	         *tmpProf <<"> "<< 0.5/this->_universalInvProfileUnit[0] <<"\t*******************************************************\n0 \t";
+	   	         *tmpProf <<"> "<< 0.5/this->_universalInvProfileUnit[0] <<"\n0 \t";
 			 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
 	   	        		 *tmpProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i
 	   	          }
