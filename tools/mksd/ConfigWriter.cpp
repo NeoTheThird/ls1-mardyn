@@ -108,7 +108,7 @@ void ConfigWriter::write(){
 	  wOutputMmspdWriter();
 	}
 	wProfile();
-	confStrm << "yOffset\t" << (wallLays -0.5)*LATTICE_CONST_WALL_LJTS << "\n";
+	confStrm << "yOffset\t" << (wallLays -0.5 + 0.05)*LATTICE_CONST_WALL_LJTS << "\n"; // +0.05*latticeConstant => little offset to avoid particles beeing placed outside the simulation box
 	wProfileRecordingTimesteps();
 	wProfileOutputTimesteps();
 	confStrm <<"profiledComponent\t1\n";
