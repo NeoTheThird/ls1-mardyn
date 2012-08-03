@@ -1375,6 +1375,8 @@ void Simulation::initialize() {
 	_initStatistics = 20000;
 	h = 0.0;
 
+	_doAlignCentre = false;
+
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;
 	_domain = new Domain(ownrank, this->_pressureGradient);
