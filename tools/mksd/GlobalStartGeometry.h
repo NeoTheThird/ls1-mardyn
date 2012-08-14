@@ -75,7 +75,7 @@ private:
 	//@brief: lengths of a single elementary liquid lattice in three directions
 	double _liqUnit[3];
 	//@brief: number of elementary vapour lattice boxes per direction
-	unsigned _vapUnits[3];
+	long int _vapUnits[3];
 	//@brief: lengths of a single elementary vapour lattice with respect to three directions
 	double _vapUnit[3];
 	//@brief: gross probability of a liquid elementary box to be filled

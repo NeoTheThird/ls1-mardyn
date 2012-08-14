@@ -77,7 +77,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	effFluid[1] = sqrt(_nFluid/_rhoLiq/effFluid[0]);
 	effFluid[2] = _nFluid / (_rhoLiq*effFluid[0]*effFluid[1]);*/
 	effVap[0] = 0.97*_box[0];
-	effVap[1] = 0.97*_box[1]-hWall-shielding;
+	effVap[1] = 0.97*(_box[1]-hWall-shielding) ;
 	effVap[2] = 0.97*_box[2];
 /*	cout << "effFluid[0]: " << effFluid[0]<< "\n";
 	cout << "effFluid[1]: " << effFluid[1]<< "\n";
@@ -102,29 +102,33 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 
 	_liqFillProbability = nLiqBoxes / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
 	
-	double nVapBoxes;
-	nVapBoxes = _nVap/3.0;
 	// calculating the number of elementary vapour lattice boxes per direction 
-	// the number calculated assuming the entire fluid volume being available for the vapor 
-	// Since the liquid cuboid demands a part of this volume the number of lattice boxes per direction is multiplied by 1.6 thus
-	// making sure that enough lattice boxes are availabe for the vapour particles. In fact the factor 1.6 allows for 
-	// 4 times more lattice slots than actual vapor particles employed (4 == 1.6^3).
+	// the number calculated assumes the entire fluid volume being available for the vapor 
+	// Since the liquid cuboid demands a part of this volume the number of lattice boxes is higher	
+	// making sure that enough lattice boxes are availabe for the vapour particles. 
+	// In fact 4 times more lattice slots than actual vapor particles are available.
 	// In order to preserve the desired vapour density (number of vapour particles) the filling of the vapour lattice is controlled 
 	// by the bool-array _fillVap 
-	_vapUnits[0] = floor(1.6 * pow(effVap[0]*effVap[0]*nVapBoxes/effVap[1]/effVap[2],1.0/3.0) + 0.5);
-	_vapUnits[1] = floor(1.6 * sqrt(effVap[1]*nVapBoxes/_vapUnits[0]/effVap[2])  + 0.5);
-	_vapUnits[2] = ceil(1.6 * nVapBoxes/_vapUnits[0]/_vapUnits[1]);
+	double nVapBoxes;
+	nVapBoxes = 4.0*_nVap/3.0;
+	_vapUnits[0] = floor(pow(effVap[0]*effVap[0]*nVapBoxes/effVap[1]/effVap[2],1.0/3.0) + 0.5);
+	_vapUnits[1] = floor(sqrt(effVap[1]*nVapBoxes/_vapUnits[0]/effVap[2])  + 0.5);
+	_vapUnits[2] = ceil(nVapBoxes/_vapUnits[0]/_vapUnits[1]);
 	
 	_vapUnit[0] = (double)effVap[0]/_vapUnits[0];
 	_vapUnit[1] = (double)effVap[1]/_vapUnits[1];
 	_vapUnit[2] = (double)effVap[2]/_vapUnits[2];
 	
 	cout << "_vapUnit[0]  = "<< _vapUnit[0] << "\t _vapUnit[1] = " << _vapUnit[1] << "\t _vapUnit[2] = " << _vapUnit[2] << "\n";
+	cout << "_vapUnits[0]  = "<< _vapUnits[0] << "\t _vapUnits[1] = " << _vapUnits[1] << "\t _vapUnits[2] = " << _vapUnits[2] << "\n";
+	cout << "_effLiq[0]  = " << _effLiq[0] << "\t _effLiq[1] = " << _effLiq[1] << "\t _effLiq[2] = " << _effLiq[2] <<"\n"; 
+	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "effVap[2] = " << effVap[2] << "\n";
+	cout << "_effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
 	
 	_vapFillProbability = nVapBoxes / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
 	
 	_offVap[0] = 0.1 * _vapUnit[0];
-	_offVap[1] = hWall + shielding;
+	_offVap[1] = _offLiq[1];
 	_offVap[2] = 0.1 * _vapUnit[2];
 		
 }
@@ -216,13 +220,13 @@ void GlobalStartGeometry::calculateVapFillProbabilityArray(){
 	for(unsigned m = 0; m < PRECISION; m++){
 		tSwap = (_nFilledVapSlots < nIdeallyFilled);
 		pSwap = (nIdeallyFilled - (double)_nFilledVapSlots)/( (tSwap ? totalNSlots : 0.0) - _nFilledVapSlots );
-		for(unsigned i=0; i < _vapUnits[0]; i++){
-			for(unsigned j=0; j < _vapUnits[1]; j++){
-				for(unsigned k=0; k < _vapUnits[2]; k++){
+		for(long int i=0; i < _vapUnits[0]; i++){
+			for(long int j=0; j < _vapUnits[1]; j++){
+				for(long int k=0; k < _vapUnits[2]; k++){
 				  // if(...) if the position of the slots is overlapping with the liquid cuboid => no slot beeing filled!!!
-				  if ((i+1)* _vapUnit[0] >= 0.5*(_box[0]-_effLiq[0]) && (i-1) * _vapUnit[0] <= 0.5 * (_box[0]+_effLiq[0]) 
-				    && (j+1)* _vapUnit[1] <= _effLiq[1]
-				    && (k+1)* _vapUnit[2] >= 0.5*(_box[2]-_effLiq[2]) && (k-1)* _vapUnit[2] <= 0.5 * (_box[2] +_effLiq[2]) )
+				  if ((i+2)* _vapUnit[0] >= 0.5*(_box[0]-_effLiq[0]) && (i-1) * _vapUnit[0] <= 0.5 * (_box[0]+_effLiq[0]) 
+				    && (j-1)* _vapUnit[1] <= _effLiq[1]
+				    && (k+2)* _vapUnit[2] >= 0.5*(_box[2]-_effLiq[2]) && (k-1)* _vapUnit[2] <= 0.5 * (_box[2] +_effLiq[2]) )
 				  {				   
 				    for(unsigned short l = 0; l < 3; l++){
 				      if(_fillVap[i][j][k][l]) _nFilledVapSlots--;
