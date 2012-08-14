@@ -159,18 +159,19 @@ void PhaseSpaceWriter::write()
 			geometry.gOffset(0), geometry.gOffset(1), geometry.gOffset(2), latticeConst);*/
 	if(_stripes){
 		wallMolecule.calculateCoordinatesOfWallMolecule(geometry.gBoxLength(0),geometry.gBoxLength(2),
-										   geometry.gOffset(1), latticeConst, shielding, _numberOfStripes);
+										   geometry.gOffsetLiq(1), latticeConst, shielding, _numberOfStripes);
 	}
 	else{
 		wallMolecule.calculateCoordinatesOfWallMolecule(geometry.gBoxLength(0),geometry.gBoxLength(2),
-															geometry.gOffset(1), latticeConst, shielding);
+															geometry.gOffsetLiq(1), latticeConst, shielding);
 	}
 //	cout<< "\n**********************************\n coordinates of wall molecules calculated\n**********************************\n";
 
 	// total number of particles
-	geometry.calculateFillProbabilityArray(); // within this method the number of actually filled fluid particles is calculated, too => already called here
-	psstrm << "N\t"<< wallMolecule.gNumberOfMolecules() + geometry.gNFilledSlots() <<"\n";
-	xyzstrm << wallMolecule.gNumberOfMolecules() + geometry.gNFilledSlots() <<"\nComment\n";
+	geometry.calculateLiqFillProbabilityArray(); // within this method the number of actually filled liquid particles is calculated, too => already called here
+	geometry.calculateVapFillProbabilityArray();
+	psstrm << "N\t"<< wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots() <<"\n";
+	xyzstrm << wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<<"\nComment\n";
 	psstrm << "M\tICRVQD\n\n";
 
 /***************************************************************************************************************************************************
@@ -182,7 +183,7 @@ void PhaseSpaceWriter::write()
 	unsigned cid = 1;	// component ID
 	unsigned id = 1;	// molecule ID
 
-	// fluid phase slots are filled
+	// liquid phase slots are filled
 	unsigned ii[4];		// four different counters used in the for loops following
 	double positionVec[3];
 
@@ -192,13 +193,14 @@ void PhaseSpaceWriter::write()
 	//cout << "fluidUnit[2]: "<<geometry.gFluidUnit(2) << " fluidUnits[2]: " << geometry.gFluidUnits(2) <<"\n";
 	cout << "\n**********************************\nWriting the body ...\n**********************************\n";
 	RandomNumber rdm;
-	for(ii[0] = 0; ii[0] < geometry.gFluidUnits(0); ii[0]++){
-		for(ii[1] = 0; ii[1] < geometry.gFluidUnits(1); ii[1]++){
-			for(ii[2] = 0; ii[2] < geometry.gFluidUnits(2); ii[2]++){
+	//liquid particles
+	for(ii[0] = 0; ii[0] < geometry.gLiqUnits(0); ii[0]++){
+		for(ii[1] = 0; ii[1] < geometry.gLiqUnits(1); ii[1]++){
+			for(ii[2] = 0; ii[2] < geometry.gLiqUnits(2); ii[2]++){
 				for(ii[3] = 0; ii[3] < 3; ii[3]++){			// three slots per elementary fluid box
-					if(geometry.gFillArray(ii[0], ii[1], ii[2], ii[3])){
-						for(unsigned j = 0; j < 3; j++){
-							positionVec[j] =  geometry.gOffset(j)+geometry.gFluidUnit(j)*(ii[j] + 0.02*rdm.randNum() + ((j==ii[3])? 0.24 : 0.74));
+					if(geometry.gFillLiqArray(ii[0], ii[1], ii[2], ii[3])){
+						for(unsigned short j = 0; j < 3; j++){
+							positionVec[j] =  geometry.gOffsetLiq(j)+geometry.gLiqUnit(j)*(ii[j] + 0.02*rdm.randNum() + ((j==ii[3])? 0.24 : 0.74));
 						}	// end for(j...)
 						for(unsigned j = 0; j < 3; j++){ // in case the molecule is placed outside the simulation box it is shifted (according to periodic boundary conditions)
 							if(j == 0 || j == 2){
@@ -229,12 +231,52 @@ void PhaseSpaceWriter::write()
 		} 	// end for ii[1]
 	}	// end for ii[0]
 	//cid ++;
-	//psstrm << "###################################################################\n\n";
+	
+	for(unsigned i = 0; i<4;i++) // resetting the counter to zero
+	  ii[i] = 0;
+	// vapour particles
+	for(ii[0] = 0; ii[0] < geometry.gVapUnits(0); ii[0]++){
+		for(ii[1] = 0; ii[1] < geometry.gVapUnits(1); ii[1]++){
+			for(ii[2] = 0; ii[2] < geometry.gVapUnits(2); ii[2]++){
+				for(ii[3] = 0; ii[3] < 3; ii[3]++){			// three slots per elementary fluid box
+					if(geometry.gFillVapArray(ii[0], ii[1], ii[2], ii[3])){
+						for(unsigned short j = 0; j < 3; j++){
+							positionVec[j] =  geometry.gOffsetVap(j)+geometry.gVapUnit(j)*(ii[j] + 0.02*rdm.randNum() + ((j==ii[3])? 0.24 : 0.74));
+						}	// end for(j...)
+						for(short j = 0; j < 3; j++){ // in case the molecule is placed outside the simulation box it is shifted (according to periodic boundary conditions)
+							if(j == 0 || j == 2){
+								if(geometry.gBoxLength(j) < positionVec[j]) positionVec[j] -= geometry.gBoxLength(j);
+								else if(positionVec[j] < 0) positionVec[j] += geometry.gBoxLength(j);
+							}
+							else{ // PBC in y-direction => collision with the wall!
+								if(geometry.gBoxLength(j) < positionVec[j]){
+									cerr << "Severe error in PhaseSpaceWriter::write() => writing the fluid positions:\n"
+											<< "Fluid particle placed within wall due to PBC in y-direction!!!\n";
+											exit(104);
+								}
+								else if(positionVec[j] < 0) positionVec[j] += geometry.gBoxLength(j);
+							}
+						}// end for(j...)
+						double absVelocity = sqrt(3.0*_temperature/fluidComp.gMass(0));
+						double phi = 2.0*PI*rdm.randNum();
+						double omega = 2.0*PI*rdm.randNum();
+						psstrm << id << " " << cid <<" \t" << positionVec[0] << " " << positionVec[1] <<" " << positionVec[2]
+						        << " \t" << absVelocity * cos(phi)*cos(omega) << " " << absVelocity *cos(phi)*sin(omega)<< " " << absVelocity *sin(phi)
+								<<"\t 1.0 0.0 0.0 0.0\t0 0 0\n";
+						xyzstrm << "C \t" << positionVec[0] << " \t" << positionVec[1] <<" \t"<< positionVec[2] << "\n";
+						id++;
+					}	// end if(_fill)
+					else psstrm << "\n";
+				}	// end for ii[4]
+			}	// end for ii[2]
+		} 	// end for ii[1]
+	}	// end for ii[0]
+	
 
-	// wall molecules are filled
+	// wall molecules are being filled
 	wallMolecule.calculateVelocities();
 	unsigned numberOfWallMolecules = wallMolecule.gNumberOfMolecules();
-	cout << "Number of fluid molecules: " << geometry.gNFilledSlots() << "\n";
+	cout << "Number of liquid molecules: " << geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<< "\n";
 	cout << "Number of wall molecules: "<< numberOfWallMolecules <<"\n**********************************\n\n";
 	for (unsigned i = 0; i < numberOfWallMolecules; i++){
 		psstrm << id <<" "<< wallMolecule.gMoleculeCID(i) <<"\t"<< wallMolecule.gXPos(i) <<" "<< wallMolecule.gYPos(i) <<" "<< wallMolecule.gZPos(i) <<

@@ -26,14 +26,20 @@ public:
 	~GlobalStartGeometry();
 
 	void calculateBoxFluidOffset(double hWall, double shielding);
-	void calculateFillProbabilityArray();
+	void calculateLiqFillProbabilityArray();
+	void calculateVapFillProbabilityArray();
 
 	double gBoxLength(unsigned direction);
-	unsigned gFluidUnits(unsigned direction);
-	double gOffset(unsigned direction);
-	double gFluidUnit(unsigned direction);
-	bool gFillArray(unsigned fluidUnits0, unsigned fluidUnits1, unsigned flunidUnits2, unsigned particleInElementaryBox);
-	unsigned gNFilledSlots();
+	unsigned gLiqUnits(unsigned direction);
+	unsigned gVapUnits(unsigned short direction);
+	double gOffsetLiq(unsigned direction);
+	double gOffsetVap(unsigned short direction);
+	double gLiqUnit(unsigned short direction);
+	double gVapUnit(unsigned short direction);
+	bool gFillLiqArray(unsigned fluidUnits0, unsigned fluidUnits1, unsigned flunidUnits2, unsigned particleInElementaryBox);
+	bool gFillVapArray(unsigned vapUnits0, unsigned vapUnits1, unsigned vapUnits2, unsigned particleInElementaryBox);
+	unsigned gNFilledLiqSlots();
+	unsigned gNFilledVapSlots();
 
 private:
 	unsigned _nFluid;
@@ -49,26 +55,41 @@ private:
 
 	double _nLiq;
 	double _nVap;
-	unsigned _nFilledSlots;
+	unsigned _nFilledLiqSlots;
+	unsigned _nFilledVapSlots;
 
 	//@brief: lattice contant of the solid phase (wall) in the three dimensions
 	//double _latticeConstSolid[3];
 	//@brief: dimensions of the simulation box
 	double _box[3];
-	//@brief: offset of the fluid particles posistion with respect to the simulation box (x,z direction)
+	//@brief: offset of the liquid particles posistion with respect to the simulation box (x,z direction)
 	// and with respect to the wall (y-direction)
-	double _off[3];
+	double _offLiq[3];
+	//@brief: offset of the vapour particles posistion with respect to the simulation box (x,z direction)
+	// and with respect to the wall (y-direction)
+	double _offVap[3];
+	// @brief: ectual length of the liquid cuboid in each direction
+	double _effLiq[3];
 	//@brief: number of elementary liquid lattices in three directions
-	unsigned _fluidUnits[3];
+	unsigned _liqUnits[3];
 	//@brief: lengths of a single elementary liquid lattice in three directions
-	double _fluidUnit[3];
+	double _liqUnit[3];
+	//@brief: number of elementary vapour lattice boxes per direction
+	unsigned _vapUnits[3];
+	//@brief: lengths of a single elementary vapour lattice with respect to three directions
+	double _vapUnit[3];
 	//@brief: gross probability of a liquid elementary box to be filled
-	double _fluidFillProbability;
+	double _liqFillProbability;
+	//@brief: gross probability of a vapour elementary box to be filled
+	double _vapFillProbability;
 	//@brief: 4-dimensional array addressing single slots that may be filled with a particle
 	// => 3 diemsions for a fluid elementary box (due to 3 directions in space)
 	// and one dimension addressing one of three slots within an elementary box
 	map< unsigned, map<unsigned, map<unsigned, map<unsigned, bool> > > > _fill;
-	//bool _fill[_fluidUnits[0]][_fluidUnits[1]][_fluidUnits[2]][3];
-	// vector< vector< vector < vector <bool> > > > _fill;
+	//@brief: 4-dimensional array addressing single slots that may be filled with a vapour particle
+	// => 3 diemsions for a vapour elementary box (due to 3 directions in space)
+	// and one dimension addressing one of three slots within an elementary box
+	map< unsigned, map<unsigned, map<unsigned, map<unsigned, bool> > > > _fillVap;
+	
 };
 #endif /* GLOBALSTARTGEOMETRY_H_ */
