@@ -346,9 +346,9 @@ if(!in_density) densFac = 1.0;
 if(!in_eta12) eta12 = 1.0;
 if(!in_xi13) xi13 = 0.0;
 if(!in_fluid) fluid = FLUID_AR;
-if(!in_outputTime) outTimeSteps = 1500*1000;
+if(!in_outputTime) outTimeSteps = 1000*1000;
 if(!in_wallModel) wall = WALL_CU_LJ;
-if(!in_initCanon) initCanon = 5000;
+if(!in_initCanon) initCanon = 100;
 
 
 
