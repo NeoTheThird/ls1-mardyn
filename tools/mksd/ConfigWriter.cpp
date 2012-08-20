@@ -97,7 +97,8 @@ void ConfigWriter::write(){
 	wInitCanonical();
 	wInitStatistics();
 	wPhaseSpaceFileName();
-	confStrm << "parallelization KDDecomposition2 200 3 \n";
+	confStrm << "parallelization DomainDecomposition \n";
+	//confStrm << "parallelization KDDecomposition2 200 3 \n";
 	confStrm << "# for LinkedCells, the cellsInCutoffRadius has to be provided\n"
 			 << "datastructure\tLinkedCells \t1\n";
 	wOutputResWriter();
@@ -114,7 +115,7 @@ void ConfigWriter::write(){
 	confStrm <<"profiledComponent\t1\n";
 	confStrm << "SessileDrop\n";
 	wProfileOutputPrefix();
-	confStrm << "AlignCentre\t50\t1\n" ;
+	confStrm << "AlignCentre\t25\t1\n" ;
 	confStrm << "ComponentForYShift\t2 3\n";
 //	cout << "\n**********************************\nwrite() method of Configwriter finished\n**********************************\n";
 
