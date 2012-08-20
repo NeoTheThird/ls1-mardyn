@@ -10,7 +10,7 @@
 
 
 
-const unsigned PRECISION = 5; // the number of times the loops are run determining the fill array _fill[i][j][k][l]
+const unsigned PRECISION = 10; // the number of times the loops are run determining the fill array _fill[i][j][k][l]
 
 extern double LATTICE_CONST_WALL_LJTS;
 //extern const double LATTICE_CONST_CU;
@@ -100,7 +100,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	_liqUnit[2] = (double)_effLiq[2]/_liqUnits[2];
 
 
-	_liqFillProbability = nLiqBoxes / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
+	_liqFillProbability = _nLiq/3.0 / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
 	
 	// calculating the number of elementary vapour lattice boxes per direction 
 	// the number calculated assumes the entire fluid volume being available for the vapor 
@@ -125,7 +125,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "effVap[2] = " << effVap[2] << "\n";
 	cout << "_effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
 	
-	_vapFillProbability = nVapBoxes / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
+	_vapFillProbability = _nVap/3.0 / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
 	
 	_offVap[0] = 0.1 * _vapUnit[0];
 	_offVap[1] = _offLiq[1];
