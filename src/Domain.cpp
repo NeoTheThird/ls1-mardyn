@@ -1039,7 +1039,13 @@ void Domain::outputCylProfile(const char* prefix){
 }
 
 void Domain::considerComponentForYShift(unsigned cidMin, unsigned cidMax){
+    for (unsigned i = 0; i <= cidMax; i++) _componentForYShift[i] = false;
     for (unsigned i = 0; i <= cidMax-cidMin; i++) _componentForYShift[cidMin+i] = true;
+#ifndef NDEBUG
+    global_log->info() << "Components used for determination of shift in y-direction:\n";
+    for(unsigned i = 0; i <= cidMax; i++)
+      global_log->info() << "component id "<< i << "\t value: " << _componentForYShift[i] << "\n";
+#endif
 }
 
 void Domain::resetProfile()
