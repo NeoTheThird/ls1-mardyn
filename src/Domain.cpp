@@ -1132,7 +1132,7 @@ void Domain::determineXZShift( DomainDecompBase* domainDecomp, ParticleContainer
 			     double fraction) 
 {
    double localBalance[3]; // localBalance[1] not considered, employed only for not confusing: index 0 => x-direction, index 1 => y-direction, index 2 => z-direction
-   for(unsigned d = 0; d < 3; d = d+2) localBalance[d] = 0.0; // initialising the array by zeros
+   for(unsigned d = 0; d < 3; d ++) localBalance[d] = 0.0; // initialising the array by zeros
    double localMass = 0.0;
    int cid;
       
