@@ -363,8 +363,11 @@ public:
 	// end
 	
 	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods providing a shift of the particles in the simulation box so that 
-	// the center of mass is placed in the middle of the box with respect of the x- and z-direction ( 0- and 2-direction), i.e. the y-direction is free!
-	void determineShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
+	// the center of mass is placed in the middle of the box with respect of the x- and z-direction ( 0- and 2-direction), and the
+	// wall is kept at its initial position
+	void determineXZShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
+			     double fraction);
+	void determineYShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
 			     double fraction);
 	// carrying out the actual shift of ALL particles
 	void realign( ParticleContainer* molCont);
@@ -509,7 +512,8 @@ private:
 	
 	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>  => concerning the realignment tool: realignment to the centre of mass
 	// begin 
-	double _globalRealignmentMass;
+	// _globalRealignmentMass[0] corresponds to the xz-shift,  _globalRealignmentMass[1] to the y-shift
+	double _globalRealignmentMass[2];
 	double _globalRealignmentBalance[3];
 	double _universalRealignmentMotion[3];
 	// The component responsible for the shift in y-direction

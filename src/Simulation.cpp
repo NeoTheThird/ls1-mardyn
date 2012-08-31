@@ -1087,7 +1087,9 @@ void Simulation::simulate() {
 		 *the halo MUST NOT be present*/
 		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
-			_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			//! !!! the sequence of calling the two methods MUST be: first determineXZShift() then determineYShift() !!!
+			_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			_domain->determineYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
 		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
@@ -1097,7 +1099,7 @@ void Simulation::simulate() {
 		updateParticleContainerAndDecomposition(); // includes the creation of the halo
 		decompositionTimer.stop();
 		loopTimer.start();
-
+		
 		// Force calculation
 		global_log->debug() << "Traversing pairs" << endl;
 		_moleculeContainer->traversePairs(_particlePairsHandler);
@@ -1132,11 +1134,12 @@ void Simulation::simulate() {
 		  * realignment tools borrowed from Martin Horsch
 		  * For the actual shift the halo MUST be present!
 		  */
+		
 		if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
 			_domain->realign(_moleculeContainer);
 		}
-
+		
 		// clear halo
 		global_log->debug() << "Delete outer particles" << endl;
 		_moleculeContainer->deleteOuterParticles();
