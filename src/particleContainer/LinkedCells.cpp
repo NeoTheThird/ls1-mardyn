@@ -170,6 +170,30 @@ void LinkedCells::update() {
 		// determine the cell into which the particle belongs
 		Molecule &m = *pos;
 		unsigned long index = getCellIndexOfMolecule(&m);
+
+
+		if(index >= this->_cells.size())
+		{
+		cout.flush();
+      cout << "\nSEVERE ERROR\n";
+      cout << "ID " << pos->id() << "\nr:" << pos->r(0) << " / "  << pos->r(1) << " / "  << pos->r(2) << endl;
+      cout << "v:" << pos->v(0) << " / "  << pos->v(1) << " / "  << pos->v(2) << endl;
+      cout << "F:" << pos->F(0) << " / "  << pos->F(1) << " / "  << pos->F(2) << endl;
+      cout << "Cell: " << index << endl;
+      cout << "_cells.size(): " << _cells.size() << "\tindex: " << index << "\n";
+      cout << "Length of the cell: " << _cellLength[0] << " " << _cellLength[1] << " " << _cellLength[2] << "\n";
+      cout << "\nBounding box, including halo, from (" << _haloBoundingBoxMin[0] << "/"
+           << _haloBoundingBoxMin[1] << "/" << _haloBoundingBoxMin[2] << ") to (" << _haloBoundingBoxMax[0]
+           << "/" << _haloBoundingBoxMax[1] << "/" << _haloBoundingBoxMax[2] << ").\n";
+      cout << "removing m" << pos->id() << " (internal component number " << pos->componentid()
+           << ", Utrans=" << pos->Utrans() << ").\n";
+      _log.error("update()", "SEVERE INDEX ERROR in LinkedCells.cpph method update:\nA molecule left the bounding box and will be deleted.\n");
+      cout << "\n\n";
+      cout.flush();
+      this->_particles.erase(pos);
+      exit(1);
+    }
+
 		_cells[index].addParticle(&(*pos));
 	}
 	_cellsValid = true;
