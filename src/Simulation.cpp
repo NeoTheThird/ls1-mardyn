@@ -1085,23 +1085,27 @@ void Simulation::simulate() {
 		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
 		 *realignment tools borrowed from Martin Horsch, for the determination of the centre of mass 
 		 *the halo MUST NOT be present*/
-		unsigned particleNoTest = 0;
-#ifndef NEDBUG
+#ifndef NDEBUG 
+#ifndef ENABLE_MPI
+			unsigned particleNoTest = 0;
                         for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next())
                         particleNoTest++;
                         global_log->info()<<"particles before determine shift-methods, halo not present:" << particleNoTest<< "\n";
+#endif
 #endif
 		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
 			//! !!! the sequence of calling the two methods MUST be: first determineXZShift() then determineYShift() !!!
 			_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
 			_domain->determineYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
-#ifndef NEDBUG
+#ifndef NDEBUG 
+#ifndef ENABLE_MPI			
 			particleNoTest = 0;
 			for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) 
 			particleNoTest++;
 			global_log->info()<<"particles after determine shift-methods, halo not present:" << particleNoTest<< "\n";
-#endif			
+#endif
+#endif
 		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
@@ -1150,23 +1154,27 @@ void Simulation::simulate() {
 		if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
 			_domain->realign(_moleculeContainer);
-#ifndef NEDBUG
+#ifndef NDEBUG 
+#ifndef ENABLE_MPI
 			particleNoTest = 0;
 			for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) 
 			particleNoTest++;
 			global_log->info()<<"particles after realign(), halo present:" << particleNoTest<< "\n";
-#endif			
+#endif
+#endif
 		}
 		
 		// clear halo
 		global_log->debug() << "Delete outer particles" << endl;
 		_moleculeContainer->deleteOuterParticles();
-#ifndef NEDBUG
+#ifndef NDEBUG 
+#ifndef ENABLE_MPI
 			particleNoTest = 0;
 			for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) 
 			particleNoTest++;
 			global_log->info()<<"particles after clearing the halo:" << particleNoTest<< "\n";
 #endif				
+#endif
 
 		if (_simstep >= _initGrandCanonical) {
 			_domain->evaluateRho(_moleculeContainer->getNumberOfParticles(), _domainDecomposition);
