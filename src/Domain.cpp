@@ -1006,14 +1006,19 @@ bool Domain::isCylindrical(){
 	return this->_universalCylindricalGeometry;
 }
 
-void Domain::considerComponentInProfile(int cid)
+void Domain::considerComponentInProfile(unsigned cidmax)
 {
 	// default: false
-	//for(unsigned i = 0; i<=_components.size(); i++){
-	//this->_universalProfiledComponents[i] = false;
-	//}
+	for(unsigned  i = 0; i<=_components.size(); i++){
+	this->_universalProfiledComponents[i] = false;
+	}
 	
-	this->_universalProfiledComponents[cid] = true;
+	for(unsigned i = 0; i<=cidmax; i++){
+	this->_universalProfiledComponents[i] = true;
+#ifndef NDEBUG
+	global_log->info() << "profiled Compoenent: "<< i << "\n";
+#endif
+	}
 }
 
 void Domain::considerComponentForYShift(unsigned cidMin, unsigned cidMax){

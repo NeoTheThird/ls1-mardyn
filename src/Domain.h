@@ -342,7 +342,7 @@ public:
 	PressureGradient* getPG() { return this->_universalPG; }
 
 	void setupProfile(unsigned xun, unsigned yun, unsigned zun);
-	void considerComponentInProfile(int cid);
+	void considerComponentInProfile(unsigned cid);
 	void recordProfile(ParticleContainer* molCont);
 	void collectProfile(DomainDecompBase* domainDecomp);
 	void outputProfile(const char* prefix);
