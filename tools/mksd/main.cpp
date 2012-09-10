@@ -348,7 +348,7 @@ if(!in_xi13) xi13 = 0.0;
 if(!in_fluid) fluid = FLUID_AR;
 if(!in_outputTime) outTimeSteps = 500*1000;
 if(!in_wallModel) wall = WALL_CU_LJ;
-if(!in_initCanon) initCanon = 100;
+if(!in_initCanon) initCanon = 0;
 
 
 
