@@ -117,6 +117,7 @@ void ConfigWriter::write(){
 	wProfileOutputPrefix();
 	confStrm << "AlignCentre\t25\t1\n" ;
 	confStrm << "ComponentForYShift\t2 3\n";
+	confStrm << "nomomentum\t200\n";
 //	cout << "\n**********************************\nwrite() method of Configwriter finished\n**********************************\n";
 
 }

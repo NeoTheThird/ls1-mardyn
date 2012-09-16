@@ -396,6 +396,10 @@ private:
 	//! strength of the realignment
 	double _alignmentCorrection;
 	
+	//! flags to control the cancel of the momentum 
+	bool _doCancelMomentum;
+	//! number of time steps after which the cancelling is carried outline
+	unsigned _momentumInterval;
 
 	
 public:	

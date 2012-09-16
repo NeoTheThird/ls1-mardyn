@@ -1237,6 +1237,38 @@ void Domain::realign(
 }
 
 
+/* by Stefan Becker, borrowed from Matrin Horsch
+ * method cancelling the net moment
+ */
+void Domain::cancelMomentum(
+     DomainDecompBase* domainDecomp,
+     ParticleContainer* molCont
+) {
+   double localMomentum[3];
+   for(unsigned d = 0; d < 3; d++) localMomentum[d] = 0.0;
+   for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
+   {
+      double tmass = tm->gMass();
+      for(unsigned d = 0; d < 3; d++)
+         localMomentum[d] += tm->v(d) * tmass;
+   }
+   double globalMomentum[3];
+   for(unsigned d = 0; d < 3; d++) globalMomentum[d] = localMomentum[d];
+   domainDecomp->collCommInit(3);
+   for(unsigned short d = 0; d<3; d++)domainDecomp->collCommAppendDouble(globalMomentum[d]);
+   domainDecomp->collCommAllreduceSum();
+   for(unsigned short d = 0; d < 3; d++) globalMomentum[d]  = domainDecomp->collCommGetDouble();
+   for(unsigned short d = 0; d < 3; d++) globalMomentum[d] /= _globalNumMolecules;
+   if(!this->_localRank)
+      global_log->info() << "Average momentum: (" << globalMomentum[0] << ", " << globalMomentum[1] << ", " << globalMomentum[2] << ") => removing.\n";
+   for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
+   {
+      double tmass = tm->gMass();
+      tm->vsub(globalMomentum[0]/tmass, globalMomentum[1]/tmass, globalMomentum[2]/tmass);
+   }
+}
+
+
 // author: Stefan Becker, method called in the case of a density profile established in cylindrical coordinates. Counterpart of outputProfile(...).
 // reason for a sperate method (in addition to "outputProfile(...)"): method neatly matched to the particular needs of the (cylindrical density) profile, otherwise outpuProfile would be inflated, structure became too compilcated.
 void Domain::outputCylProfile(const char* prefix){

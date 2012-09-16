@@ -785,6 +785,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		    cidMax--;
 		    _domain->considerComponentForYShift(cidMin, cidMax);
 		}
+		else if(token == "nomomentum"){
+		      this->_doCancelMomentum = true;
+		      inputfilestream >> this->_momentumInterval;
+		}
 		// chemicalPotential <mu> component <cid> [control <x0> <y0> <z0>
 		// to <x1> <y1> <z1>] conduct <ntest> tests every <nstep> steps
 		else if (token == "chemicalPotential") {
@@ -1180,6 +1184,10 @@ void Simulation::simulate() {
 			_domain->evaluateRho(_moleculeContainer->getNumberOfParticles(), _domainDecomposition);
 		}
 
+		if(_doCancelMomentum && !(_simstep % _momentumInterval)) {
+			_domain->cancelMomentum(_domainDecomposition, _moleculeContainer);
+		}
+		
 		if (!(_simstep % _collectThermostatDirectedVelocity))
 			_domain->calculateThermostatDirectedVelocity(_moleculeContainer);
 		if (_pressureGradient->isAcceleratingUniformly()) {
@@ -1411,6 +1419,9 @@ void Simulation::initialize() {
 	h = 0.0;
 
 	_doAlignCentre = false;
+	_alignmentInterval = 25;
+	_doCancelMomentum = false;
+	_momentumInterval = 1000;
 
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;

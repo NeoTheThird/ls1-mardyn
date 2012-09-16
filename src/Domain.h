@@ -371,6 +371,10 @@ public:
 			     double fraction);
 	// carrying out the actual shift of ALL particles
 	void realign( ParticleContainer* molCont);
+	
+	// method that cancels the net momentum of the simulation entire box
+	void cancelMomentum( DomainDecompBase* domainDecomp, ParticleContainer* molCont);
+	
 	// method defining the component that is employed for determining the shift distance in y-direction
 	void considerComponentForYShift(unsigned cidMin, unsigned cidMax);
 	
