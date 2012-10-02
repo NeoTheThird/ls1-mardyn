@@ -14,7 +14,6 @@ const double DT = 0.030620; // corresponds to 1 fs
 extern const string WALL_TERSOFF;
 extern const string WALL_CU_LJ;
 extern double LATTICE_CONST_WALL_LJTS;
-//extern const double  LATTICE_CONST_CU;
 
 
 // @brief: implementing the constructor and destructor, respectively

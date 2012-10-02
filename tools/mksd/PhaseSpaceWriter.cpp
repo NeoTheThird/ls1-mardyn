@@ -8,7 +8,6 @@
 #include"PhaseSpaceWriter.h"
 
 extern double LATTICE_CONST_WALL_LJTS;
-//extern double const LATTICE_CONST_CU;
 extern const string WALL_CU_LJ;
 
 // constructor
