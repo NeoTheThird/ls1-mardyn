@@ -153,3 +153,54 @@ void Molecule::calculateCoordinatesOfWallMolecule(double xLength, double zLength
 	} // end for(i)
 
 } // end of method
+
++/*
++void Molecule::calculateCoordinatesOfWallMolecule(double xLength, double zLength, double off1,
++                                                 double latticeConstant, double shielding, unsigned numberOfCircles, unsigned deltaRCircle){
++
++       double yLength = off1 - shielding;
++       double pos[3][3];       // 3 vectors which are added to the current position in order to set three new particles
++       for(unsigned i = 0; i<3; i++){    // !!!this initialisation of the 3 vectors is valid only for equilateral lattices!!! => see sketch!
++               for(unsigned j= 0; j<3; j++){
++                       if(i!= j) pos[i][j] = 0.5*latticeConstant;
++                       else pos[i][j] = 0;
++                       //cout << "pos["<<i<<"]["<< j<<"] = " << pos[i][j] << "\n";
++               }
++       }
++       _numberOfMolecules = 0;
++       if (deltaRCircle < 0.5*latticeConstant){
++               cerr << "Circle size chosen too small! delta_r has to be at least 1*lattice constant! delta_r SWITCHED to 1*lattice constant.";
++               deltaRCircle = latticeConstant;
++       }
++       double currentZeroPos[3];
++       currentZeroPos[0] = -0.95*latticeConstant; // 1-0.95 = 0.05 => offset so that all the particles are within the box!
++
++       for(unsigned i = 0; i*latticeConstant < xLength; i++){
++               currentZeroPos[0] = currentZeroPos[0] +latticeConstant;
++               currentZeroPos[1] = off1-shielding + 1.05*latticeConstant;
++               currentZeroPos[2] = -0.95*latticeConstant;
++               for(unsigned j = 0; j*latticeConstant < yLength; j++){
++                       currentZeroPos[1] = currentZeroPos[1] - latticeConstant; // minus because the start is at the top of the wall going to the bottom of the box afterwards
++                       currentZeroPos[2] =  -0.95*latticeConstant; //_moleculePosition[2][1] - latticeConstant;
++                       for(unsigned k = 0; k*latticeConstant < zLength; k++){
++                               currentZeroPos[2] = currentZeroPos[2] +latticeConstant;
++                               _moleculePosition[0][_numberOfMolecules] = currentZeroPos[0];
++                               _moleculePosition[1][_numberOfMolecules] = currentZeroPos[1];
++                               _moleculePosition[2][_numberOfMolecules] = currentZeroPos[2];
++                               _moleculeCID[_numberOfMolecules] = ((int)floor( _moleculePosition[0][_numberOfMolecules]/ stripeWidth) % 2) +2; // if modulo returns zero => cid == 2, otherwise cid == 3
++                               _numberOfMolecules++;
++                               for(unsigned l = 0; l < 3; l++){
++                                       _moleculePosition[0][_numberOfMolecules] = currentZeroPos[0] + pos[l][0];
++                                       _moleculePosition[1][_numberOfMolecules] = currentZeroPos[1] - pos[l][1];
++                                       _moleculePosition[2][_numberOfMolecules] = currentZeroPos[2] + pos[l][2];
++                                       _moleculeCID[_numberOfMolecules] = ((int)floor( _moleculePosition[0][_numberOfMolecules]/ stripeWidth) % 2) +2;
++                                       _numberOfMolecules++;
++                               } // end for(l)
++                       }// end for (k)
++               } // end for(j)
++       } // end for(i)
++
++  
++} // end of method
++*/
+
