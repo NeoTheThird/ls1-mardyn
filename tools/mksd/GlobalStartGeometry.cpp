@@ -58,8 +58,8 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	_box[0] = nEkX * LATTICE_CONST_WALL_LJTS;
 	_box[2] = nEkZ * LATTICE_CONST_WALL_LJTS;
 
-	_effLiq[0] = _box[0] / _alpha;
-	_effLiq[2] = _box[2] / _gamma;
+	_effLiq[0] =pow(2.0 , 1.0/3.0) * _box[0] / _alpha;
+	_effLiq[2] =pow(2.0 , 1.0/3.0) * _box[2] / _gamma;
 	_effLiq[1] = (_nLiq / _rhoLiq) / (_effLiq[0]*_effLiq[2]);
 /*	cout << "effLiq[0]: " << effLiq[0] << "\n";
 	cout << "effLiq[1]: " << effLiq[1] << "\n";
