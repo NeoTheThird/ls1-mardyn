@@ -33,9 +33,12 @@ extern const string WALL_MAT_AKA_FIT = "MatAkaFit";
 // Journal of Materials Ressearch, Vol 9, No.3 1994;
 //const double EPS_CU = 6.13686e-03; // not used
 const double EPS_CU = 4.36704e-02;  // a hundred times the fluid epsilon (in this case of argon)
-//const double SIGMA_CU =7.03753 ;//4.37472;
+const double SIGMA_CU = SIGMA_AR;//4.37472;
 const double CU_MASS = 0.063546;
-double LATTICE_CONST_WALL_LJTS; //10.1922; // zero temperature lattice constant of of the LJ solid
+// for SIGMA_CU = SIGMA_AR
+double LATTICE_CONST_WALL_LJTS; 
+// for SIGMA_CU = 0.8*SIGMA_AR
+//double LATTICE_CONST_WALL_LJTS = 0.7987*9.92234;
 
 
 /*
@@ -60,7 +63,7 @@ Component::Component(string in_substance, bool in_LJunits){
 	_refEnergy = EPS_AR;
 	_refLength = SIGMA_AR;
 	_refMass = AR_MASS;
-	LATTICE_CONST_WALL_LJTS = 9.92234/SIGMA_AR;;
+	LATTICE_CONST_WALL_LJTS = 9.92234/ SIGMA_AR;
 	}
 	else{	// i.e. atomic units
 		_refEnergy = 1.0;
@@ -125,7 +128,8 @@ void Component::init1CLJ(string substance){
 			{
 				_vecLJMass[0] = CU_MASS;
 				_vecLJEps[0] = EPS_CU;
-				_vecLJSigma[0] = SIGMA_AR;
+				//_vecLJSigma[0] = SIGMA_AR;
+				_vecLJSigma[0] = SIGMA_CU;
 				_TSLJCutOff = 2.5*SIGMA_AR;
 			}
 }
