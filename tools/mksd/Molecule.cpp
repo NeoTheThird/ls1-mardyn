@@ -125,7 +125,7 @@ void Molecule::calculateCoordinatesOfWallMolecule(double xLength, double zLength
 
 	for(unsigned i = 0; i*latticeConstant < xLength; i++){
 		currentZeroPos[0] = currentZeroPos[0] +latticeConstant;
-		currentZeroPos[1] = off1-shielding + latticeConstant;
+		currentZeroPos[1] = off1-shielding + 1.05*latticeConstant;
 		currentZeroPos[2] = -0.95*latticeConstant;
 		for(unsigned j = 0; j*latticeConstant < yLength; j++){
 			currentZeroPos[1] = currentZeroPos[1] - latticeConstant; // minus because the start is at the top of the wall going to the bottom of the box afterwards
