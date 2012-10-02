@@ -41,22 +41,7 @@ double LATTICE_CONST_WALL_LJTS;
 //double LATTICE_CONST_WALL_LJTS = 0.7987*9.92234;
 
 
-/*
-Component::Component(string in_substance, double refNRG, double refLgth, double refM)
-{
-	_substance = in_substance;
-	_refEnergy = refNRG;
-	_refLength = refLgth;
-	_refMass = refM;
 
-	if((substance == FLUID_AR)||(substance == FLUID_CH4)||(substance == WALL_CU_LJ)){
-		init1CLJ(substance);
-		}
-	else{
-		cerr << "No other interaction models implemented.";
-		}
-}
-*/
 Component::Component(string in_substance, bool in_LJunits){
 	_substance = in_substance;
 	if (in_LJunits){
