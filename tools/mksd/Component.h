@@ -96,7 +96,7 @@ public:
 
 	// calculating the liquid and vapor densities, respectively
 	double calculateLiquidDensity(double T);
-	double calculateVaporDensity(double T);
+	double calculateVaporDensity(double T, double factor);
 
 
 };

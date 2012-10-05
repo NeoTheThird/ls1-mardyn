@@ -12,7 +12,7 @@ extern const string WALL_CU_LJ;
 
 // constructor
 
-PhaseSpaceWriter::PhaseSpaceWriter(string in_prefix, double in_Temperature, unsigned in_nFluid, string in_fluidComponent,
+PhaseSpaceWriter::PhaseSpaceWriter(string in_prefix, double in_Temperature, double in_densFac, unsigned in_nFluid, string in_fluidComponent,
 		string in_wallComponent, unsigned in_wallLayers, double in_xi12, double in_xi13, double in_eta12, double in_alpha, double in_beta, double in_gamma, bool in_stripes,
 		unsigned in_numberOfStripes, bool in_LJShifted, bool in_LJunits)
 {
@@ -25,6 +25,7 @@ PhaseSpaceWriter::PhaseSpaceWriter(string in_prefix, double in_Temperature, unsi
 	_wallLayers = in_wallLayers;
 	_nFluid = in_nFluid;
 	_temperature = in_Temperature;
+	_densFac = in_densFac;
 	_xi12 = in_xi12;
 	_xi13 = in_xi13;
 	_eta12 = in_eta12;
@@ -69,7 +70,7 @@ void PhaseSpaceWriter::write()
 
 	Component fluidComp(_fluidComponentName, _LJunits);
 	GlobalStartGeometry geometry(_nFluid, fluidComp.calculateLiquidDensity(_temperature),
-									fluidComp.calculateVaporDensity(_temperature), _alpha, _beta, _gamma);
+									fluidComp.calculateVaporDensity(_temperature, _densFac), _alpha, _beta, _gamma);
 //	cout << "\n**********************************\n objects of classes 'Component' and 'GlobalStartGeometry' generated\n**********************************\n";
 	unsigned numberOfComponents;
 	if(_stripes){
@@ -275,7 +276,7 @@ void PhaseSpaceWriter::write()
 	// wall molecules are being filled
 	wallMolecule.calculateVelocities();
 	unsigned numberOfWallMolecules = wallMolecule.gNumberOfMolecules();
-	cout << "Number of liquid molecules: " << geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<< "\n";
+	cout << "Number of fluid molecules: " << geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<< "\n";
 	cout << "Number of wall molecules: "<< numberOfWallMolecules <<"\n**********************************\n\n";
 	for (unsigned i = 0; i < numberOfWallMolecules; i++){
 		psstrm << id <<" "<< wallMolecule.gMoleculeCID(i) <<"\t"<< wallMolecule.gXPos(i) <<" "<< wallMolecule.gYPos(i) <<" "<< wallMolecule.gZPos(i) <<

@@ -33,28 +33,29 @@ extern const string WALL_MAT_AKA_FIT = "MatAkaFit";
 // Journal of Materials Ressearch, Vol 9, No.3 1994;
 //const double EPS_CU = 6.13686e-03; // not used
 const double EPS_CU = 4.36704e-02;  // a hundred times the fluid epsilon (in this case of argon)
-const double SIGMA_CU = SIGMA_AR;//4.37472;
+const double SIGMA_CU = 0.8*SIGMA_AR;//4.37472;
 const double CU_MASS = 0.063546;
 // for SIGMA_CU = SIGMA_AR
-double LATTICE_CONST_WALL_LJTS; 
+//double LATTICE_CONST_WALL_LJTS; 
 // for SIGMA_CU = 0.8*SIGMA_AR
-//double LATTICE_CONST_WALL_LJTS = 0.7987*9.92234;
+double LATTICE_CONST_WALL_LJTS;
 
 
 
 Component::Component(string in_substance, bool in_LJunits){
 	_substance = in_substance;
+	double facLatConst =1.0;// 0.7986;
 	if (in_LJunits){
 	_refEnergy = EPS_AR;
 	_refLength = SIGMA_AR;
 	_refMass = AR_MASS;
-	LATTICE_CONST_WALL_LJTS = 9.92234/ SIGMA_AR;
+	LATTICE_CONST_WALL_LJTS = facLatConst *9.92234/ SIGMA_AR;
 	}
 	else{	// i.e. atomic units
 		_refEnergy = 1.0;
 		_refLength = 1.0;
 		_refMass = 1.0;
-		LATTICE_CONST_WALL_LJTS = 9.92234;
+		LATTICE_CONST_WALL_LJTS = facLatConst * 9.92234;
 	}
 	//_refTime = _refLength*sqrt(_refMass/_refEnergy);
 
@@ -184,16 +185,16 @@ double Component::calculateLiquidDensity(double T){
 		exit(-201);
 	}
 	cout << "Calculating rhoLiq in Component:\ngSigma(0) = " << (gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
-	cout << "rhoVap = " << rhoLiq << "\n";
+	cout << "rhoLiq = " << rhoLiq << "\n";
 	return rhoLiq;
 }
 
-double Component::calculateVaporDensity(double T){
+double Component::calculateVaporDensity(double T, double factor){
 	double rhoVap;
 	if(_substance == FLUID_AR || _substance == FLUID_CH4){
 		// @brief: calculation of the bulk densities in the liquid and vapor phase of a 1CLJ fluid, respectively;
 		// 		   according to Kedia et al. in:  Molecular Physics, vol. 104, Issue 9, p.1509-1527
-		rhoVap = ( RHO_CRITICAL_1CLJ - 0.5649* pow(T_CRITICAL_1CLJ - T, 1.0/3.0)
+		rhoVap = factor * ( RHO_CRITICAL_1CLJ - 0.5649* pow(T_CRITICAL_1CLJ - T, 1.0/3.0)
 				  + 0.2128 * (T_CRITICAL_1CLJ - T) + 0.0702 * pow(T_CRITICAL_1CLJ - T, 1.5) )
 				 / (gSigma(0)*gSigma(0)*gSigma(0));
 	}

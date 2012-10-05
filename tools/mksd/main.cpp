@@ -366,7 +366,7 @@ chargeCutoffRadius = 30;
 
 prefixStr = prefix;
 //cout << "prefixStr: " << prefixStr<< "\n";
-PhaseSpaceWriter PSW(prefixStr, temp, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, stripes, numberOfStripes, LJShifted, LJunits);
+PhaseSpaceWriter PSW(prefixStr, temp, densFac, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, stripes, numberOfStripes, LJShifted, LJunits);
 PSW.write();
 //@todo: the call of Configwriter is not done in a wrong way: the wall LJ cut off radius does not exist!!! the fluid r_c is used instead!
 // the same holds for the overall cutoff radius!!!

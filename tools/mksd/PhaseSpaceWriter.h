@@ -25,7 +25,7 @@ class PhaseSpaceWriter{
 
 public:
 	// constructor + destructor
-	PhaseSpaceWriter(string in_prefix, double in_Temperature, unsigned in_nFluid, string in_fluidComponent,
+	PhaseSpaceWriter(string in_prefix, double in_Temperature, double in_densFac, unsigned in_nFluid, string in_fluidComponent,
 					string in_wallComponent, unsigned in_wallLayers, double in_xi12, double in_xi13, double in_eta,  double in_alpha, double in_beta, double in_gamma, bool in_stripes,
 					unsigned in_numberOfStripes, bool in_LJShifted, bool in_LJunits);
 
@@ -46,6 +46,7 @@ private:
 	unsigned _wallLayers;
 	unsigned _numberOfStripes;
 	double _temperature;
+	double _densFac;
 	double _xi12, _xi13;
 	double _eta12;
 	double _alpha;
