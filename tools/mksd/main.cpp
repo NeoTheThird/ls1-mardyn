@@ -28,7 +28,7 @@ extern const string WALL_MAT_AKA_FIT;
 
 //@todo: Konstanten sauber als "extern const float DEFAULT_ALPHA = 3" definieren und in einer header-Datei deklarieren
 const double DEFAULT_ALPHA  = 3;
-const double DEFAULT_BETA = 3;
+const double DEFAULT_BETA = 2;
 const double DEFAULT_GAMMA = 3;
 const double PI = 3.1415927;
 const unsigned DEFAULT_PROFILE_PHI = 1;

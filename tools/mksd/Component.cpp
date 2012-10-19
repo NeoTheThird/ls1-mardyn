@@ -19,7 +19,7 @@ const double EPS_CH4 = 5.54383e-04;
 const double SIGMA_CH4 = 7.03753;
 const double CH4_MASS = 0.016042;
 
-const double RHO_CRITICAL_1CLJ = 0.3190;
+extern const double RHO_CRITICAL_1CLJ = 0.3190;
 const double T_CRITICAL_1CLJ = 1.0779;
 
 
