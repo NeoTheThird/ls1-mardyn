@@ -184,7 +184,7 @@ double Component::calculateLiquidDensity(double T){
 		cerr << "Error in Component class: Claculation of the liquid density. Liquid density of the 1C LJ model not calculated!";
 		exit(-201);
 	}
-	cout << "Calculating rhoLiq in Component:\ngSigma(0) = " << (gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
+	//cout << "Calculating rhoLiq in Component:\ngSigma(0) = " << (gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
 	cout << "rhoLiq = " << rhoLiq << "\n";
 	return rhoLiq;
 }
@@ -202,7 +202,7 @@ double Component::calculateVaporDensity(double T, double factor){
 			cerr << "Error in Component class: Claculation of the liquid density. Liquid density of the 1C LJ model not calculated!";
 			exit(-202);
 		}
-	cout << "Calculating rhoVap in Component: \ngSigma(0) = " << (gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
+	//cout << "Calculating rhoVap in Component: \ngSigma(0) = " << (gSigma(0)) << "\n"<< "temperature = "<< T <<"\n";
 	cout << "rhoVap = " << rhoVap << "\n";
 	return rhoVap;
 }

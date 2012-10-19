@@ -13,6 +13,7 @@
 const unsigned PRECISION = 10; // the number of times the loops are run determining the fill array _fill[i][j][k][l]
 
 extern double LATTICE_CONST_WALL_LJTS;
+extern double RHO_CRITICAL_1CLJ;
 //extern const double LATTICE_CONST_CU;
 
 //@brief: zero temperature lattice constant of the LJ model used for copper, needed to build up the wall
@@ -47,7 +48,6 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	unsigned nEkX;	// number of elementary lattice boxes of the solid wall in x-direction
 	unsigned nEkZ;	// "		"			"			"		"		"	 "	z-direction
 	double effVap[3];
-	//double effLiq[3];
 	
 	// @brief: 2nd step: determining the simulation box, offset and fluid cuboid dimensions
 	aApprox = pow(_nLiq/_rhoLiq, 1.0/3.0);
@@ -55,19 +55,14 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	nEkZ = ceil(_gamma*aApprox /  LATTICE_CONST_WALL_LJTS);	// the number of lattices in the z-direction (Ek == elementary cristal)
 	//cout << "nEKx = "<< nEkX << " \t nEkz = "<< nEkZ << "\n";
 
-
 	_box[0] = nEkX * LATTICE_CONST_WALL_LJTS;
 	_box[2] = nEkZ * LATTICE_CONST_WALL_LJTS;
 	
 	// introducing the factor pow(2.0, 1.0/3.0) in order to allow the liquid cuboid to have different edge length:
 	// the edge lengths in x- and z-direction are twice the edge length in y-direction
-	_effLiq[0] = pow(5.0 , 1.0/3.0) * _box[0] / _alpha;
-	_effLiq[2] = pow(5.0 , 1.0/3.0) * _box[2] / _gamma;
-	_effLiq[1] = (_nLiq / _rhoLiq) / (_effLiq[0]*_effLiq[2]);
-/*	cout << "effLiq[0]: " << effLiq[0] << "\n";
-	cout << "effLiq[1]: " << effLiq[1] << "\n";
-	cout << "effLiq[2]: " << effLiq[2] << "\n";
-*/
+	_effLiq[0] = pow(1.0 , 1.0/3.0) * _box[0] / _alpha;
+	_effLiq[2] = pow(1.0 , 1.0/3.0) * _box[2] / _gamma;
+	_effLiq[1] = (_nLiq / _rhoLiq) / (_effLiq[0]*_effLiq[2]); 
 
 	_box[1] = _nVap/_rhoVap/_box[0]/_box[2] + (_effLiq[0]*_effLiq[1]*_effLiq[2])/_box[0]/_box[2] + hWall + shielding;
 	cout << "hWall: " << hWall << "\n";
@@ -76,16 +71,14 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "box[1]: " << _box[1] << "\n";
 	cout << "box[2]: " << _box[2] << "\n";
 
-	/*effFluid[0] = pow( _nFluid/_rhoLiq , 1.0/3.0 );
-	effFluid[1] = sqrt(_nFluid/_rhoLiq/effFluid[0]);
-	effFluid[2] = _nFluid / (_rhoLiq*effFluid[0]*effFluid[1]);*/
 	effVap[0] = 0.97*_box[0];
 	effVap[1] = 0.97*(_box[1]-hWall-shielding) ;
 	effVap[2] = 0.97*_box[2];
-/*	cout << "effFluid[0]: " << effFluid[0]<< "\n";
-	cout << "effFluid[1]: " << effFluid[1]<< "\n";
-	cout << "effFluid[2]: " << effFluid[2]<< "\n";
-*/
+	double grossFluidDens = _nFluid / (_box[0] * _box[2] * (_box[1] - hWall));
+	cout << "gross fluid density: " <<  grossFluidDens << "\n";
+	cout << "critical density 1CLJ: " << RHO_CRITICAL_1CLJ << "\n";
+	cout << "vapour fraction x = " << (1.0/grossFluidDens - 1.0/_rhoLiq) / (1.0/_rhoVap - 1.0/_rhoLiq) << "\n";
+
 	_offLiq[0] = 0.5*(_box[0] - _effLiq[0]);
 	_offLiq[1] = hWall + shielding;
 	_offLiq[2] = 0.5*(_box[2]-_effLiq[2]);
@@ -125,8 +118,8 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "_vapUnit[0]  = "<< _vapUnit[0] << "\t _vapUnit[1] = " << _vapUnit[1] << "\t _vapUnit[2] = " << _vapUnit[2] << "\n";
 	cout << "_vapUnits[0]  = "<< _vapUnits[0] << "\t _vapUnits[1] = " << _vapUnits[1] << "\t _vapUnits[2] = " << _vapUnits[2] << "\n";
 	cout << "_effLiq[0]  = " << _effLiq[0] << "\t _effLiq[1] = " << _effLiq[1] << "\t _effLiq[2] = " << _effLiq[2] <<"\n"; 
-	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "effVap[2] = " << effVap[2] << "\n";
-	cout << "_effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
+	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "\teffVap[2] = " << effVap[2] << "\n";
+	cout << "upper edge of the liquid cuboid: _effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
 	
 	_vapFillProbability = _nVap/3.0 / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
 	

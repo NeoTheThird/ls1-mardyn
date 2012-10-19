@@ -28,7 +28,7 @@ extern const string WALL_MAT_AKA_FIT;
 
 //@todo: Konstanten sauber als "extern const float DEFAULT_ALPHA = 3" definieren und in einer header-Datei deklarieren
 const double DEFAULT_ALPHA  = 3;
-const double DEFAULT_BETA = 2;
+const double DEFAULT_BETA = 1.8;
 const double DEFAULT_GAMMA = 3;
 const double PI = 3.1415927;
 const unsigned DEFAULT_PROFILE_PHI = 1;
@@ -41,7 +41,7 @@ int main(int argc, char** argv){
 			"-N <fluid_number> [-o <output time steps>]\n [-P <n_phi n_r n_h>] [-s <sigma wall-wall>] [-S <number of stripes>] -T <temperatur>  [-u <LJ units>] "
 			"-w <wall thickness> [-W <wall interaction model>]\n -x12 <xi_12 Berthelot> [-x13 <xi_13 Berthelot>]\n\n"
 			"-a \t alpha: box length in x- direction as a mulitple of the liquid cuboid length in x-direction, default: alpha == 3\n"
-			"-b \t beta: effective width of the fluid space in y-direction as a multiple of the liquid cuboid length in y-direction, default: beta ==3 \n"
+			"-b \t beta: effective width of the fluid space in y-direction as a multiple of the liquid cuboid length in y-direction, default: beta ==1.8 \n"
 			"-g \t gamma: box length in z-direction as a mulitple of the liquid cuboid length in z-direction, default: gamma == 3\n"
 			"-c \t Init Canonical: number of time steps\n"
 			"-d \t vapor density factor: correction factor for the vapor density (initial thought: metastable states?) \n"
