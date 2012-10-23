@@ -40,6 +40,7 @@ public:
 	bool gFillVapArray(unsigned vapUnits0, unsigned vapUnits1, unsigned vapUnits2, unsigned particleInElementaryBox);
 	unsigned gNFilledLiqSlots();
 	unsigned gNFilledVapSlots();
+	double gGrossFluidDens();
 
 private:
 	unsigned _nFluid;
@@ -51,6 +52,7 @@ private:
 	//@brief: the next three variables needed to compute the density of the fluid (so far: 1CLJ)
 	double _rhoLiq;
 	double _rhoVap;
+	double _grossFluidDens;
 	double _sigmaFluid1CLJ;
 
 	double _nLiq;

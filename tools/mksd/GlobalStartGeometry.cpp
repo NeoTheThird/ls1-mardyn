@@ -74,10 +74,10 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	effVap[0] = 0.97*_box[0];
 	effVap[1] = 0.97*(_box[1]-hWall-shielding) ;
 	effVap[2] = 0.97*_box[2];
-	double grossFluidDens = _nFluid / (_box[0] * _box[2] * (_box[1] - hWall));
-	cout << "gross fluid density: " <<  grossFluidDens << "\n";
+	_grossFluidDens = _nFluid / (_box[0] * _box[2] * (_box[1] - hWall));
+	cout << "gross fluid density: " <<  _grossFluidDens << "\n";
 	cout << "critical density 1CLJ: " << RHO_CRITICAL_1CLJ << "\n";
-	cout << "vapour fraction x = " << (1.0/grossFluidDens - 1.0/_rhoLiq) / (1.0/_rhoVap - 1.0/_rhoLiq) << "\n";
+	cout << "vapour fraction x = " << (1.0/_grossFluidDens - 1.0/_rhoLiq) / (1.0/_rhoVap - 1.0/_rhoLiq) << "\n";
 
 	_offLiq[0] = 0.5*(_box[0] - _effLiq[0]);
 	_offLiq[1] = hWall + shielding;
@@ -294,4 +294,8 @@ unsigned GlobalStartGeometry::gNFilledLiqSlots(){
 
 unsigned GlobalStartGeometry::gNFilledVapSlots(){
 	return _nFilledVapSlots;
+}
+
+double GlobalStartGeometry::gGrossFluidDens(){
+  return _grossFluidDens;
 }
