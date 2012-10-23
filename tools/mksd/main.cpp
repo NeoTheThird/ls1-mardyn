@@ -30,6 +30,7 @@ extern const string WALL_MAT_AKA_FIT;
 const double DEFAULT_ALPHA  = 3;
 const double DEFAULT_BETA = 1.8;
 const double DEFAULT_GAMMA = 3;
+const double DEFAULT_EDGE = 1;
 const double PI = 3.1415927;
 const unsigned DEFAULT_PROFILE_PHI = 1;
 const unsigned DEFAULT_PROFILE_R = 200;
@@ -37,9 +38,9 @@ const unsigned DEFAULT_PROFILE_R = 200;
 
 
 int main(int argc, char** argv){
-	const char* usage = "usage: \nmkSD -p <prefix> [-a <alpha>] [-b <beta>] [-g <gamma>] [-c initCanonical] [-d <vapor density factor>] [-e <eta12 Lorentz>] [-f <fluid>] [-m] "
-			"-N <fluid_number> [-o <output time steps>]\n [-P <n_phi n_r n_h>] [-s <sigma wall-wall>] [-S <number of stripes>] -T <temperatur>  [-u <LJ units>] "
-			"-w <wall thickness> [-W <wall interaction model>]\n -x12 <xi_12 Berthelot> [-x13 <xi_13 Berthelot>]\n\n"
+	const char* usage = "usage: \nmkSD -p <prefix> [-a <alpha>] [-b <beta>] [-g <gamma>] [-c initCanonical] [-d <vapor density factor>] [-e <eta12 Lorentz>] [-f <fluid>] [-h <edge_proportion>] [-m] \n"
+			"-N <fluid_number> [-o <output time steps>] [-P <n_phi n_r n_h>] [-s <sigma wall-wall>] [-S <number of stripes>] -T <temperatur>  [-u <LJ units>] "
+			"-w <wall thickness> \n[-W <wall interaction model>] -x12 <xi_12 Berthelot> [-x13 <xi_13 Berthelot>]\n\n"
 			"-a \t alpha: box length in x- direction as a mulitple of the liquid cuboid length in x-direction, default: alpha == 3\n"
 			"-b \t beta: effective width of the fluid space in y-direction as a multiple of the liquid cuboid length in y-direction, default: beta ==1.8 \n"
 			"-g \t gamma: box length in z-direction as a mulitple of the liquid cuboid length in z-direction, default: gamma == 3\n"
@@ -47,6 +48,7 @@ int main(int argc, char** argv){
 			"-d \t vapor density factor: correction factor for the vapor density (initial thought: metastable states?) \n"
 			"-e \t eta_12 according to the extended Lorentz combining rule. \n"
 			"-f \t fluid: choosing different types of fluids, Ar is the default, other options: CH4, C2H6, N2, CO2, C6H14. So far not implemented! \n"
+			"-h \t liquid cuboid: edge lengths in x,z-direction as a multiple of the edge length in y-direction.\n"
 			"-m \t movie option: For a movie the timestep lenth is increased and the number of output time steps is set to 500. \n"
 			"-N \t number of fluid particles. \n"
 			"-o \t number of output timesteps.\n"
@@ -79,8 +81,9 @@ bool in_initCanon = false;		// -c => number of time steps used for init canonica
 bool in_density = false;		// -d => factor changing the vapor density in the start configuration, allowing for start density different from Kedia et al.
 bool in_eta12 = false;			// -e => eta12_fluid_wall of the Lorentz combinig rule
 bool in_fluid = false;			// -f => type of fluid: Argon by default
-bool movie = false;				// -m => movie of the system's time evolution intended? => output of VisittWriter
-bool in_N = false;				// -N => number of fluid particles
+bool in_edgeProp  = false;		// -h => edge proportions of the liquid cuboid, default: 1
+bool movie = false;			// -m => movie of the system's time evolution intended? => output of VisittWriter
+bool in_N = false;			// -N => number of fluid particles
 bool in_outputTime = false;		// -o => number of time steps after that the density profile is written out
 bool in_numProfileUnits = false;// -P => numer of profile units (bins) per direction, in the cylindrical coordinate system
 bool in_sigWall = false;		// -s => sigma_wall_wall: (i) LJ-wall changes sigma of the wall, (ii) otherwise (e.g. in case of harmonic oszillators) the equilibrium bond length
@@ -100,7 +103,7 @@ unsigned initCanon;
 unsigned profilePhi, profileR, profileH; // number of discrete (density-) profile elements in the corresponding direction
 unsigned numberOfStripes;
 int outTimeSteps, wallThick;
-double alpha, beta, gamm, densFac, eta12, sigWall, temp, xi12, xi13;
+double alpha, beta, gamm, edgeProp, densFac, eta12, sigWall, temp, xi12, xi13;
 char* prefix = (char*)0;		// name of the output file as a C-string, initialized by NULL pointer
 string fluid, wall, prefixStr;
 
@@ -181,6 +184,12 @@ for(int i = 1; i < argc; i++){
 				return 3;
 			}
 			break;
+		}
+		else if (argv[i][j] == 'h'){
+		 in_edgeProp = true;
+		 i++;
+		 edgeProp = atof(argv[i]);
+		 break;
 		}
 		else if (argv[i][j] == 'm') movie = true;
 		else if(argv[i][j] == 'N')
@@ -342,6 +351,7 @@ if(LJunits == true)
 if(!in_alpha) alpha = DEFAULT_ALPHA;
 if(!in_beta) beta = DEFAULT_BETA;
 if(!in_gamma) gamm = DEFAULT_GAMMA;
+if(!in_edgeProp) edgeProp = DEFAULT_EDGE;
 if(!in_density) densFac = 1.0;
 if(!in_eta12) eta12 = 1.0;
 if(!in_xi13) xi13 = 0.0;
@@ -366,7 +376,7 @@ chargeCutoffRadius = 30;
 
 prefixStr = prefix;
 //cout << "prefixStr: " << prefixStr<< "\n";
-PhaseSpaceWriter PSW(prefixStr, temp, densFac, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, stripes, numberOfStripes, LJShifted, LJunits);
+PhaseSpaceWriter PSW(prefixStr, temp, densFac, N, fluid, wall, wallThick, xi12, xi13, eta12,  alpha, beta, gamm, edgeProp, stripes, numberOfStripes, LJShifted, LJunits);
 PSW.write();
 //@todo: the call of Configwriter is not done in a wrong way: the wall LJ cut off radius does not exist!!! the fluid r_c is used instead!
 // the same holds for the overall cutoff radius!!!

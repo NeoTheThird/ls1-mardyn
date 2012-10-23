@@ -26,6 +26,7 @@ public:
 	~GlobalStartGeometry();
 
 	void calculateBoxFluidOffset(double hWall, double shielding);
+	void calculateBoxFluidOffset(double hWall, double shielding, double edgeProportion);
 	void calculateLiqFillProbabilityArray();
 	void calculateVapFillProbabilityArray();
 
