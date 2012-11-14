@@ -779,6 +779,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
 		}
 		else if(token == "ComponentForYShift"){
+		    _componentSpecificAlignment = true;
 		    unsigned cidMin, cidMax;
 		    inputfilestream  >> cidMin >> cidMax;
 		    cidMin--; // since internally the component number is reduced by one, i.e. cid == 1 in the input file corresponds to the internal cid == 0
@@ -1099,9 +1100,14 @@ void Simulation::simulate() {
 #endif
 		 if(_doAlignCentre && !(_simstep % _alignmentInterval))
 		{
-			//! !!! the sequence of calling the two methods MUST be: first determineXZShift() then determineYShift() !!!
-			_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
-			_domain->determineYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			if(_componentSpecificAlignment){
+				//! !!! the sequence of calling the two methods MUST be: FIRST determineXZShift() THEN determineYShift() !!!
+				_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+				_domain->determineYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			}
+			else{
+				_domain->determineShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			}
 #ifndef NDEBUG 
 #ifndef ENABLE_MPI			
 			particleNoTest = 0;
@@ -1419,6 +1425,7 @@ void Simulation::initialize() {
 	h = 0.0;
 
 	_doAlignCentre = false;
+	_componentSpecificAlignment = false;
 	_alignmentInterval = 25;
 	_doCancelMomentum = false;
 	_momentumInterval = 1000;

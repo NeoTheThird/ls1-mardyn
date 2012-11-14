@@ -391,6 +391,10 @@ private:
 	//! flags that control the realign tool
 	//! if _doAlignCentre == true => the alignment is carried out
 	bool _doAlignCentre;
+	// if _componentSpecificAlignment == true => a separate realignment with respect to the x,z-direction and the y-direction is carried out.
+	// The separate directions of the realignment are due to different components, i.e. that solid wall is always kept at the bottom (y-direction) whereas
+	// the fluid is kept in the centre of the x,z-plane.
+	bool _componentSpecificAlignment;
 	//! number of discrete timesteps after which the realignemt is carried out 
 	unsigned long _alignmentInterval;
 	//! strength of the realignment

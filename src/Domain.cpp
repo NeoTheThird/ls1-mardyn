@@ -1002,6 +1002,8 @@ void Domain::sesDrop(){
 	_universalInvProfileUnit[1] = this->_universalNProfileUnits[1]/(this->_universalR2max);  // delta_R^2
 	_universalInvProfileUnit[2] = this->_universalNProfileUnits[2]/(this->_globalLength[1]); // delta_H
 	global_log->info() << "\nInv Profile unit for sessile drop: (phi,R2,H) = (" << _universalInvProfileUnit[0] <<", " <<_universalInvProfileUnit[1]<<", "<<_universalInvProfileUnit[2]<<") \n";
+	
+	this->resetProfile();	
 }
 
 // author: Stefan Becker. Method called by Simulation::output() in order to decide wheter or not a cylindrical profile is to be written out,
@@ -1218,6 +1220,49 @@ void Domain::determineYShift( DomainDecompBase* domainDecomp, ParticleContainer*
    _universalRealignmentMotion[1] = -fraction*((_globalRealignmentBalance[1] / _globalRealignmentMass[1]) - initialCentreOfMassY);
 }
 
+
+void Domain::determineShift( DomainDecompBase* domainDecomp, ParticleContainer* molCont,
+                             double fraction)
+{
+   double localBalance[3]; 
+   for(unsigned d = 0; d < 3; d ++) localBalance[d] = 0.0; // initialising the array by zeros
+   double localMass = 0.0;
+   int cid;
+
+   for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
+   {
+      cid = tm->componentid();
+      if(_universalProfiledComponents[cid])
+      {
+        double tmass = tm->gMass();
+        localMass += tmass;
+        for(unsigned d = 0; d < 3; d++){ 
+          localBalance[d] += tm->r(d) * tmass;
+        }
+      }
+   }
+
+   for(unsigned d = 0; d < 3; d++) _globalRealignmentBalance[d] = localBalance[d];
+   _globalRealignmentMass[0] = localMass;
+   // determining the global values by the use of collectiveCommunication
+   domainDecomp->collCommInit(4);
+   for(unsigned d = 0; d < 3; d++)  domainDecomp->collCommAppendDouble(_globalRealignmentBalance[d]);
+   domainDecomp->collCommAppendDouble(_globalRealignmentMass[0]);
+   domainDecomp->collCommAllreduceSum();
+   for(unsigned d = 0; d < 3; d++)  _globalRealignmentBalance[d] = domainDecomp->collCommGetDouble();
+   _globalRealignmentMass[0] = domainDecomp->collCommGetDouble();
+   domainDecomp->collCommFinalize();
+
+   for(unsigned short d = 0; d < 3; d++){
+      _universalRealignmentMotion[d]
+         = -fraction*((_globalRealignmentBalance[d] / _globalRealignmentMass[0]) - 0.5*_globalLength[d]);
+   }
+  // "quick 'n dirty hack" in order to avoid trouble with the info-line of the realign()-method, this info line uses _globalRealignmentMass[1] which does 
+  // occur in this method (here it is superfluos)
+   _globalRealignmentMass[1] = _globalRealignmentMass[0];
+}
+
+
 /*
  * By Stefa Becker, see above comment on determineShift().
  * this method REQUIRES the presence of the halo
@@ -1229,13 +1274,11 @@ void Domain::realign(
    {
       global_log->info() << "Centre of mass: (" << _globalRealignmentBalance[0]/_globalRealignmentMass[0] << " / " << _globalRealignmentBalance[1]/_globalRealignmentMass[1] << " / " << _globalRealignmentBalance[2]/_globalRealignmentMass[0] << ") "
 			 << "=> adjustment: (" << _universalRealignmentMotion[0] << ", " << _universalRealignmentMotion[1] << ", " << _universalRealignmentMotion[2] << ").\n";
-      // cout << "If required, shifting by +- (" << _globalLength[0] << ", " << _globalLength[1] << ", " << _globalLength[2] << ").\n";
    }
    for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
    {
      for(unsigned short d=0; d<3; d++){
        tm->move(d, _universalRealignmentMotion[d]);
-      // tm->move(_universalRealignmentMotion, _globalLength);
      }
    }
 }
