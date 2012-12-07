@@ -23,7 +23,7 @@ PARTYPE ?= PAR
 # choose target
 # Show list of all available targets for the current config with cfg_help
 # Each config should at least provide the two targets RELEASE and DEBUG.
-TARGET ?= RELEASE
+TARGET ?= DEBUG
 
 # compile using depmode?
 DEPS ?= 0
@@ -173,6 +173,13 @@ lcov:
 
 lcov_clean:
 	 lcov --directory $(SRCDIR) -b $(SRCDIR) --zerocounters
+
+CPP = $(shell find ./ -name "*.cpp")
+HEADER = $(shell find ./ -name "*.h")
+HPP = $(shell find ./ -name "*.hpp")
+FILES = $(CPP) $(HEADER) $(HPP)
+tar:
+	cd ..; tar cvzf $(BINARY_BASENAME)_$(SVN_VERSION).tar.gz  $(FILES:%=src/%) makefile src/Makefile
 
 # include potentially generated dependency information
 -include $(shell find -path '*/.deps/*' -type f)

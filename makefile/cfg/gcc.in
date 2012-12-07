@@ -14,7 +14,7 @@ CFG_TARGETS += "COVERAGE code coverage test version\n"
 CFG_TARGETS += "PROFILE  code profiling for gprof version\n"
 CFG_TARGETS += "RELEASE  release version, compiler optimizations enabled"
 
-CXX_SEQ = g++
+CXX_SEQ = g++-4.6
 CXX_PAR = mpicxx
 DEPMODE = gcc3
 

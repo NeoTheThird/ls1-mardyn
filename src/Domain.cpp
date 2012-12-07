@@ -39,9 +39,9 @@ using namespace std;
 Domain::Domain(int rank, PressureGradient* pg){
 	_localRank = rank;
 	_localUpot = 0;
-	_localVirial = 0;   
+	_localVirial = 0;
 	_globalUpot = 0;
-	_globalVirial = 0; 
+	_globalVirial = 0;
 	_globalRho = 0;
 
 	this->_universalPG = pg;
@@ -71,7 +71,7 @@ Domain::Domain(int rank, PressureGradient* pg){
 	this->_globalTemperatureMap = map<int, double>();
 	this->_globalTemperatureMap[0] = 1.0;
 	this->_local2KETrans[0] = 0.0;
-	this->_local2KERot[0] = 0.0; 
+	this->_local2KERot[0] = 0.0;
 
 	_currentTime = 0.0;
 
@@ -124,7 +124,7 @@ void Domain::setLocalSummv2(double summv2, int thermostat)
 void Domain::setLocalSumIw2(double sumIw2, int thermostat)
 {
 	_local2KERot[thermostat] = sumIw2;
-} 
+}
 
 double Domain::getGlobalPressure()
 {
@@ -144,7 +144,7 @@ void Domain::advanceTime(double timestep){ _currentTime += timestep;}
 double Domain::getCurrentTime(){ return _currentTime;}
 
 vector<Component>& Domain::getComponents(){
-	return _components; 
+	return _components;
 }
 
 void Domain::addComponent(Component component){
@@ -152,7 +152,7 @@ void Domain::addComponent(Component component){
 }
 
 Comp2Param& Domain::getComp2Params(){
-	return _comp2params; 
+	return _comp2params;
 }
 
 void Domain::calculateGlobalValues(
@@ -164,15 +164,15 @@ void Domain::calculateGlobalValues(
 	double Upot = _localUpot;
 	double Virial = _localVirial;
 
-	// To calculate Upot, Ukin and Pressure, intermediate values from all      
-	// processes are needed. Here the         
-	// intermediate values of all processes are summed up so that the root    
-	// process can calculate the final values. to be able to calculate all     
-	// values at this point, the calculation of the intermediate value sum_v2  
-	// had to be moved from Thermostat to upd_postF and the final calculations  
-	// of m_Ukin, m_Upot and Pressure had to be moved from Thermostat / upd_F  
-	// to this point           
-	
+	// To calculate Upot, Ukin and Pressure, intermediate values from all
+	// processes are needed. Here the
+	// intermediate values of all processes are summed up so that the root
+	// process can calculate the final values. to be able to calculate all
+	// values at this point, the calculation of the intermediate value sum_v2
+	// had to be moved from Thermostat to upd_postF and the final calculations
+	// of m_Ukin, m_Upot and Pressure had to be moved from Thermostat / upd_F
+	// to this point
+
 	/* FIXME stuff for the ensemble class */
 	domainDecomp->collCommInit(2);
 	domainDecomp->collCommAppendDouble(Upot);
@@ -182,7 +182,7 @@ void Domain::calculateGlobalValues(
 	Virial = domainDecomp->collCommGetDouble();
 	domainDecomp->collCommFinalize();
 
-	/* FIXME: why should process 0 do this alone? 
+	/* FIXME: why should process 0 do this alone?
 	 * we should keep symmetry of all proccesses! */
 	// Process 0 has to add the dipole correction:
 	// m_UpotCorr and m_VirialCorr already contain constant (internal) dipole correction
@@ -234,7 +234,7 @@ void Domain::calculateGlobalValues(
 		numMolecules = domainDecomp->collCommGetUnsLong();
 		rotDOF = domainDecomp->collCommGetUnsLong();
 		domainDecomp->collCommFinalize();
-		global_log->debug() << "[ thermostat ID " << thermit->first << "]\tN = " << numMolecules << "\trotDOF = " << rotDOF 
+		global_log->debug() << "[ thermostat ID " << thermit->first << "]\tN = " << numMolecules << "\trotDOF = " << rotDOF
 			<< "\tmv2 = " <<  summv2 << "\tIw2 = " << sumIw2 << endl;
 
 		this->_universalThermostatN[thermit->first] = numMolecules;
@@ -251,9 +251,9 @@ void Domain::calculateGlobalValues(
 		if((Ti > 0.0) && !_universalNVE)
 		{
 			_universalBTrans[thermit->first] = pow(3.0*numMolecules*Ti / summv2, 0.4);
-			if( sumIw2 == 0.0 ) 
+			if( sumIw2 == 0.0 )
 				_universalBRot[thermit->first] = 1.0;
-			else 
+			else
 				_universalBRot[thermit->first] = pow(rotDOF*Ti / sumIw2, 0.4);
 		}
 		else
@@ -342,7 +342,7 @@ void Domain::calculateGlobalValues(
 				_localThermostatDirectedVelocity[d][thermit->first] = 0.0;
 				if(numMolecules > 0)
 					_universalThermostatDirectedVelocity[d][thermit->first] = sigv[d] / numMolecules;
-				else 
+				else
 					_universalThermostatDirectedVelocity[d][thermit->first] = 0.0;
 			}
 
@@ -351,7 +351,7 @@ void Domain::calculateGlobalValues(
 				<< " directed velocity: ("
 				<< _universalThermostatDirectedVelocity[0][thermit->first]
 				<< " / " << _universalThermostatDirectedVelocity[1][thermit->first]
-				<< " / " << _universalThermostatDirectedVelocity[2][thermit->first] 
+				<< " / " << _universalThermostatDirectedVelocity[2][thermit->first]
 				<< ")" << endl;
 #endif
 		}
@@ -459,7 +459,7 @@ void Domain::calculateVelocitySums(ParticleContainer* partCont)
 	}
 }
 
-void Domain::writeCheckpoint( string filename, 
+void Domain::writeCheckpoint( string filename,
 		ParticleContainer* particleContainer,
 		DomainDecompBase* domainDecomp )
 {
@@ -532,7 +532,7 @@ void Domain::writeCheckpoint( string filename,
 		for( map<unsigned, unsigned>::const_iterator uCSIDit = componentSets.begin();
 				uCSIDit != componentSets.end();
 				uCSIDit++ )
-		{ 
+		{
 			if(uCSIDit->first > 100) continue;
 			checkpointfilestream << " S\t" << 1+uCSIDit->first << "\t" << uCSIDit->second << "\n";
 		}
@@ -564,11 +564,11 @@ void Domain::writeCheckpoint( string filename,
 		checkpointfilestream.close();
 	}
 
-	domainDecomp->writeMoleculesToFile(filename, particleContainer); 
+	domainDecomp->writeMoleculesToFile(filename, particleContainer);
 }
 
 void Domain::initParameterStreams(double cutoffRadius, double cutoffRadiusLJ){
-	_comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoffRadius, cutoffRadiusLJ); 
+	_comp2params.initialize(_components, _mixcoeff, _epsilonRF, cutoffRadius, cutoffRadiusLJ);
 }
 
 void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
@@ -652,7 +652,7 @@ void Domain::initFarFieldCorr(double cutoffRadius, double cutoffRadiusLJ) {
 									- TISSv(-3,cutoffRadiusLJ,sig2,tau1,tau2) );
 						}
 						else {
-							if(tau2==0.) 
+							if(tau2==0.)
 								tau2=tau1;
 							UpotCorrLJ+=fac*(TICSu(-6,cutoffRadiusLJ,sig2,tau2)-TICSu(-3,cutoffRadiusLJ,sig2,tau2));
 							VirialCorrLJ+=fac*(TICSv(-6,cutoffRadiusLJ,sig2,tau2)-TICSv(-3,cutoffRadiusLJ,sig2,tau2));
@@ -708,7 +708,7 @@ void Domain::recordProfile(ParticleContainer* molCont)
 			zun = (unsigned)floor(thismol->r(2) * this->_universalInvProfileUnit[2]);
 			unID = xun * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
 				+ yun * this->_universalNProfileUnits[2] + zun;
-			this->_localNProfile[unID] += 1.0;
+			this->_localNProfile[cid][unID] += 1.0;
 			for(int d=0; d<3; d++) this->_localvProfile[d][unID] += thismol->v(d);
 			this->_localDOFProfile[unID] += 3.0 + (long double)(_components[cid].getRotationalDegreesOfFreedom());
 
@@ -724,12 +724,23 @@ void Domain::recordProfile(ParticleContainer* molCont)
 
 void Domain::collectProfile(DomainDecompBase* dode)
 {
+	//searching for considered component ids
+	std::map<unsigned, unsigned> cids;
+	int a = 0;
+	for (unsigned i = 0; i < _components.size(); ++i){
+		if (_universalProfiledComponents[_components[i].ID()] == true){
+			cids[a] = _components[i].ID();
+			++a;
+		}
+	}
+	unsigned numberCids = cids.size();
+
 	unsigned unIDs = this->_universalNProfileUnits[0] * this->_universalNProfileUnits[1]
 		* this->_universalNProfileUnits[2];
-	dode->collCommInit(6*unIDs);
-	for(unsigned unID = 0; unID < unIDs; unID++)
-	{
-		dode->collCommAppendLongDouble(this->_localNProfile[unID]);
+	dode->collCommInit((5+numberCids)*unIDs);
+	for(unsigned unID = 0; unID < unIDs; unID++){
+		for (unsigned i = 0; i < numberCids; ++i)
+			dode->collCommAppendLongDouble(this->_localNProfile[cids[i]][unID]);
 		for(int d=0; d<3; d++)
 			dode->collCommAppendLongDouble(_localvProfile[d][unID]);
 		dode->collCommAppendLongDouble(this->_localDOFProfile[unID]);
@@ -738,7 +749,9 @@ void Domain::collectProfile(DomainDecompBase* dode)
 	dode->collCommAllreduceSum();
 	for(unsigned unID = 0; unID < unIDs; unID++)
 	{
-		_globalNProfile[unID] = (double)dode->collCommGetLongDouble();
+		for (unsigned i = 0; i < numberCids; ++i){
+			_globalNProfile[cids[i]][unID] = (double)dode->collCommGetLongDouble();
+		}
 		for(int d=0; d<3; d++)
 			this->_globalvProfile[d][unID]
 				= (double)dode->collCommGetLongDouble();
@@ -754,21 +767,38 @@ void Domain::outputProfile(const char* prefix)
 {
 	if(this->_localRank) return;
 
+	//searching for considered component ids
+	std::map<unsigned, unsigned> cids;
+	int a = 0;
+	for (unsigned i = 0; i < _components.size(); ++i){
+		if (_universalProfiledComponents[_components[i].ID()] == true){
+			cids[a] = _components[i].ID();
+			++a;
+		}
+	}
+	unsigned numberCids = cids.size();
+
 	string vzpryname(prefix);
 	string Tpryname(prefix);
 	string rhpryname(prefix);
-	rhpryname += ".rhpry";
 	vzpryname += ".vzpry";
 	Tpryname += ".Tpry";
-	ofstream rhpry(rhpryname.c_str());
+	rhpryname += ".rhpry";
 	ofstream vzpry(vzpryname.c_str());
 	ofstream Tpry(Tpryname.c_str());
+	ofstream rhpry(rhpryname.c_str());
 	if (!(vzpry && Tpry && rhpry))
 	{
 		return;
 	}
 	rhpry.precision(4);
-	rhpry << "# y\trho\ttotal DOF\n# \n";
+	for (unsigned i = 0; i < numberCids; ++i)
+		rhpry << "#comp " << cids[i] << "\t\t\t";
+	rhpry << "\n";
+	for (unsigned i = 0; i < numberCids; ++i)
+		rhpry << "# y\trho\ttotal DOF\t";
+	rhpry << "\n# \n";
+
 	vzpry.precision(4);
 	vzpry << "# y\tvz\tv\n# \n";
 	Tpry.precision(5);
@@ -780,7 +810,9 @@ void Domain::outputProfile(const char* prefix)
 	{
 		double yval = (y + 0.5) / this->_universalInvProfileUnit[1];
 
-		long double Ny = 0.0;
+		long double Ny[numberCids];
+		for (unsigned i = 0; i < numberCids; ++i)
+			Ny[i] = 0.0;
 		long double DOFy = 0.0;
 		long double twoEkiny = 0.0;
 		long double velocitysumy[3];
@@ -791,30 +823,31 @@ void Domain::outputProfile(const char* prefix)
 			{
 				unsigned unID = x * this->_universalNProfileUnits[1] * this->_universalNProfileUnits[2]
 					+ y * this->_universalNProfileUnits[2] + z;
-				Ny += this->_globalNProfile[unID];
+				for (unsigned i = 0; i < numberCids; ++i)
+					Ny[i] += this->_globalNProfile[cids[i]][unID];
 				DOFy += this->_globalDOFProfile[unID];
 				twoEkiny += this->_globalKineticProfile[unID];
 				for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][unID];
 			}
 		}
 
-		if(Ny >= 64.0)
+		int sumNy = 0;
+		for (unsigned i = 0; i < numberCids; ++i)
+			sumNy += Ny[i];
+
+		double vvdir = 0.0;
+		for(unsigned d = 0; d < 3; d++)
 		{
-			double vvdir = 0.0;
-			for(unsigned d = 0; d < 3; d++)
-			{
-				double vd = velocitysumy[d] / Ny;
-				vvdir += vd*vd;
-			}
-			rhpry << yval << "\t" << (Ny / (layerVolume * this->_globalAccumulatedDatasets))
-				<< "\t" << DOFy << "\n";
-			vzpry << yval << "\t" << (velocitysumy[2] / Ny) << "\t" << sqrt(vvdir) << "\n";
-			Tpry << yval << "\t" << (twoEkiny / DOFy) << "\n";
+			double vd = velocitysumy[d] / sumNy;
+			vvdir += vd*vd;
 		}
-		else
-		{
-			rhpry << yval << "\t0.000\t" << DOFy << "\n";
+		for (unsigned i = 0; i < numberCids; ++i){
+			rhpry << yval << "\t" << (Ny[i] / (layerVolume * this->_globalAccumulatedDatasets))
+					<< "\t" << DOFy << "\t";
 		}
+		rhpry << "\n";
+		vzpry << yval << "\t" << (velocitysumy[2] / sumNy) << "\t" << sqrt(vvdir) << "\n";
+		Tpry << yval << "\t" << (twoEkiny / DOFy) << "\n";
 	}
 
 	rhpry.close();
@@ -824,12 +857,25 @@ void Domain::outputProfile(const char* prefix)
 
 void Domain::resetProfile()
 {
+	//searching for considered component ids
+	unsigned numberCids = _universalProfiledComponents.size();
+	unsigned cids[numberCids];
+	int a = 0;
+	for (unsigned i = 0; i < _components.size(); ++i){
+		if (_universalProfiledComponents[_components[i].ID()] == true){
+			cids[a] = _components[i].ID();
+			++a;
+		}
+	}
+
 	unsigned unIDs = this->_universalNProfileUnits[0] * this->_universalNProfileUnits[1]
 		* this->_universalNProfileUnits[2];
 	for(unsigned unID = 0; unID < unIDs; unID++)
 	{
-		this->_localNProfile[unID] = 0.0;
-		this->_globalNProfile[unID] = 0.0;
+		for (unsigned i = 0; i < numberCids; ++i){
+			this->_localNProfile[cids[i]][unID] = 0.0;
+			this->_globalNProfile[cids[i]][unID] = 0.0;
+		}
 		for(int d=0; d<3; d++)
 		{
 			this->_localvProfile[d][unID] = 0.0;
@@ -962,7 +1008,7 @@ void Domain::setglobalRho(double grho){ _globalRho = grho;}
 
 unsigned long Domain::getglobalRotDOF()
 {
-	return this->_universalRotationalDOF[0]; 
+	return this->_universalRotationalDOF[0];
 }
 
 void Domain::setglobalRotDOF(unsigned long grotdof)

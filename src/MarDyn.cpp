@@ -120,12 +120,15 @@ int main(int argc, char** argv) {
         }
     }
     else if( fileExists( args[0].c_str()) ) {
-        simulation.readConfigFile( args[0] );
+        //simulation.readConfigFile( args[0] );
     	if (numargs > 1) {
     		unsigned long steps = 0;
     		istringstream(args[1]) >> steps;
     		simulation.setNumTimesteps(steps);
     	}
+    	//changed
+    	//first read numberOfTimesteps and then the configFile, so that VISWriter, etc. gets the right number of timesteps
+        simulation.readConfigFile( args[0] );
         if( numargs > 2 ) {
             simulation.setOutputPrefix( args[2] );
         }

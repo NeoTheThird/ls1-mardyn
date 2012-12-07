@@ -441,9 +441,9 @@ private:
 	//! number of successive profile cuboids in x/y/z direction
 	unsigned _universalNProfileUnits[3];
 	//! local N profile map
-	std::map<unsigned, long double> _localNProfile;
+	std::map<unsigned, std::map<unsigned, long double> > _localNProfile;
 	//! global N profile map
-	std::map<unsigned, double> _globalNProfile;
+	std::map<unsigned, std::map<unsigned, long double> > _globalNProfile;
 	//! local directed velocity profile map
 	std::map<unsigned, long double> _localvProfile[3];
 	//! global directed velocity  profile map

@@ -46,14 +46,16 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 
 		if (_incremental) {
 			/* align file numbers with preceding '0's in the required range from 0 to _numberOfTimesteps. */
-			int num_digits = (int) ceil(log(double(_numberOfTimesteps / _writeFrequency)) / log(10.));
-			filenamestream << aligned_number(simstep / _writeFrequency, num_digits, '0');
+			int num_digits = (int) floor(log10(_numberOfTimesteps))+1;
+
+			filenamestream << "." << aligned_number(simstep, num_digits, '0');
 		}
+		int rank = domainDecomp->getRank();
+		filenamestream << "_" << rank;
 		filenamestream << ".vis";
 		
 		ofstream visittfstrm(filenamestream.str().c_str());
 
-		int rank = domainDecomp->getRank();
 		if ((rank== 0) && (!_wroteVIS)) {
 			visittfstrm << "      id t          x          y          z     q0     q1     q2     q3        c\n";
 			_wroteVIS = true;
