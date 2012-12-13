@@ -52,7 +52,9 @@ public:
 	void init() {
 		_virial = 0;
 		_upot6LJ = 0;
+		_upot6LJFluid = 0;
 		_upotXpoles = 0;
+		_upotXpolesFluid = 0;
 		_myRF = 0;
 		_upotTersoff = 0;
 	}
@@ -63,6 +65,7 @@ public:
 	//! and stored in _domain
 	void finish() {
 		_domain.setLocalUpot(_upot6LJ / 6. + _upotXpoles + _upotTersoff + _myRF);
+		_domain.setLocalUpotCompSpecific(_upot6LJFluid / 6. + _upotXpolesFluid + _upotTersoff + _myRF);
 		_domain.setLocalVirial(_virial + 3.0 * _myRF);
 	}
 
@@ -87,12 +90,19 @@ public:
         switch (pairType) {
 
             double dummy1, dummy2, dummy3, dummy4;
-            
+	    double u6LJFluid, uXpoles;
             case MOLECULE_MOLECULE : 
                 if ( _rdf != NULL )
                     _rdf->observeRDF(dd, molecule1.componentid(), molecule2.componentid());
-
-                PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, _virial, calculateLJ );
+		u6LJFluid = _upot6LJ;
+		uXpoles = _upotXpoles;
+		PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, _virial, calculateLJ );
+		if(molecule1.componentid() == 0){
+		  u6LJFluid = _upot6LJ - u6LJFluid;
+		  uXpoles = _upotXpoles - uXpoles;
+		  _upot6LJFluid += u6LJFluid; 
+		  _upotXpolesFluid += uXpoles;
+		}
                 return _upot6LJ + _upotXpoles;
             case MOLECULE_HALOMOLECULE : 
                 PotForce(molecule1, molecule2, params, distanceVector, dummy1, dummy2, dummy3, dummy4, calculateLJ);
@@ -137,6 +147,12 @@ private:
 	double _virial;
 	//! @brief variable used to sum the Upot6LJ contribution of all pairs
 	double _upot6LJ;
+	//! by Stefan Becker
+	//! @brief variable used to sum the Upot6LJ contribution of all pairs of fluid particles and fluid-solid particles (but not solid-solid!)
+	double _upot6LJFluid;
+	//! by Stefan Becker
+	//! @brief variable used to sum the UpotXpoles contribution of all pairs of fluid particles and fluid-solid particles (but not solid-solid!)
+	double _upotXpolesFluid;
 	//! @brief variable used to sum the UpotXpoles contribution of all pairs
 	double _upotXpoles;
 	//! @brief variable used to sum the Tersoff internal energy contribution of all pairs

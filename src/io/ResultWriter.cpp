@@ -44,7 +44,7 @@ void ResultWriter::initOutput(ParticleContainer* particleContainer,
 	if(domainDecomp->getRank()==0){
 		_resultStream.open(resultfile.c_str());
 		_resultStream << "# moldy MD simulation starting at " << ctime(&now) << endl;
-		_resultStream << "#\tt\t\tU_pot\tPressure\t\tbeta_trans\tbeta_rot\t\tc_v" << endl;
+		_resultStream << "#\tt\t\t\tU_pot\t\tU_pot_fluid\t\tPressure\t\tbeta_trans\tbeta_rot\t\tc_v" << endl;
 	}
 }
 
@@ -54,8 +54,9 @@ void ResultWriter::doOutput( ParticleContainer* particleContainer,
 {
 	if((domainDecomp->getRank() == 0) && (simstep % _writeFrequency == 0)){
 		_resultStream << simstep << "\t" << domain->getCurrentTime()
-		              << "\t\t" << domain->getAverageGlobalUpot() << "\t" << domain->getGlobalPressure()
-		              << "\t\t" << domain->getGlobalBetaTrans() << "\t" << domain->getGlobalBetaRot()
+		              << "\t\t" << domain->getAverageGlobalUpot() << "\t\t" << domain-> getAverageGlobalUpotCSpec()<< "\t\t" 
+			      << domain->getGlobalPressure() << "\t\t" << domain->getGlobalBetaTrans() 
+			      << "\t" << domain->getGlobalBetaRot()
 		              << "\t\t" << domain->cv() << "\n";
 	}
 }

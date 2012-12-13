@@ -126,6 +126,12 @@ public:
 
 	//! @brief get the potential of the local process
 	double getLocalUpot() const;
+	
+	//! @brief set the fluid and fluid-solid potential of the local process
+	void setLocalUpotCompSpecific(double UpotCspec);
+	
+	//! @brief get the fluid and fluid-solid potential of the local process
+	double getLocalUpotCompSpecific();
 
 	//! @brief set the virial of the local process
 	void setLocalVirial(double Virial);
@@ -184,6 +190,8 @@ public:
 	//! Before this method is called, it has to be sure that the
 	//! global potential has been calculated (method calculateGlobalValues)
 	double getAverageGlobalUpot() const;
+	//! by Stefan Becker: return the average global potential of the fluid-fluid and fluid-solid interaction (but NOT solid-solid interaction)
+	double getAverageGlobalUpotCSpec();
 
 	//! @brief get the global average virial per particle
 	//!
@@ -429,10 +437,14 @@ private:
 
 	//! Potential of the local process
 	double _localUpot;
+	//! by Stefan Becker: component specific potential of the local process (fluid-fluid and fluid-solid, but not solid-solid)
+	double _localUpotCspecif;
 	//! Virial of the local process
 	double _localVirial;
 	//! global Potential
 	double _globalUpot;
+	//! global component specific potential (fluid-fluid and fluid-solid but NOT solid-solid)
+	double _globalUpotCspecif;
 	//! global virial
 	double _globalVirial;
 	//! global density

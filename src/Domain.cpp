@@ -98,7 +98,10 @@ Domain::Domain(int rank, PressureGradient* pg){
 	this->_universalSelectiveThermostatWarning = 0;
 	this->_universalSelectiveThermostatError = 0;
 	// default
+	// by Stefan Becker
 	this->_universalCylindricalGeometry = false;
+	_localUpotCspecif = 0;
+	_globalUpotCspecif = 0;
 }
 
 void Domain::setLocalUpot(double Upot) {_localUpot = Upot;}
@@ -164,6 +167,7 @@ void Domain::calculateGlobalValues(
 		) {
 	double Upot = _localUpot;
 	double Virial = _localVirial;
+	double UpotCspec = _localUpotCspecif;
 
 	// To calculate Upot, Ukin and Pressure, intermediate values from all      
 	// processes are needed. Here the         
@@ -175,12 +179,14 @@ void Domain::calculateGlobalValues(
 	// to this point           
 	
 	/* FIXME stuff for the ensemble class */
-	domainDecomp->collCommInit(2);
+	domainDecomp->collCommInit(3);
 	domainDecomp->collCommAppendDouble(Upot);
 	domainDecomp->collCommAppendDouble(Virial);
+	domainDecomp->collCommAppendDouble(UpotCspec);
 	domainDecomp->collCommAllreduceSum();
 	Upot = domainDecomp->collCommGetDouble();
 	Virial = domainDecomp->collCommGetDouble();
+	UpotCspec = domainDecomp->collCommGetDouble();
 	domainDecomp->collCommFinalize();
 
 	/* FIXME: why should process 0 do this alone? 
@@ -189,6 +195,7 @@ void Domain::calculateGlobalValues(
 	// m_UpotCorr and m_VirialCorr already contain constant (internal) dipole correction
 	_globalUpot = Upot + _UpotCorr;
 	_globalVirial = Virial + _VirialCorr;
+	_globalUpotCspecif = UpotCspec;
 
 	/*
 	 * thermostat ID 0 represents the entire system
@@ -1432,4 +1439,20 @@ void Domain::outputCylProfile(const char* prefix){
 			  tmpProf->close();
 			  delete tmpProf;
 	   	      }
+
+}
+
+
+void Domain::setLocalUpotCompSpecific(double UpotCspec){_localUpotCspecif = UpotCspec;}
+
+double Domain::getLocalUpotCompSpecific(){return _localUpotCspecif;}
+
+double Domain::getAverageGlobalUpotCSpec() {
+  unsigned int numcomp=_components.size();
+  unsigned long numFluidMolecules=0;
+  for(unsigned i=0;i<numcomp;++i) {
+		Component& ci=_components[i];
+		numFluidMolecules+=ci.getNumMolecules();
+  }
+  return _globalUpotCspecif / numFluidMolecules;
 }
