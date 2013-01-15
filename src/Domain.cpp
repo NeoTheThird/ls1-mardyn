@@ -477,8 +477,8 @@ void Domain::writeCheckpoint( string filename,
 		ofstream checkpointfilestream(filename.c_str());
 		checkpointfilestream << "mardyn trunk " << VERSION;
 		checkpointfilestream << "\n";
-		checkpointfilestream << " currentTime\t"  << this->_currentTime << "\n";
-		checkpointfilestream << " Length\t" << setprecision(9) << _globalLength[0] << " " << _globalLength[1] << " " << _globalLength[2] << "\n";
+		checkpointfilestream << "currentTime\t"  << this->_currentTime << "\n";
+		checkpointfilestream << "Length\t" << setprecision(9) << _globalLength[0] << " " << _globalLength[1] << " " << _globalLength[2] << "\n";
 		if(this->_componentwiseThermostat)
 		{
 			for( map<int, int>::iterator thermit = this->_componentToThermostatIdMap.begin();
@@ -499,7 +499,7 @@ void Domain::writeCheckpoint( string filename,
 		}
 		else
 		{
-			checkpointfilestream << " Temperature\t" << _universalTargetTemperature[0] << endl;
+			checkpointfilestream << "Temperature\t" << _universalTargetTemperature[0] << endl;
 		}
 #ifndef NDEBUG
 		checkpointfilestream << "# rho\t" << this->_globalRho << "\n";
@@ -515,7 +515,7 @@ void Domain::writeCheckpoint( string filename,
 			checkpointfilestream << setprecision(8);
 		}
 		*/
-		checkpointfilestream << " NumberOfComponents\t" << _components.size() << endl;
+		checkpointfilestream << "NumberOfComponents\t" << _components.size() << endl;
 		for(vector<Component>::const_iterator pos=_components.begin();pos!=_components.end();++pos){
 			pos->write(checkpointfilestream);
 		}
@@ -568,9 +568,9 @@ void Domain::writeCheckpoint( string filename,
 			if(0 > uutit->first) continue;
 			if(uutit->second) checkpointfilestream << " U\t" << uutit->first << "\n";
 		}
-		checkpointfilestream << " NumberOfMolecules\t" << _globalNumMolecules << endl;
+		checkpointfilestream << "NumberOfMolecules\t" << _globalNumMolecules << endl;
 
-		checkpointfilestream << " MoleculeFormat\t" << "ICRVQD" << endl;
+		checkpointfilestream << "MoleculeFormat\t" << "ICRVQD" << endl;
 		checkpointfilestream.close();
 	}
 
@@ -704,12 +704,14 @@ void Domain::collectProfile(DomainDecompBase* dode)
 {
 	unsigned unIDs = this->_universalNProfileUnits[0] * this->_universalNProfileUnits[1]
 		* this->_universalNProfileUnits[2];
-	dode->collCommInit(6*unIDs);
+	dode->collCommInit(9*unIDs);
 	for(unsigned unID = 0; unID < unIDs; unID++)
 	{
 		dode->collCommAppendLongDouble(this->_localNProfile[unID]);
-		for(int d=0; d<3; d++)
+		for(unsigned short d=0; d<3; d++){
 			dode->collCommAppendLongDouble(_localvProfile[d][unID]);
+			dode->collCommAppendLongDouble(_localVNormProfile[d][unID]);
+		}
 		dode->collCommAppendLongDouble(this->_localDOFProfile[unID]);
 		dode->collCommAppendLongDouble(_localKineticProfile[unID]);
 	}
@@ -717,9 +719,12 @@ void Domain::collectProfile(DomainDecompBase* dode)
 	for(unsigned unID = 0; unID < unIDs; unID++)
 	{
 		_globalNProfile[unID] = (double)dode->collCommGetLongDouble();
-		for(int d=0; d<3; d++)
+		for(int d=0; d<3; d++){
 			this->_globalvProfile[d][unID]
 				= (double)dode->collCommGetLongDouble();
+			this->_globalVNormProfile[d][unID]
+				= (double)dode->collCommGetLongDouble();
+		}
 		this->_globalDOFProfile[unID]
 			= (double)dode->collCommGetLongDouble();
 		this->_globalKineticProfile[unID]
@@ -812,6 +817,8 @@ void Domain::resetProfile()
 		{
 			this->_localvProfile[d][unID] = 0.0;
 			this->_globalvProfile[d][unID] = 0.0;
+			this->_localVNormProfile[d][unID] = 0.0;
+			this->_globalVNormProfile[d][unID] = 0.0;
 		}
 		this->_localDOFProfile[unID] = 0.0;
 		this->_globalDOFProfile[unID] = 0.0;
@@ -1121,7 +1128,10 @@ void Domain::recordProfile(ParticleContainer* molCont)
 
 // @TODO: (by Stefan Becker)  differentiation of _localNProfile by the component number cid => _localNProfile[cid][unID]!!!
 			this->_localNProfile[unID] += 1.0;
-			for(int d=0; d<3; d++) this->_localvProfile[d][unID] += thismol->v(d);
+			for(int d=0; d<3; d++){
+			  this->_localvProfile[d][unID] += thismol->v(d);
+			  this->_localVNormProfile[d][unID]+= (thismol->v(d)*thismol->v(d));
+			}
 			this->_localDOFProfile[unID] += 3.0 + (long double)(_components[cid].getRotationalDegreesOfFreedom());
 
 			// record _twice_ the total (ordered + unordered) kinetic energy
@@ -1346,6 +1356,11 @@ void Domain::outputCylProfile(const char* prefix){
 			 // temperature profile
 			 string tmpProfName(prefix);
 			 tmpProfName += ".Tpr";
+			 string yVelProfname(prefix);
+			 yVelProfname+= ".vpry";
+			 string xzVelProfname(prefix);
+			 xzVelProfname+= ".vprxz";
+			 
 
 	   	         if(!this->_universalCylindricalGeometry)
 	   	         {
@@ -1354,6 +1369,8 @@ void Domain::outputCylProfile(const char* prefix){
 
 	   	         ofstream* rhoProf = new ofstream(rhoProfName.c_str());
 			 ofstream* tmpProf = new ofstream(tmpProfName.c_str());
+			 ofstream* yVelProf = new ofstream(yVelProfname.c_str());
+			 ofstream* xzVelProf = new ofstream(xzVelProfname.c_str());
 
 	   	         if (!(*rhoProf ) || !(*tmpProf)) // geaendert durch M. Horsch, by Stefan Becker: wozu?
 	   	         {
@@ -1361,6 +1378,8 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         }
 	   	         rhoProf->precision(6);
 			 tmpProf->precision(6);
+			 yVelProf->precision(6);
+			 xzVelProf->precision(6);
 
 	    //##########################################################################################################################################			 
 			 // density profile: actual writing procedure 
@@ -1438,7 +1457,82 @@ void Domain::outputCylProfile(const char* prefix){
 	   	        	}
 			  tmpProf->close();
 			  delete tmpProf;
-	   	      }
+	   	      
+			
+			  
+			  
+			 //##########################################################################################################################################			 
+			 // y-velocity norm profile: actual writing procedure 
+	   	         *yVelProf << "//Local profile of the number density. Output file generated by the \"outputCylProfile\" method, located in Domain.cpp. \n";
+	   	         *yVelProf << "//local density profile: Each matrix corresponds to a single value of \"phi_i\", measured in [rad]\n";
+	   	         *yVelProf << "//one single matrix of the local number density rho'(phi_i;r_i',h_i') \n//      | r_i'\n//---------------------\n//  h_i'| rho'(r_i',h_i')\n//      | \n";
+	   	         *yVelProf << "// T' \t sigma_ii' \t eps_ii' \t yOffset \t DELTA_phi \t DELTA_r2' \t DELTA_h' \t quantities in atomic units are denoted by an apostrophe '\n";
+	   	         *yVelProf << this->_universalTargetTemperature[_components.size()] <<"\t"<<_components[0].getSigma(0)<<"\t"<<_components[0].getEps(0)<<"\t";
+	   	         *yVelProf << _yOff << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n";
+	   	         // info: getSigma() und getEps() implementiert in Component.h
+	   	         // end of header, start of the data-part of the density file
+	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
+	   	         {
+	   	        	 *yVelProf <<"> "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\n0 \t";
+	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
+	   	        		 *yVelProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
+	   	        	 }
+	   	        	 *yVelProf << "\n";
+	   	        	for(unsigned n_h = 0; n_h < this->_universalNProfileUnits[2]; n_h++)
+	   	        	{
+
+	   	        		double hval = (n_h + 0.5) / this->_universalInvProfileUnit[2];
+	   	        		*yVelProf << hval<< "  \t";
+	   	        		for(unsigned n_r2 = 0; n_r2< this->_universalNProfileUnits[1]; n_r2++)
+	   	        		{
+	   	        			unsigned unID = n_phi * IDweight[0] + n_r2 * IDweight[1]
+	   	        				                                    + n_h * IDweight[2];
+	   	        		   	double normVy = this->_globalVNormProfile[1][unID];
+	   	        		   	*yVelProf << normVy / this->_globalAccumulatedDatasets<< "\t";
+						//for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][unID];
+	   	        		}
+	   	        		*yVelProf << "\n";
+	   	        	}
+	   	         }
+	   	         yVelProf->close();
+	   	         delete yVelProf;
+			 
+			 //##########################################################################################################################################			 
+			 // xz-velocity norm profile: actual writing procedure 
+	   	         *xzVelProf << "//Local profile of the number density. Output file generated by the \"outputCylProfile\" method, located in Domain.cpp. \n";
+	   	         *xzVelProf << "//local density profile: Each matrix corresponds to a single value of \"phi_i\", measured in [rad]\n";
+	   	         *xzVelProf << "//one single matrix of the local number density rho'(phi_i;r_i',h_i') \n//      | r_i'\n//---------------------\n//  h_i'| rho'(r_i',h_i')\n//      | \n";
+	   	         *xzVelProf << "// T' \t sigma_ii' \t eps_ii' \t yOffset \t DELTA_phi \t DELTA_r2' \t DELTA_h' \t quantities in atomic units are denoted by an apostrophe '\n";
+	   	         *xzVelProf << this->_universalTargetTemperature[_components.size()] <<"\t"<<_components[0].getSigma(0)<<"\t"<<_components[0].getEps(0)<<"\t";
+	   	         *xzVelProf << _yOff << "\t" << 1/this->_universalInvProfileUnit[0] << "\t" << 1/this->_universalInvProfileUnit[1] << "\t" << 1/this->_universalInvProfileUnit[2]<< "\n";
+	   	         // info: getSigma() und getEps() implementiert in Component.h
+	   	         // end of header, start of the data-part of the density file
+	   	         for(unsigned n_phi = 0; n_phi < this->_universalNProfileUnits[0]; n_phi++)
+	   	         {
+	   	        	 *xzVelProf <<"> "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\n0 \t";
+	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
+	   	        		 *xzVelProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
+	   	        	 }
+	   	        	 *xzVelProf << "\n";
+	   	        	for(unsigned n_h = 0; n_h < this->_universalNProfileUnits[2]; n_h++)
+	   	        	{
+
+	   	        		double hval = (n_h + 0.5) / this->_universalInvProfileUnit[2];
+	   	        		*xzVelProf << hval<< "  \t";
+	   	        		for(unsigned n_r2 = 0; n_r2< this->_universalNProfileUnits[1]; n_r2++)
+	   	        		{
+	   	        			unsigned unID = n_phi * IDweight[0] + n_r2 * IDweight[1]
+	   	        				                                    + n_h * IDweight[2];
+	   	        		   	double normVxz = sqrt(this->_globalVNormProfile[0][unID] + this->_globalVNormProfile[2][unID]);
+	   	        		   	*xzVelProf << normVxz / this->_globalAccumulatedDatasets<< "\t";
+						//for(unsigned d = 0; d < 3; d++) velocitysumy[d] += this->_globalvProfile[d][unID];
+	   	        		}
+	   	        		*xzVelProf << "\n";
+	   	        	}
+	   	         }
+	   	         xzVelProf ->close();
+	   	         delete xzVelProf;
+		      }
 
 }
 
