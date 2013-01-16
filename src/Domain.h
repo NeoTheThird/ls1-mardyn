@@ -529,6 +529,13 @@ private:
 	double _yOff;
 	// end
 	
+	//! by Stefan Becker => implementing a new velocity profile: 
+	//! local absolute value of the velocity components
+	//!@TODO: kind of redundant to kinetic profile
+	std::map<unsigned,double> _localVNormProfile[3];
+	//! global absolute value of the velocity components
+	std::map<unsigned,double> _globalVNormProfile[3];
+	
 	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>  => concerning the realignment tool: realignment to the centre of mass
 	// begin 
 	// _globalRealignmentMass[0] corresponds to the xz-shift,  _globalRealignmentMass[1] to the y-shift
