@@ -39,8 +39,9 @@ int main(int argc, char** argv){
    
   
   unsigned int NWall, NFluid, NTotal;
-  double TemperaturSD;//, TemperaturEsf;
+  double TemperaturSD, TemperaturEsf;
   double boxSD[3];
+  double boxEsf[3];
   double berthelotXi;
   vector<double> wallX, wallY, wallZ, wallU, wallV, wallW;
   double hWall = 0.0;
@@ -141,15 +142,56 @@ int main(int argc, char** argv){
     
     //! header esfera-datei
     header = true;
-    while(header){
+    /*
+     * while(header){
       string token, token0;
       getline(quelleEsf, token, '\n');
-      token0 = token[1];
+      token0 = token[0];
       if(token0 == "M"){
 	header = false;
       }
       token.clear();
     }
+    */
+    while(header){
+      char c;
+      quelleEsf >> c;
+      if(c == '#') {
+	quelleEsf.ignore( INT_MAX,'\n' );
+	continue;
+	}
+      quelleEsf.putback(c);
+      string token;
+      //token.clear();
+      quelleEsf >> token;
+      if(token == "Temperature"){
+	int kaese;
+	quelleEsf >> kaese >> TemperaturEsf;
+      }
+      else if(token == "Length"){
+	quelleEsf >> boxEsf[0] >> boxEsf[1] >> boxEsf[2];
+      }
+      else if(token == "MoleculeFormat"){
+	string molFormat;
+	quelleEsf >> molFormat; // zur richtigen Leseposition
+	header = false; 
+      }
+      else {
+	token.clear();
+     /*
+      * cout << "Unzulaessiger token: " << token <<"\nBisher ausgelesen:\nTemperatur SD = " << TemperaturSD << "\nBoxlänge SD: " << boxSD[0] << " "
+	  << boxSD[1] << " " << boxSD[2] << "\nBerthelot xi = " << berthelotXi << "\n\n";
+      */
+      }
+   }
+   
+   if(TemperaturEsf != TemperaturSD){
+    cout << "ERROR: Different temperatures in SD and esfera-File! \n";
+    return 1;
+   }
+  
+    
+    
     
     cout << "Header esfera-Datei abgearbeitet\n";
     while(!quelleEsf.eof()){
@@ -157,9 +199,9 @@ int main(int argc, char** argv){
       double x,y,z,u,v,w,q0,q1,q2,q3,bla1,bla2,bla3;
       quelleEsf >> id >> cid >> x >> y >> z >> u >> v >> w >> q0 >> q1 >> q2 >> q3 >> bla1 >> bla2 >> bla3;
       if(y > y_cut){
-	fluidX.push_back(x+1.0);
+	fluidX.push_back(x+0.5*(boxSD[0] - boxEsf[0]));
 	fluidY.push_back(y-y_cut + hWall + 1.2);
-	fluidZ.push_back(z+1.0);
+	fluidZ.push_back(z+0.5*(boxSD[2] - boxEsf[2]));
 	fluidU.push_back(u);
 	fluidV.push_back(v);
 	fluidW.push_back(w);
@@ -180,7 +222,8 @@ int main(int argc, char** argv){
     double pswap;
     bool tswap;
     Random* rdm = new Random(); 
-    rdm->init(12);
+    rdm->init(time(NULL));
+    cout << "Random number: " << rdm->rnd() << "\n";
     for(unsigned i = 0; i <filled.size(); i++){
      filled[i] = true; 
     }
