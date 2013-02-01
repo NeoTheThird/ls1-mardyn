@@ -85,18 +85,18 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	
 	// @brief: 3rd step: setting up a cuboid containing all the fluid particles at liquid phase density
 	double nLiqBoxes;
-	nLiqBoxes = (_nLiq + _nVap)/3.0;
+	nLiqBoxes = (_nLiq )/3.0;
 	_liqUnits[0] = round( pow( _effLiq[0]*_effLiq[0]*nLiqBoxes/_effLiq[1]/_effLiq[2], 1.0/3.0 ) );
 	//double fluidUnitsYz = (double)nFluidBoxes/_fluidUnits[0];
 	_liqUnits[1] = round( sqrt(_effLiq[1]*nLiqBoxes/_liqUnits[0]/ _effLiq[2]) );
 	_liqUnits[2] = ceil( nLiqBoxes/_liqUnits[0]/_liqUnits[1] );
 
-	_liqUnit[0] = (double)_effLiq[0]/_liqUnits[0];
-	_liqUnit[1] = (double)_effLiq[1]/_liqUnits[1];
-	_liqUnit[2] = (double)_effLiq[2]/_liqUnits[2];
+	_liqUnit[0] =1.1* (double)_effLiq[0]/_liqUnits[0];
+	_liqUnit[1] =1.1* (double)_effLiq[1]/_liqUnits[1];
+	_liqUnit[2] =1.1* (double)_effLiq[2]/_liqUnits[2];
 
 
-	_liqFillProbability = (_nLiq+_nVap)/3.0 / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
+	_liqFillProbability = (_nLiq)/3.0 / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
 	
 	// calculating the number of elementary vapour lattice boxes per direction 
 	// the number calculated assumes the entire fluid volume being available for the vapor 
@@ -105,7 +105,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	// In fact 4 times more lattice slots than actual vapor particles are available.
 	// In order to preserve the desired vapour density (number of vapour particles) the filling of the vapour lattice is controlled 
 	// by the bool-array _fillVap 
-	/*
+	
 	double nVapBoxes;
 	nVapBoxes = 4.0*_nVap/3.0;
 	_vapUnits[0] = floor(pow(effVap[0]*effVap[0]*nVapBoxes/effVap[1]/effVap[2],1.0/3.0) + 0.5);
@@ -119,17 +119,18 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "_vapUnit[0]  = "<< _vapUnit[0] << "\t _vapUnit[1] = " << _vapUnit[1] << "\t _vapUnit[2] = " << _vapUnit[2] << "\n";
 	cout << "_vapUnits[0]  = "<< _vapUnits[0] << "\t _vapUnits[1] = " << _vapUnits[1] << "\t _vapUnits[2] = " << _vapUnits[2] << "\n";
 	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "\teffVap[2] = " << effVap[2] << "\n";
-	*/
-	cout << "_effLiq[0]  = " << _effLiq[0] << "\t _effLiq[1] = " << _effLiq[1] << "\t _effLiq[2] = " << _effLiq[2] <<"\n"; 
-	cout << "upper edge of the liquid cuboid: _effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
 	
-	/*
+	cout << "_effLiq[0]  = " << _effLiq[0] << "\t _effLiq[1] = " << _effLiq[1] << "\t _effLiq[2] = " << _effLiq[2] <<"\n"; 
+	cout << "upper edge of the liquid cuboid: _effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "blub\n";
+	
+	
 	_vapFillProbability = _nVap/3.0 / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
+	cout << "_vapFillProbability \t "<< _vapFillProbability << "\n";
 	
 	_offVap[0] = 0.1 * _vapUnit[0];
 	_offVap[1] = _offLiq[1];
 	_offVap[2] = 0.1 * _vapUnit[2];
-	*/
+	
 		
 }
 
@@ -176,7 +177,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	
 	// @brief: 3rd step: setting up a cuboid containing all the fluid particles at liquid phase density
 	double nLiqBoxes;
-	nLiqBoxes = (_nLiq + _nVap)/3.0;
+	nLiqBoxes = (_nLiq )/3.0;
 	_liqUnits[0] = round( pow( _effLiq[0]*_effLiq[0]*nLiqBoxes/_effLiq[1]/_effLiq[2], 1.0/3.0 ) );
 	//double fluidUnitsYz = (double)nFluidBoxes/_fluidUnits[0];
 	_liqUnits[1] = round( sqrt(_effLiq[1]*nLiqBoxes/_liqUnits[0]/ _effLiq[2]) );
@@ -187,7 +188,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	_liqUnit[2] = (double)_effLiq[2]/_liqUnits[2];
 
 
-	_liqFillProbability = (_nLiq+_nVap)/3.0 / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
+	_liqFillProbability = (_nLiq)/3.0 / ( _liqUnits[0] * _liqUnits[1] * _liqUnits[2] );
 	
 	// calculating the number of elementary vapour lattice boxes per direction 
 	// the number calculated assumes the entire fluid volume being available for the vapor 
@@ -196,7 +197,7 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	// In fact 4 times more lattice slots than actual vapor particles are available.
 	// In order to preserve the desired vapour density (number of vapour particles) the filling of the vapour lattice is controlled 
 	// by the bool-array _fillVap 
-	/*
+	
 	double nVapBoxes;
 	nVapBoxes = 4.0*_nVap/3.0;
 	_vapUnits[0] = floor(pow(effVap[0]*effVap[0]*nVapBoxes/effVap[1]/effVap[2],1.0/3.0) + 0.5);
@@ -210,17 +211,17 @@ void GlobalStartGeometry::calculateBoxFluidOffset(double hWall, double shielding
 	cout << "_vapUnit[0]  = "<< _vapUnit[0] << "\t _vapUnit[1] = " << _vapUnit[1] << "\t _vapUnit[2] = " << _vapUnit[2] << "\n";
 	cout << "_vapUnits[0]  = "<< _vapUnits[0] << "\t _vapUnits[1] = " << _vapUnits[1] << "\t _vapUnits[2] = " << _vapUnits[2] << "\n";
 	cout << "effVap[0] = " << effVap[0] << "\t effVap[1] = " << effVap[1] << "\teffVap[2] = " << effVap[2] << "\n";
-	*/
+	
 	cout << "_effLiq[0]  = " << _effLiq[0] << "\t _effLiq[1] = " << _effLiq[1] << "\t _effLiq[2] = " << _effLiq[2] <<"\n"; 
 	cout << "upper edge of the liquid cuboid: _effLiq[1] + _offLiq[1] = " << _effLiq[1] + _offLiq[1] << "\n";
 	
-	/*
+	
 	_vapFillProbability = _nVap/3.0 / ( _vapUnits[0] * _vapUnits[1] * _vapUnits[2] );
 	
 	_offVap[0] = 0.1 * _vapUnit[0];
 	_offVap[1] = _offLiq[1];
 	_offVap[2] = 0.1 * _vapUnit[2];
-	*/
+	
 		
 }
 

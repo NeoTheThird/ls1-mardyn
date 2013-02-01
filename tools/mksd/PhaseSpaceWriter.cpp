@@ -18,7 +18,7 @@ PhaseSpaceWriter::PhaseSpaceWriter(string in_prefix, double in_Temperature, doub
 {
 	cout << "\n\n**********************************\nPhaseSpaceWriter opened\n";
 	cout << "writing the header ...\n**********************************\n";
-	_fileName = in_prefix + ".inp";
+	_fileName = in_prefix + ".template.inp";
 	_fileNameXyz = in_prefix+".xyz";
 	_fluidComponentName = in_fluidComponent;
 	_wallComponentName = in_wallComponent;
@@ -173,7 +173,7 @@ void PhaseSpaceWriter::write()
 
 	// total number of particles
 	geometry.calculateLiqFillProbabilityArray(); // within this method the number of actually filled liquid particles is calculated, too => already called here
-	//geometry.calculateVapFillProbabilityArray();
+	geometry.calculateVapFillProbabilityArray();
 	psstrm << "N\t"<< wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots() <<"\n";
 	xyzstrm << wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<<"\nComment\n";
 	psstrm << "M\tICRVQD\n\n";
@@ -236,7 +236,7 @@ void PhaseSpaceWriter::write()
 	}	// end for ii[0]
 	//cid ++;
 	
-	/*
+	
 	for(unsigned i = 0; i<4;i++) // resetting the counter to zero
 	  ii[i] = 0;
 	// vapour particles
@@ -276,7 +276,7 @@ void PhaseSpaceWriter::write()
 			}	// end for ii[2]
 		} 	// end for ii[1]
 	}	// end for ii[0]
-	*/
+	
 
 	// wall molecules are being filled
 	wallMolecule.calculateVelocities();
