@@ -90,6 +90,8 @@ public:
 	double D(unsigned short d) const { return _D[d]; } /* TODO: we should rename D to L with respect to literature. */
 	/** set the coordinate of the angular momentum */
 	void setD(unsigned short d, double Dd){ _D[d] = Dd; }
+	/** get the moment of inertia of a particle */
+	double getI(unsigned short d) const { return _I[d]; }
 	/** get coordinate of the current angular momentum  onto molecule */ 
 	double M(unsigned short d) const {return _M[d]; }
 

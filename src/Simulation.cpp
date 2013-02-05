@@ -1300,18 +1300,20 @@ void Simulation::simulate() {
 		    global_log->info() << "Andersen Thermostat" << endl;
 		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
 		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
-		    unsigned numPartThermo = 0;
+		    unsigned numPartThermo = 0; // for testing reasons
 		    double tTarget;
-		    double stdDev;
+		    double stdDevTrans, stdDevRot;
 		    if(_domain->severalThermostats()) {
 		      for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
 			if (_rand.rnd() < nuDt){
 			  numPartThermo++;
 			  int thermostat = _domain->getThermostat(tM->componentid());
 			  tTarget = _domain->getTargetTemperature(thermostat);
-			  stdDev = sqrt(tTarget/tM->gMass());
+			  stdDevTrans = sqrt(tTarget/tM->gMass());
 			  for(unsigned short d = 0; d < 3; d++){
-			    tM->setv(d,_rand.gaussDeviate(stdDev));
+			    stdDevRot = sqrt(tTarget*tM->getI(d));
+			    tM->setv(d,_rand.gaussDeviate(stdDevTrans));
+			    tM->setD(d,_rand.gaussDeviate(stdDevRot));
 			  }
 			}
 		      }
@@ -1322,9 +1324,11 @@ void Simulation::simulate() {
 			if (_rand.rnd() < nuDt){
 			  numPartThermo++;
 			  // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
-			  stdDev = sqrt(tTarget/tM->gMass());
+			  stdDevTrans = sqrt(tTarget/tM->gMass());
 			  for(unsigned short d = 0; d < 3; d++){
-			    tM->setv(d,_rand.gaussDeviate(stdDev)); 
+			    stdDevRot = sqrt(tTarget*tM->getI(d));
+			    tM->setv(d,_rand.gaussDeviate(stdDevTrans));
+			    tM->setD(d,_rand.gaussDeviate(stdDevRot));
 			  }
 			}
 		      }
