@@ -80,12 +80,16 @@ public:
 	void setr(unsigned short d, double r) { _r[d] = r; }
 	/** get velocity coordinate */
 	double v(unsigned short d) const { return _v[d]; }
+	/** set the velocity coordiate */
+	void setv(unsigned short d, double vd) { _v[d] = vd; }
 	/** get coordinate of current force onto molecule */
 	double F(unsigned short d) const {return _F[d]; }
 	/** get the orientation */
 	const Quaternion& q() const { return _q; }
-	/** get coordinate of the rotatational speed */
+	/** get coordinate of the angular momentum */
 	double D(unsigned short d) const { return _D[d]; } /* TODO: we should rename D to L with respect to literature. */
+	/** set the coordinate of the angular momentum */
+	void setD(unsigned short d, double Dd){ _D[d] = Dd; }
 	/** get coordinate of the current angular momentum  onto molecule */ 
 	double M(unsigned short d) const {return _M[d]; }
 

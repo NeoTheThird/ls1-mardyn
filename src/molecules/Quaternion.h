@@ -71,6 +71,11 @@ public:
 	 * apply the rotation represented by tis quaternion to d
 	 * @param d the vector to be rotated
 	 * @param result vector of the rotation
+	 * 
+	 * purpose of the method: transform the angular momentum to the principal axes of inertia
+	 * in order to calculate the kinetic energy of rotation, amongst others. 
+	 * That is: transform d[3] to drot[3]
+	 * 
 	 */
 	void rotate(const double d[3], double drot[3]) const;
 

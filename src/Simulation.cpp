@@ -66,6 +66,7 @@
 #include "utils/OptionParser.h"
 #include "utils/Timer.h"
 #include "utils/Logger.h"
+#include "utils/Random.h"
 
 #include "io/TcTS.h"
 
@@ -493,11 +494,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			_domain->initParameterStreams(_cutoffRadius, _LJCutoffRadius);
 		} else if (token == "timestepLength") {
 			inputfilestream >> timestepLength;
-		} else if (token == "cutoffRadius") {
+		} 
+		else if (token == "cutoffRadius") {
 			inputfilestream >> _cutoffRadius;
-		} else if (token == "LJCutoffRadius") {
+		}
+		else if (token == "LJCutoffRadius") {
 			inputfilestream >> _LJCutoffRadius;
-		} else if ((token == "parallelization") || (token == "parallelisation")) {
+		} 
+		else if ((token == "parallelization") || (token == "parallelisation")) {
 #ifndef ENABLE_MPI
 			global_log->warning()
 			        << "Input file demands parallelization, but the current compilation doesn't\n\tsupport parallel execution.\n"
@@ -521,7 +525,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				_domainDecomposition = (DomainDecompBase*) new KDDecomposition2(_cutoffRadius, _domain, updateFrequency, fullSearchThreshold);
 			}
 #endif
-		} else if (token == "datastructure") {
+		}
+		else if (token == "datastructure") {
 
 			if (_domainDecomposition == NULL) {
 				global_log->error()
@@ -561,7 +566,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				global_log->error() << "UNKOWN DATASTRUCTURE: " << token << endl;
 				exit(1);
 			}
-		} else if (token == "output") {
+		} 
+		else if (token == "output") {
 			inputfilestream >> token;
 			if (token == "ResultWriter") {
 				unsigned long writeFrequency;
@@ -650,7 +656,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			      _outputPlugins.push_back(new MmspdWriter(writeFrequency, outputPathAndPrefix, _numberOfTimesteps, true));
 			      global_log->debug() << "MmspdWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 			}
-		} else if (token == "accelerate") {
+		}
+		else if (token == "accelerate") {
 			cosetid++;
 			inputfilestream >> token;
 			global_log->debug() << "Found specifier '" << token << "'\n";
@@ -710,15 +717,18 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				exit(1);
 			}
 			_pressureGradient->specifyComponentSet(cosetid, dir, tau, ainit, timestepLength);
-		} else if (token == "constantAccelerationTimesteps") {
+		} 
+		else if (token == "constantAccelerationTimesteps") {
 			unsigned uCAT;
 			inputfilestream >> uCAT;
 			_pressureGradient->setUCAT(uCAT);
-		} else if (token == "zetaFlow") {
+		}
+		else if (token == "zetaFlow") {
 			double zeta;
 			inputfilestream >> zeta;
 			_pressureGradient->setZetaFlow(zeta);
-		} else if (token == "tauPrimeFlow") {
+		}
+		else if (token == "tauPrimeFlow") {
 			double tauPrime;
 			inputfilestream >> tauPrime;
 			if (timestepLength == 0.0) {
@@ -726,18 +736,22 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				exit(1);
 			}
 			_pressureGradient->specifyTauPrime(tauPrime, timestepLength);
-		} else if (token == "profile") {
+		}
+		else if (token == "profile") {
 			unsigned xun, yun, zun;
 			inputfilestream >> xun >> yun >> zun;
 			_domain->setupProfile(xun, yun, zun);
 			_doRecordProfile = true;
-		} else if (token == "yOffset") {
+		}
+		else if (token == "yOffset") {
 			double yOffset;
 			inputfilestream >> yOffset;
 			_domain->sYOffset(yOffset);
-		} else if (token == "profileRecordingTimesteps") {
+		}
+		else if (token == "profileRecordingTimesteps") {
 			inputfilestream >> _profileRecordingTimesteps;
-		} else if (token == "profileOutputTimesteps") {
+		}
+		else if (token == "profileOutputTimesteps") {
 			inputfilestream >> _profileOutputTimesteps;
 		}
 		// by Stefan Becker <stefan.becker@mv.uni-kl.de>, token determining the corrdinate system of the density profile
@@ -754,27 +768,41 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			}
 			_rdf = new RDF(interval, bins, _domain->getComponents().size());
 			//_domain->setupRDF(interval, bins);
-		} else if (token == "RDFOutputTimesteps") {
+		}
+		else if (token == "RDFOutputTimesteps") {
 			unsigned int RDFOutputTimesteps;
 			inputfilestream >> RDFOutputTimesteps;
 			_rdf->setOutputTimestep(RDFOutputTimesteps);
-		} else if (token == "RDFOutputPrefix") {
+		}
+		else if (token == "RDFOutputPrefix") {
 			std::string RDFOutputPrefix;
 			inputfilestream >> RDFOutputPrefix;
 			_rdf->setOutputPrefix(RDFOutputPrefix);
-		} else if (token == "profiledComponent") {
+		} 
+		else if (token == "profiledComponent") {
 			unsigned cid;
 			inputfilestream >> cid;
 			cid--;
 			_domain->considerComponentInProfile(cid);
-		} else if (token == "profileOutputPrefix") {
+		} 
+		else if (token == "profileOutputPrefix") {
 			inputfilestream >> _profileOutputPrefix;
-		} else if (token == "collectThermostatDirectedVelocity") {
+		}
+		else if (token == "collectThermostatDirectedVelocity") {
 			inputfilestream >> _collectThermostatDirectedVelocity;
-		} else if (token == "zOscillator") {
+		}
+		else if (token == "thermostat"){
+			inputfilestream >> _thermostatType;
+			if(_thermostatType == ANDERSEN_THERMOSTAT){
+			  inputfilestream >>_nuAndersen;
+			  global_log->info() << "Using the Andersen Thermostat with nu = " << _nuAndersen << "\n";
+			}
+		}
+		else if (token == "zOscillator") {
 			_zoscillation = true;
 			inputfilestream >> _zoscillator;
-		} else if(token == "AlignCentre"){	
+		}
+		else if(token == "AlignCentre"){	
 			_doAlignCentre = true;
 			inputfilestream >> _alignmentInterval >> _alignmentCorrection;
 		}
@@ -868,29 +896,38 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			        << " (internally " << icid << ") conduct " << intest << " tests every " << instep << " steps: ";
 			_lmu.push_back(tmu);
 			global_log->info() << " pushed back." << endl;
-		} else if (token == "planckConstant") {
+		}
+		else if (token == "planckConstant") {
 			inputfilestream >> h;
-		} else if (token == "NVE") {
+		}
+		else if (token == "NVE") {
 			_domain->thermostatOff();
-		} else if (token == "initCanonical") {
+		}
+		else if (token == "initCanonical") {
 			inputfilestream >> _initCanonical;
-		} else if (token == "initGrandCanonical") {
+		}
+		else if (token == "initGrandCanonical") {
 			inputfilestream >> _initGrandCanonical;
-		} else if (token == "initStatistics") {
+		}
+		else if (token == "initStatistics") {
 			inputfilestream >> _initStatistics;
-		} else if (token == "cutoffRadius") {
+		}
+		else if (token == "cutoffRadius") {
                         double rc;
                         inputfilestream >> rc;
                         this->setcutoffRadius(rc);
-                } else if (token == "LJCutoffRadius") {
+                }
+                else if (token == "LJCutoffRadius") {
                         double rc;
                         inputfilestream >> rc;
                         this->setLJCutoff(rc);
-                } else if (token == "tersoffCutoffRadius") {
+                }
+                else if (token == "tersoffCutoffRadius") {
                         double rc;
                         inputfilestream >> rc;
                         this->setTersoffCutoff(rc);
-                } else {
+                }
+                else {
 			if(token != "") global_log->warning() << "Did not process unknown token " << token << endl;
 		}
 	}
@@ -1235,6 +1272,7 @@ void Simulation::simulate() {
 
 		// scale velocity and angular momentum
 		if (!_domain->NVE()) {
+		  if(_thermostatType == VELSCALE_THERMOSTAT){
 			global_log->debug() << "Velocity scaling" << endl;
 			if (_domain->severalThermostats()) {
 				for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
@@ -1257,6 +1295,42 @@ void Simulation::simulate() {
 					tM->scale_D(_domain->getGlobalBetaRot());
 				}
 			}
+		  }
+		  else if(_thermostatType == ANDERSEN_THERMOSTAT){
+		    global_log->info() << "Andersen Thermostat" << endl;
+		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
+		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
+		    unsigned numPartThermo = 0;
+		    double tTarget;
+		    double stdDev;
+		    if(_domain->severalThermostats()) {
+		      for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
+			if (_rand.rnd() < nuDt){
+			  numPartThermo++;
+			  int thermostat = _domain->getThermostat(tM->componentid());
+			  tTarget = _domain->getTargetTemperature(thermostat);
+			  stdDev = sqrt(tTarget/tM->gMass());
+			  for(unsigned short d = 0; d < 3; d++){
+			    tM->setv(d,_rand.gaussDeviate(stdDev));
+			  }
+			}
+		      }
+		    }
+		    else{
+		      tTarget = _domain->getTargetTemperature(0);
+		      for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
+			if (_rand.rnd() < nuDt){
+			  numPartThermo++;
+			  // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
+			  stdDev = sqrt(tTarget/tM->gMass());
+			  for(unsigned short d = 0; d < 3; d++){
+			    tM->setv(d,_rand.gaussDeviate(stdDev)); 
+			  }
+			}
+		      }
+		    }
+		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
+		  }
 		}
 
 		_domain->advanceTime(_integrator->getTimestepLength());
@@ -1423,6 +1497,10 @@ void Simulation::initialize() {
 	_initGrandCanonical = 10000000;
 	_initStatistics = 20000;
 	h = 0.0;
+	
+	_thermostatType = VELSCALE_THERMOSTAT;
+	_nuAndersen = 0.0;
+	_rand.init(8624);
 
 	_doAlignCentre = false;
 	_componentSpecificAlignment = false;

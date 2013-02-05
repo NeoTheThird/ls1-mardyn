@@ -530,11 +530,11 @@ private:
 	// end
 	
 	//! by Stefan Becker => implementing a new velocity profile: 
-	//! local absolute value of the velocity components
+	//! local squared value of the velocity components
 	//!@TODO: kind of redundant to kinetic profile
-	std::map<unsigned,double> _localVNormProfile[3];
-	//! global absolute value of the velocity components
-	std::map<unsigned,double> _globalVNormProfile[3];
+	std::map<unsigned,double> _localV2Profile[3];
+	//! global squared value of the velocity components
+	std::map<unsigned,double> _globalV2Profile[3];
 	
 	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>  => concerning the realignment tool: realignment to the centre of mass
 	// begin 

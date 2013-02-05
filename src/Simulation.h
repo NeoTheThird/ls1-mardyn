@@ -36,6 +36,7 @@ class PressureGradient;
 #include <list>
 #include <vector>
 #include <string>
+#include <cmath>
 
 #ifdef STEEREO
 class SteereoSimSteering;
@@ -51,6 +52,9 @@ class DomainDecompBase;
 class InputBase;
 class Timer;
 class RDF;
+
+const int VELSCALE_THERMOSTAT = 1;
+const int ANDERSEN_THERMOSTAT = 2;
 
 
 //! @brief controls the whole simulation process
@@ -333,6 +337,12 @@ private:
 	//! regulates how often (in number of time steps) the directed
 	//! velocity is evaluated.
 	unsigned _collectThermostatDirectedVelocity;
+	
+	//! by Stefan Becker: the Type of the thermostat(velocity scaling or Andersen or...)
+	//! appropriate tokens stored as constants at the top of this file
+	int _thermostatType;
+	double _nuAndersen;
+	
 
 	//! Sometimes during equilibration, a solid wall surrounded by
 	//! liquid may experience a stress or an excessive pressure, which
@@ -404,6 +414,9 @@ private:
 	bool _doCancelMomentum;
 	//! number of time steps after which the cancelling is carried outline
 	unsigned _momentumInterval;
+	
+	//! random number generator
+	Random _rand;
 
 	
 public:	
