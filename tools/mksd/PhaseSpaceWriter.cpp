@@ -18,7 +18,7 @@ PhaseSpaceWriter::PhaseSpaceWriter(string in_prefix, double in_Temperature, doub
 {
 	cout << "\n\n**********************************\nPhaseSpaceWriter opened\n";
 	cout << "writing the header ...\n**********************************\n";
-	_fileName = in_prefix + ".template.inp";
+	_fileName = in_prefix + ".inp";
 	_fileNameXyz = in_prefix+".xyz";
 	_fluidComponentName = in_fluidComponent;
 	_wallComponentName = in_wallComponent;
