@@ -119,7 +119,7 @@ void PhaseSpaceWriter::write()
 	// writing the parameters of the LJ-fluid
 	for (unsigned i = 0; i < fluidComp.gNumberLJCenters(); i++){
 		psstrm << "0.0 0.0 0.0\t";  // center of mass in the local coordinate system
-		psstrm << fluidComp.gMass(i) <<" "<<fluidComp.gEps(i) << " " << fluidComp.gSigma(i) <<" " <<fluidComp.gRCutLJ() <<" "<< _LJShifted<<"\t";
+		psstrm << fluidComp.gMass(i) <<" "<<fluidComp.gEps(i) << " " << fluidComp.gSigma(i) <<" " <<fluidComp.gRCutLJ() <<" "<< _LJShifted<<"\t";		
 	}
 	psstrm << "0.0 0.0 0.0\n";  // Hauptträgheitsachsen des Gesamtmoleküls
 //***************************************************************************************************************************************
@@ -136,6 +136,8 @@ void PhaseSpaceWriter::write()
 		}
 		psstrm << "0.0 0.0 0.0\n"; // Hauptträgheitsachsen des Gesamtmoleküls
 	}
+	
+	_avMass = (_nFluid*fluidComp.gMass(0) + (_nTotal-_nFluid)*wallComp.gMass(0))/_nTotal;
 
 //	cout << "\n**********************************\nobject 'wallComp' of the 'Component' class generated.\n**********************************\n";
 
@@ -174,8 +176,9 @@ void PhaseSpaceWriter::write()
 	// total number of particles
 	geometry.calculateLiqFillProbabilityArray(); // within this method the number of actually filled liquid particles is calculated, too => already called here
 	geometry.calculateVapFillProbabilityArray();
-	psstrm << "N\t"<< wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots() <<"\n";
-	xyzstrm << wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots()<<"\nComment\n";
+	_nTotal = wallMolecule.gNumberOfMolecules() + geometry.gNFilledLiqSlots() + geometry.gNFilledVapSlots();
+	psstrm << "N\t"<< _nTotal<<"\n";
+	xyzstrm <<_nTotal <<"\nComment\n";
 	psstrm << "M\tICRVQD\n\n";
 
 /***************************************************************************************************************************************************
@@ -305,4 +308,16 @@ void PhaseSpaceWriter::write()
 
 double PhaseSpaceWriter::gBoxLengthY(){
 	return _boxLengthY;
+}
+
+unsigned PhaseSpaceWriter::gNTotal(){
+ return _nTotal;
+}
+
+double PhaseSpaceWriter::gTemperature(){
+ return _temperature; 
+}
+
+double PhaseSpaceWriter::gAverageMassPerParticle(){
+ return _avMass; 
 }

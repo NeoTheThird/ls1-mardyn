@@ -16,35 +16,36 @@ extern const string WALL_CU_LJ;
 extern double LATTICE_CONST_WALL_LJTS;
 
 
+
 // @brief: implementing the constructor and destructor, respectively
 ConfigWriter::ConfigWriter(
-		char* in_prefix, string in_wall, int in_wallLays, double in_sigFluid,
-		double in_refTime, double in_cutoffRadius, double in_ljCutoffRadius, double in_wallCutoffRadius,
+		char* in_prefix, string in_wall, int in_wallLays, double in_refTime, 
 		unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
-		unsigned in_profileOutputTimesteps, unsigned initCanon, bool in_movie
+		unsigned in_profileOutputTimesteps, unsigned initCanon, bool in_movie, Component& fluidComp
 		)
 {
 	cout << "\n**********************************\nConfigwriter opened\n**********************************\n";
+	thermostat = THERMOSTAT_VELSCALE;
 	sPrefix(in_prefix);
 	sTimestepLength(in_refTime);
 	wallLays = in_wallLays;
-	sigFluid = in_sigFluid;
+	sigFluid = fluidComp.gSigma(0);
 	//unknown: what kind of cutoff radius???
-	sCutoffRadius(in_cutoffRadius);
-	sLjCutoffRadius(in_ljCutoffRadius);
+	sCutoffRadius(fluidComp.gRCutLJ());
+	sLjCutoffRadius(fluidComp.gRCutLJ());
 	// the only information needed in the config file:
 	// what wall model applied => writing out the corresponding cutoff radius
-	if(in_wall == WALL_TERSOFF)
+	/*if(in_wall == WALL_TERSOFF)
 	{
 		wall = WALL_TERSOFF;
-		sTersoffCutoffRadius(in_wallCutoffRadius);	// in case the wall is modeled by the Tersoff potential
+		sTersoffCutoffRadius(fluidComp.gRCutLJ());	// in case the wall is modeled by the Tersoff potential
 	}
 	//@brief: obsolete!
-	/*else if (in_wall == WALL_CU_LJ)
+	else if (in_wall == WALL_CU_LJ)
 	{
 		wall = WALL_CU_LJ;
 		sLjWallCutoffRadius(in_wallCutoffRadius);
-	}*/
+	}
 	// the error message following should not be necessary currently,
 	//implemented for error detection and further models implemented
 	//@todo: if no error reported during test runs => removing the else-branch
@@ -52,7 +53,7 @@ ConfigWriter::ConfigWriter(
 	{
 		cout << "wall model: only Lennard-Jones TS.\n";
 		//return 51;
-	}
+	}*/
 	sProfile (in_profilePhi, in_profileR, in_profile_H);
 	sProfileOutputTimesteps(in_profileOutputTimesteps);
 	// values set as default, if required they can be passed by main.cpp, i.e. as a user input => additional constructor
@@ -67,6 +68,65 @@ ConfigWriter::ConfigWriter(
 		sOutputVisittWriter(500);
 		sOutputMmspdWriter(500);
 	}
+	
+	//	cout << "\n**********************************\nConstructor of Configwriter finished\n**********************************\n";
+}
+
+ConfigWriter:: ConfigWriter(	char* in_prefix, string in_wall, int in_wallLays, double in_refTime, 
+			unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
+			unsigned in_profileOutputTimesteps, unsigned initCanon, bool in_movie, PhaseSpaceWriter& psw, Component& fluidComp,
+			double nuAndFac	){
+  cout << "\n**********************************\nConfigwriter opened\n**********************************\n";
+	thermostat = THERMOSTAT_ANDERSEN;
+	sPrefix(in_prefix);
+	sTimestepLength(in_refTime);
+	wallLays = in_wallLays;
+	sigFluid = fluidComp.gSigma(0);
+	//unknown: what kind of cutoff radius???
+	sCutoffRadius(fluidComp.gRCutLJ());
+	sLjCutoffRadius(fluidComp.gRCutLJ());
+	// the only information needed in the config file:
+	// what wall model applied => writing out the corresponding cutoff radius
+	/*if(in_wall == WALL_TERSOFF)
+	{
+		wall = WALL_TERSOFF;
+		sTersoffCutoffRadius(fluidComp.gRCutLJ());	// in case the wall is modeled by the Tersoff potential
+	}
+	//@brief: obsolete!
+	else if (in_wall == WALL_CU_LJ)
+	{
+		wall = WALL_CU_LJ;
+		sLjWallCutoffRadius(in_wallCutoffRadius);
+	}
+	// the error message following should not be necessary currently,
+	//implemented for error detection and further models implemented
+	//@todo: if no error reported during test runs => removing the else-branch
+	else
+	{
+		cout << "wall model: only Lennard-Jones TS.\n";
+		//return 51;
+	}*/
+	sProfile (in_profilePhi, in_profileR, in_profile_H);
+	sProfileOutputTimesteps(in_profileOutputTimesteps);
+	// values set as default, if required they can be passed by main.cpp, i.e. as a user input => additional constructor
+	sInitCanonical(initCanon);					// temperature raise during equilibration applied? (ask M.Horsch) => short equilibration time needed otherwise vaporisation of the drop
+	sInitStatistics(500000);
+	sProfileRecordingTimesteps(2);
+	sOutputResWriter(40);
+	sOutputXyzWriter(500000);
+	// if no movie is to be made, there's no need for the visitt-writer, by default: movie = false; then also no VisItt output is generated: if(movie) wOutputVisittWriter();
+	_movie = in_movie;
+	if(_movie){
+		sOutputVisittWriter(500);
+		sOutputMmspdWriter(500);
+	}
+	
+	double averageMassPerParticle = 1;// psw.gAverageMassPerParticle();
+	double diffCoeffLJ = 0.05; // estimate of the self-diffusion coefficient of the LJ-Fluid
+	nuAndersenSingle = psw.gTemperature()*timestepLength/ averageMassPerParticle/diffCoeffLJ;
+	nuAndersen = nuAndersenSingle*pow(psw.gNTotal(), -2.0/3.0)*nuAndFac;
+	cout << "nu Andersen: " << nuAndersen << "\n";
+	
 	//	cout << "\n**********************************\nConstructor of Configwriter finished\n**********************************\n";
 }
 
@@ -104,7 +164,6 @@ void ConfigWriter::write(){
 	wOutputXyzWriter();
 	// only if a movie is to be made
 	if(_movie){
-	  //wOutputVisittWriter();
 	  wOutputMmspdWriter();
 	}
 	wProfile();
@@ -114,10 +173,12 @@ void ConfigWriter::write(){
 	confStrm <<"profiledComponent\t1\n";
 	confStrm << "SessileDrop\n";
 	wProfileOutputPrefix();
-	confStrm << "AlignCentre\t5\t1\n" ;
+	confStrm << "AlignCentre\t25\t1\n" ;
 	confStrm << "ComponentForYShift\t2 3\n";
-//	confStrm << "nomomentum\t200\n";
-//	cout << "\n**********************************\nwrite() method of Configwriter finished\n**********************************\n";
+	confStrm << "nomomentum\t200\n";
+	if(thermostat == THERMOSTAT_ANDERSEN){
+	confStrm << "thermostat 2 " << nuAndersen << "\n";
+	}
 
 }
 

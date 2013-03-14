@@ -13,19 +13,28 @@
 #include <iostream>
 #include <fstream> // Schreiben in / lesen aus Datei
 #include <sstream>
+#include "PhaseSpaceWriter.h"
+#include "Component.h"
 
+
+const unsigned short THERMOSTAT_VELSCALE = 1;
+const unsigned short THERMOSTAT_ANDERSEN = 2;
 
 using namespace std;
 
 class ConfigWriter{
 
 public:
-	ConfigWriter(
-			char* prefix, string in_wall, int in_wallLays, double in_sigFluid,
-			double in_refTime, double in_cutoffRadius, double in_ljCutoffRadius, double in_wallCutoffRadius,
+	ConfigWriter(	char* prefix, string in_wall, int in_wallLays, double in_refTime, 
 			unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
-			unsigned in_profileOutputTimesteps, unsigned initCanon, bool movie
+			unsigned in_profileOutputTimesteps, unsigned initCanon, bool movie, Component& fluidComp
 			);
+	
+	ConfigWriter(	char* prefix, string in_wall, int in_wallLays, double in_refTime, 
+			unsigned in_profilePhi, unsigned in_profileR, unsigned in_profile_H,
+			unsigned in_profileOutputTimesteps, unsigned initCanon, bool movie, PhaseSpaceWriter& psw, Component& fluidComp,
+			double nuAndFac	);
+	
 	~ConfigWriter();
 
 	//void buildString();
@@ -87,6 +96,8 @@ private:
 	double ljWallCutoffRadius;
 	double tersoffCutoffRadius;
 	double sigFluid;
+	double nuAndersenSingle;
+	double nuAndersen;
 
 	string wall; // depicts the wall model
 
@@ -98,6 +109,7 @@ private:
 	unsigned outputXyzWriter;
 	unsigned outputVisittWriter;
 	unsigned outputMmspdWriter;
+	unsigned short thermostat;
 
 	unsigned profile[3]; // number of profile units in the order phi-r-h => density profile in cylindrical coordinates
 

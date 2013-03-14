@@ -23,6 +23,8 @@ extern const string FLUID_CH4;
 extern const string WALL_CU_LJ; 		// copper by Lennard-Jones
 extern const string WALL_TERSOFF;
 extern const string WALL_MAT_AKA_FIT;
+extern const unsigned short THERMOSTAT_VELSCALE;
+extern const unsigned short THERMOSTAT_ANDERSEN;
 
 
 
@@ -35,6 +37,7 @@ const double PI = 3.1415927;
 const unsigned DEFAULT_PROFILE_PHI = 1;
 const unsigned DEFAULT_PROFILE_R = 200;
 //const unsigned DEFAULT_PROFILE_H = 200;
+
 
 
 int main(int argc, char** argv){
@@ -55,6 +58,7 @@ int main(int argc, char** argv){
 			"-P \t number of profile units employed for recording the density profile.\n"
 			"-s \t sigma of the wall-wall interaction => obsolete, not to be used! \n"
 			"-S \t choosing the wall to be structured in a stripes shaped manner, the number of stripes is bounded by the ratio of stripe width to the lattice constant. \n"
+			"-t \t Thermostat: -t factor == Andersen thermostat with factor * nu, defalt: Velocity Scaling \n"
 			"-T \t temperature in atomic units \n"
 			"-u \t using the Lennard-Jones units set. \n"
 			"-w \t wall thickness as (w-0.5) times the lattice constant of the solid matter. In fact: -w = 1 => h_Wall = 0.5 * lattice constant;  -w 2 => h_Wall = 1.5*lattice constant,\n"
@@ -97,13 +101,15 @@ bool in_wallModel = false;		// -W => choice of models describing the solid wall:
 //bool in_xi = false;			// -x => xi_fluid_wall of the Berthelot combining rule
 bool LJShifted = true;			// by default a LJTS potential is used
 
+
 // declaration of global variables
 unsigned N;
 unsigned initCanon;
 unsigned profilePhi, profileR, profileH; // number of discrete (density-) profile elements in the corresponding direction
 unsigned numberOfStripes;
+unsigned short thermostat = THERMOSTAT_VELSCALE;	// ==1 --> applying velocity scaling, ==2 --> applying the Andersen Thermostat
 int outTimeSteps, wallThick;
-double alpha, beta, gamm, edgeProp, densFac, eta12, sigWall, temp, xi12, xi13;
+double alpha, beta, gamm, edgeProp, densFac, eta12, sigWall, temp, xi12, xi13, nuFactor;
 char* prefix = (char*)0;		// name of the output file as a C-string, initialized by NULL pointer
 string fluid, wall, prefixStr;
 
@@ -227,6 +233,12 @@ for(int i = 1; i < argc; i++){
 			stripes = true;
 			i++;
 			numberOfStripes = atof(argv[i]);
+			break;
+		}
+		else if (argv[i][j] == 't'){
+			thermostat = THERMOSTAT_ANDERSEN;
+			i++;
+			nuFactor = atof(argv[i]);
 			break;
 		}
 		else if(argv[i][j] == 'T')
@@ -391,8 +403,15 @@ if(!in_numProfileUnits){
 }
 
 // generating an instance of ConfigWriter and calling the write method
-ConfigWriter CfgWriter(prefix, wall, wallThick, fluidComp.gSigma(0), refTime, fluidComp.gRCutLJ(), fluidComp.gRCutLJ(), fluidComp.gRCutLJ(),
-					profilePhi, profileR, profileH, outTimeSteps, initCanon, movie);
-CfgWriter.write();
+if(thermostat == THERMOSTAT_VELSCALE){
+  cout << "Velocity scaling applied \n";
+  ConfigWriter CfgWriter(prefix, wall, wallThick, refTime, profilePhi, profileR, profileH, outTimeSteps, initCanon, movie, fluidComp);
+  CfgWriter.write();
+}
+else if(thermostat == THERMOSTAT_ANDERSEN){
+  ConfigWriter CfgWriter(prefix, wall, wallThick, refTime, profilePhi, profileR, profileH, outTimeSteps, initCanon, movie, PSW, fluidComp, nuFactor);
+  CfgWriter.write();
+}
+
 //cout << "\n**********************************\nConfig file written\n**********************************\n";
 } // end main

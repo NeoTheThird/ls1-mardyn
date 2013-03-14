@@ -33,6 +33,9 @@ public:
 	// methods
 	void write();
 	double gBoxLengthY();
+	double gTemperature();
+	double gAverageMassPerParticle();
+	unsigned gNTotal();
 
 
 
@@ -43,6 +46,7 @@ private:
 	string _fluidComponentName;
 	string _wallComponentName;
 	unsigned _nFluid;
+	unsigned _nTotal;
 	unsigned _wallLayers;
 	unsigned _numberOfStripes;
 	double _temperature;
@@ -54,6 +58,7 @@ private:
 	double _gamma;
 	double _edgeProp;
 	double _boxLengthY;
+	double _avMass;
 	bool _stripes;
 	bool _LJShifted;
 	bool _LJunits;
