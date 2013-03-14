@@ -33,7 +33,7 @@ extern const string WALL_MAT_AKA_FIT = "MatAkaFit";
 // Journal of Materials Ressearch, Vol 9, No.3 1994;
 //const double EPS_CU = 6.13686e-03; // not used
 const double EPS_CU = 4.36704e-02;  // a hundred times the fluid epsilon (in this case of argon)
-const double SIGMA_CU = 0.8*SIGMA_AR;//4.37472;
+const double SIGMA_CU = SIGMA_AR;//4.37472;
 const double CU_MASS = 0.063546;
 // for SIGMA_CU = SIGMA_AR
 // for SIGMA_CU = 0.8*SIGMA_AR
@@ -43,7 +43,7 @@ double LATTICE_CONST_WALL_LJTS;
 
 Component::Component(string in_substance, bool in_LJunits){
 	_substance = in_substance;
-	double facLatConst = 0.79852; //0.79852 for sigma_ss = 0.8*sigma_ff and 1.0 for sigma_ss = sigma_ff
+	double facLatConst = 1.0; //0.79852 for sigma_ss = 0.8*sigma_ff and 1.0 for sigma_ss = sigma_ff
 	if (in_LJunits){
 	_refEnergy = EPS_AR;
 	_refLength = SIGMA_AR;
