@@ -927,6 +927,20 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                         inputfilestream >> rc;
                         this->setTersoffCutoff(rc);
                 }
+                else if (token == "WallFun_LJ_9_3"){
+		  double rho_w, sig_w, eps_w, y_off, y_cut, yMirr;
+		  unsigned numComponents;
+		  _applyWallFun = true;
+		  inputfilestream  >> numComponents >> rho_w >> sig_w >> eps_w >> y_off >> y_cut >> yMirr;
+		  double *xi_sf = new double[numComponents];
+		  double *eta_sf = new double[numComponents];
+		  for(unsigned nc = 0; nc < numComponents; nc++ ){
+		    inputfilestream >> xi_sf[nc] >> eta_sf[nc];
+		  }
+		  _wall.initialize(_domain->getComponents(), rho_w, sig_w, eps_w, xi_sf, eta_sf, y_off, y_cut, yMirr);
+		  delete[] xi_sf;
+		  delete[] eta_sf;
+		}
                 else {
 			if(token != "") global_log->warning() << "Did not process unknown token " << token << endl;
 		}
@@ -990,7 +1004,6 @@ void Simulation::prepare_start() {
 	for (Molecule* tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
 		tM->calcFM();
 	}
-
 	// clear halo
 	global_log->info() << "Clearing halos" << endl;
 	_moleculeContainer->deleteOuterParticles();
@@ -1166,6 +1179,9 @@ void Simulation::simulate() {
 		// Force calculation
 		global_log->debug() << "Traversing pairs" << endl;
 		_moleculeContainer->traversePairs(_particlePairsHandler);
+		if(_applyWallFun){
+		  _wall.calcTSLJ_9_3(_moleculeContainer);
+		}
 
 		// test deletions and insertions
 		if (_simstep >= _initGrandCanonical) {
@@ -1296,7 +1312,7 @@ void Simulation::simulate() {
 				}
 			}
 		  }
-		  else if(_thermostatType == ANDERSEN_THERMOSTAT){
+		  else if(_thermostatType == ANDERSEN_THERMOSTAT){ //! the Andersen Thermostat
 		    global_log->info() << "Andersen Thermostat" << endl;
 		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
 		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
@@ -1475,6 +1491,7 @@ void Simulation::initialize() {
 	_integrator = NULL;
 	_inputReader = NULL;
 
+
 #ifndef ENABLE_MPI
 	global_log->info() << "Initializing the alibi domain decomposition ... " << endl;
 	_domainDecomposition = (DomainDecompBase*) new DomainDecompDummy();
@@ -1511,6 +1528,7 @@ void Simulation::initialize() {
 	_alignmentInterval = 25;
 	_doCancelMomentum = false;
 	_momentumInterval = 1000;
+	_applyWallFun = false;
 
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;

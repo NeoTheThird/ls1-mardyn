@@ -21,6 +21,7 @@
 
 #include "ensemble/GrandCanonical.h"
 #include "parallel/DomainDecompTypes.h"
+#include "molecules/Wall.h"
 
 #ifndef SIMULATION_SRC
 class Simulation;
@@ -52,6 +53,7 @@ class DomainDecompBase;
 class InputBase;
 class Timer;
 class RDF;
+
 
 const int VELSCALE_THERMOSTAT = 1;
 const int ANDERSEN_THERMOSTAT = 2;
@@ -409,6 +411,11 @@ private:
 	unsigned long _alignmentInterval;
 	//! strength of the realignment
 	double _alignmentCorrection;
+	
+	//! applying a field representing the wall
+	bool _applyWallFun;
+	
+	Wall _wall;
 	
 	//! flags to control the cancel of the momentum 
 	bool _doCancelMomentum;
