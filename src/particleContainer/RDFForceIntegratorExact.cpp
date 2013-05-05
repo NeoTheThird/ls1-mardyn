@@ -382,7 +382,7 @@ double RDFForceIntegratorExact::integrateRDFSiteCartesian(double xlim[2],
 						small_y * small_y + small_z * small_z) > _extension) {
 					continue;
 				}
-
+				scale[0] = scale[1] = 1;
 				// if in the region for scaling factors and lower x boundary, get scaling factor
 				if (plane == 0 && boundary[0] == -1 && std::abs(x) < _extension
 						&& !unit_test) {
