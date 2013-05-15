@@ -74,7 +74,7 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer )
       
       double sig9_wi;
       sig9_wi = _sig3_wi[cid]*_sig3_wi[cid]*_sig3_wi[cid]; 
-      f[1] = 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/5.0/y9 - _sig3_wi[cid]/2/y3 ) / y;
+      f[1] = 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/5.0/y9 - _sig3_wi[cid]/2.0/y3 ) / y;
       currMolec->Fljcenteradd(0, f);
     } // end if()
     
