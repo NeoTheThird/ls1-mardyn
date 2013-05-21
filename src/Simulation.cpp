@@ -937,9 +937,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		  for(unsigned nc = 0; nc < numComponents; nc++ ){
 		    inputfilestream >> xi_sf[nc] >> eta_sf[nc];
 		  }
-		  _wall.initialize(_domain->getComponents(), rho_w, sig_w, eps_w, xi_sf, eta_sf, y_off, y_cut, yMirr);
+		  _wall.initialize(_domain->getComponents(),  rho_w, sig_w, eps_w, xi_sf, eta_sf, y_off, y_cut, yMirr);
 		  delete[] xi_sf;
 		  delete[] eta_sf;
+		}
+		else if (token == "NumberOfFluidComponents"){
+		    double numFluidComp;
+		    inputfilestream >> numFluidComp;
+		    _domain->setNumFluidComponents(numFluidComp);
 		}
                 else {
 			if(token != "") global_log->warning() << "Did not process unknown token " << token << endl;
@@ -1180,7 +1185,7 @@ void Simulation::simulate() {
 		global_log->debug() << "Traversing pairs" << endl;
 		_moleculeContainer->traversePairs(_particlePairsHandler);
 		if(_applyWallFun){
-		  _wall.calcTSLJ_9_3(_moleculeContainer);
+		  _wall.calcTSLJ_9_3(_moleculeContainer, _domain);
 		}
 
 		// test deletions and insertions

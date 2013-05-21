@@ -27,6 +27,7 @@
 #include "molecules/Component.h"
 #include "particleContainer/ParticleContainer.h"
 #include "utils/Logger.h"
+#include "Domain.h"
 
 #include <vector>
 #include <cmath>
@@ -45,7 +46,7 @@ public:
   void initialize(const std::vector<Component>& components, 
 		  double in_rhoWall, double in_sigWall, double in_epsWall, double* in_xi, double* in_eta, 
 		  double in_yOffWall, double in_yWallCut, double in_yMirr);
-  void calcTSLJ_9_3( ParticleContainer* partContainer );
+  void calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain );
 
   
  	
@@ -54,7 +55,9 @@ private:
   double* _eps_wi;
   double* _sig3_wi;
   double* _uShift_9_3;
-    
+  double* _uPot_9_3;
+  unsigned _nc;
+      
 };
 
 

@@ -130,6 +130,9 @@ public:
 	//! @brief set the fluid and fluid-solid potential of the local process
 	void setLocalUpotCompSpecific(double UpotCspec);
 	
+	//! @brief set the number of fluid phase components (specified in the config-file)
+	void setNumFluidComponents(unsigned nc);
+	
 	//! @brief get the fluid and fluid-solid potential of the local process
 	double getLocalUpotCompSpecific();
 
@@ -439,6 +442,9 @@ private:
 	double _localUpot;
 	//! by Stefan Becker: component specific potential of the local process (fluid-fluid and fluid-solid, but not solid-solid)
 	double _localUpotCspecif;
+	//! by Stefan Becker: number of fluid components specified in the config file 
+	//! --> used to determine the average component specific potential energy
+	unsigned _numFluidComponent;
 	//! Virial of the local process
 	double _localVirial;
 	//! global Potential

@@ -1543,11 +1543,12 @@ void Domain::setLocalUpotCompSpecific(double UpotCspec){_localUpotCspecif = Upot
 double Domain::getLocalUpotCompSpecific(){return _localUpotCspecif;}
 
 double Domain::getAverageGlobalUpotCSpec() {
-  unsigned int numcomp=_components.size();
   unsigned long numFluidMolecules=0;
-  for(unsigned i=0;i<numcomp;++i) {
+  for(unsigned i=0;i< _numFluidComponent;++i) {
 		Component& ci=_components[i];
 		numFluidMolecules+=ci.getNumMolecules();
   }
   return _globalUpotCspecif / numFluidMolecules;
 }
+
+void Domain::setNumFluidComponents(unsigned nc){_numFluidComponent = nc;}
