@@ -179,6 +179,7 @@ void ConfigWriter::write(){
 	if(thermostat == THERMOSTAT_ANDERSEN){
 	confStrm << "thermostat 2 " << nuAndersen << "\n";
 	}
+	confStrm << "NumberOfFluidComponents\t1\n";
 
 }
 
