@@ -100,8 +100,9 @@ Domain::Domain(int rank, PressureGradient* pg){
 	// default
 	// by Stefan Becker
 	this->_universalCylindricalGeometry = false;
-	_localUpotCspecif = 0;
-	_globalUpotCspecif = 0;
+	_localUpotCspecif = 0.0;
+	_globalUpotCspecif = 0.0;
+	_numFluidComponent = 1;
 }
 
 void Domain::setLocalUpot(double Upot) {_localUpot = Upot;}
