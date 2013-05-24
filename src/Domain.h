@@ -194,7 +194,7 @@ public:
 	//! global potential has been calculated (method calculateGlobalValues)
 	double getAverageGlobalUpot() const;
 	//! by Stefan Becker: return the average global potential of the fluid-fluid and fluid-solid interaction (but NOT solid-solid interaction)
-	double getAverageGlobalUpotCSpec();
+	double getAverageGlobalUpotCSpec(DomainDecompBase* domainDecomp);
 
 	//! @brief get the global average virial per particle
 	//!

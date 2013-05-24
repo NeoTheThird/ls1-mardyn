@@ -68,11 +68,20 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
   
   /*! LJ-9-3 potential applied in y-direction */
   if(partContainer->getBoundingBoxMin(1) < _yc){ // if linked cell within the potential range (inside the potential's cutoff)
-    for(Molecule* currMolec = partContainer->begin(); currMolec != partContainer->end(); currMolec = partContainer->next()){
+    for(unsigned d = 0; d < 3; d++){
+     regionLowCorner[d] = partContainer->getBoundingBoxMin(d);
+     regionHighCorner[d] = partContainer->getBoundingBoxMax(d);
+    }
+    regionHighCorner[1] = (partContainer->getBoundingBoxMax(1) < _yc) ? (partContainer->getBoundingBoxMax(1)) : _yMirr;
+    partContainer->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
+    
+    std::list<Molecule*>::iterator particlePtrIter;
+
+    for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
       //! so far for 1CLJ only, several 1CLJ-components possible
       double y, y3, y9;
-      unsigned cid = currMolec -> componentid();
-      y = currMolec->r(1) - _yOff;
+      unsigned cid = (*particlePtrIter) -> componentid();
+      y = (*particlePtrIter)->r(1) - _yOff;
       if(y < _yc){
 	y3 = y*y*y;
 	y9 = y3*y3*y3;
@@ -84,7 +93,7 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
 	sig9_wi = _sig3_wi[cid]*_sig3_wi[cid]*_sig3_wi[cid]; 
 	f[1] = 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/5.0/y9 - _sig3_wi[cid]/2.0/y3 ) / y;
 	_uPot_9_3[cid] += 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/15.0/y9 - _sig3_wi[cid]/6.0/y3 ) + _uShift_9_3[cid];
-	currMolec->Fljcenteradd(0, f);
+	(*particlePtrIter)->Fljcenteradd(0, f);
       } // end if()
     }
   }
@@ -96,31 +105,23 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
     _uPot_9_3[cid] = 0.0;
   }
   
+  particlePtrsForRegion.clear();
+  
   /*!*** Mirror boundary in y-direction on top of the simulation box****/
   if(partContainer->getBoundingBoxMax(1) > _yMirr){ // if linked cell in the region of the mirror boundary
     for(unsigned d = 0; d < 3; d++){
      regionLowCorner[d] = partContainer->getBoundingBoxMin(d);
      regionHighCorner[d] = partContainer->getBoundingBoxMax(d);
     }
-    regionLowCorner[1] = partContainer->getBoundingBoxMin(1) > _yMirr ? partContainer->getBoundingBoxMin(1) : _yMirr;
+    regionLowCorner[1] = (partContainer->getBoundingBoxMin(1) > _yMirr) ? (partContainer->getBoundingBoxMin(1)) : _yMirr;
     partContainer->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
-    
     std::list<Molecule*>::iterator particlePtrIter;
+    
     for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
       if((*particlePtrIter)->v(1) > 0){
 	(*particlePtrIter)->setv(1, -(*particlePtrIter)->v(1)); 
       }
-    }
-    
-      
-    /*  
-    for(Molecule* currMolec = particlePtrsForRegion -> begin(); currMolec != particlePtrsForRegion->end(); currMolec = particlePtrsForRegion->next()){
-      if(currMolec->r(1) > _yMirr && currMolec->v(1) > 0){
-	currMolec->setv(1, -1.0*currMolec->v(1)); 
-      }
-    }
-    */
-    
+    }    
   } // end Mirror boundary
 
 } // end mthod calcTSLJ_9_3(...)

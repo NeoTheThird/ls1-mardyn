@@ -54,7 +54,7 @@ void ResultWriter::doOutput( ParticleContainer* particleContainer,
 {
 	if((domainDecomp->getRank() == 0) && (simstep % _writeFrequency == 0)){
 		_resultStream << simstep << "\t" << domain->getCurrentTime()
-		              << "\t\t" << domain->getAverageGlobalUpot() << "\t\t" << domain-> getAverageGlobalUpotCSpec()<< "\t\t" 
+		              << "\t\t" << domain->getAverageGlobalUpot() << "\t\t" << domain-> getAverageGlobalUpotCSpec(domainDecomp)<< "\t\t" 
 			      << domain->getGlobalPressure() << "\t\t" << domain->getGlobalBetaTrans() 
 			      << "\t" << domain->getGlobalBetaRot()
 		              << "\t\t" << domain->cv() << "\n";
