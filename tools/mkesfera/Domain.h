@@ -12,6 +12,10 @@ using namespace std;
 #define FORMAT_BUCHHOLZ 0
 #define FORMAT_BRANCH 1
 #define FORMAT_BERNREUTHER 2
+#define FORMAT_BECKER 3
+
+#define DROP_TYPE 0
+#define BUBBLE_TYPE 1
 
 class Domain
 {
