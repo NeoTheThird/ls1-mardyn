@@ -54,7 +54,7 @@ int main(int argc, char** argv)
       {
          if(argv[i][j] == 'e') format = FORMAT_BERNREUTHER;
 	 else if(argv[i][j] == 'b') type = BUBBLE_TYPE;
-	 if(argv[i][j] == 'c') format = FORMAT_BECKER;
+	 else if(argv[i][j] == 'c') format = FORMAT_BECKER;
          else if(argv[i][j] == 'I')
          {
             i++;
