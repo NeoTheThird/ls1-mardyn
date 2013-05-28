@@ -92,7 +92,7 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
 	double sig9_wi;
 	sig9_wi = _sig3_wi[cid]*_sig3_wi[cid]*_sig3_wi[cid]; 
 	f[1] = 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/5.0/y9 - _sig3_wi[cid]/2.0/y3 ) / y;
-	_uPot_9_3[cid] += 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/15.0/y9 - _sig3_wi[cid]/6.0/y3 ) + _uShift_9_3[cid];
+	_uPot_9_3[cid] += 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/45.0/y9 - _sig3_wi[cid]/6.0/y3 ) + _uShift_9_3[cid];
 	(*particlePtrIter)->Fljcenteradd(0, f);
       } // end if()
     }
@@ -107,7 +107,7 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
   
   particlePtrsForRegion.clear();
   
-  /*!*** Mirror boundary in y-direction on top of the simulation box****/
+  /*!*** Mirror boundary in y-direction on top of the simulation box ****/
   if(partContainer->getBoundingBoxMax(1) > _yMirr){ // if linked cell in the region of the mirror boundary
     for(unsigned d = 0; d < 3; d++){
      regionLowCorner[d] = partContainer->getBoundingBoxMin(d);
