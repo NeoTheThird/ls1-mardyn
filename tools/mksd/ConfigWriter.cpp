@@ -156,8 +156,8 @@ void ConfigWriter::write(){
 	wInitCanonical();
 	wInitStatistics();
 	wPhaseSpaceFileName();
-	confStrm << "parallelization DomainDecomposition \n";
-	//confStrm << "parallelization KDDecomposition2 200 3 \n";
+        //confStrm << "parallelization DomainDecomposition \n";
+	confStrm << "parallelization KDDecomposition2 2000 3 \n";
 	confStrm << "# for LinkedCells, the cellsInCutoffRadius has to be provided\n"
 			 << "datastructure\tLinkedCells \t1\n";
 	wOutputResWriter();
