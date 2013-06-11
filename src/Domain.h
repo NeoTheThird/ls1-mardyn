@@ -133,6 +133,9 @@ public:
 	//! @brief set the number of fluid phase components (specified in the config-file)
 	void setNumFluidComponents(unsigned nc);
 	
+	//! @brief get the numbr of fluid molecules as specified in the config file (*_1R.cfg)
+	unsigned getNumFluidComponents();
+	
 	//! @brief get the fluid and fluid-solid potential of the local process
 	double getLocalUpotCompSpecific();
 
@@ -194,7 +197,11 @@ public:
 	//! global potential has been calculated (method calculateGlobalValues)
 	double getAverageGlobalUpot() const;
 	//! by Stefan Becker: return the average global potential of the fluid-fluid and fluid-solid interaction (but NOT solid-solid interaction)
-	double getAverageGlobalUpotCSpec(DomainDecompBase* domainDecomp);
+	double getAverageGlobalUpotCSpec();
+	
+	//! by Stefan Becker: determine and return the totel number of fluid molecules
+	//! this method assumes all molecules with a component-ID less than _numFluidComponent to be fluid molecules 
+	unsigned long getNumFluidMolecules();
 
 	//! @brief get the global average virial per particle
 	//!

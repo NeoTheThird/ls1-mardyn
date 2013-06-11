@@ -91,13 +91,15 @@ public:
 
             double dummy1, dummy2, dummy3, dummy4;
 	    double u6LJFluid, uXpoles;
+	    unsigned nc;
             case MOLECULE_MOLECULE : 
+		nc = _domain.getNumFluidComponents();
                 if ( _rdf != NULL )
                     _rdf->observeRDF(dd, molecule1.componentid(), molecule2.componentid());
 		u6LJFluid = _upot6LJ;
 		uXpoles = _upotXpoles;
 		PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, _virial, calculateLJ );
-		if(molecule1.componentid() == 0){
+		if(molecule1.componentid() < nc){
 		  u6LJFluid = _upot6LJ - u6LJFluid;
 		  uXpoles = _upotXpoles - uXpoles;
 		  _upot6LJFluid += u6LJFluid; 
