@@ -23,6 +23,7 @@
 #include <list>
 
 class ParticlePairsHandler;
+class CellProcessor;
 class ParticleContainer;
 class DomainDecompBase;
 class Domain;
@@ -120,7 +121,9 @@ public:
 	//! original and duplicated pairs. Details about how to handle pairs can be found
 	//! in the documentation for the class ParticlePairsHandler
 	//! @param particlePairsHandler specified concrete action to be done for each pair
-	virtual void traversePairs(ParticlePairsHandler* particlePairsHandler) = 0;
+	//	virtual void traversePairs(ParticlePairsHandler* particlePairsHandler) = 0;
+
+	virtual void traverseCells(CellProcessor& cellProcessor) = 0;
 
 	//! @return the number of particles stored in this container
 	//!

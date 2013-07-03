@@ -47,13 +47,14 @@ class SteereoCouplingSim;
 class Domain;
 class ParticleContainer;
 class ParticlePairsHandler;
+class CellProcessor;
 class Integrator;
 class OutputBase;
 class DomainDecompBase;
 class InputBase;
 class Timer;
 class RDF;
-
+class LJFlopCounter;
 
 const int VELSCALE_THERMOSTAT = 1;
 const int ANDERSEN_THERMOSTAT = 2;
@@ -381,6 +382,11 @@ private:
 
 	//! Handler describing what action is to be done for each particle pair
 	ParticlePairsHandler* _particlePairsHandler;
+
+	//! New cellhandler, which will one day replace the particlePairsHandler here completely.
+	CellProcessor* _cellProcessor;
+
+	LJFlopCounter* _ljFlopCounter;
 
 	/** Type of the domain decomposition */
 	DomainDecompType _domainDecompositionType;

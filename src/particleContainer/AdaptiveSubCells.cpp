@@ -4,6 +4,8 @@
 #include "AdaptiveSubCells.h"
 
 #include "particleContainer/handlerInterfaces/ParticlePairsHandler.h"
+#include "particleContainer/adapter/ParticlePairs2PotForceAdapter.h"
+#include "particleContainer/adapter/CellProcessor.h"
 #include "ParticleCell.h"
 #include "molecules/Molecule.h"
 #include "Domain.h"
@@ -23,9 +25,7 @@ AdaptiveSubCells::AdaptiveSubCells(
 		double bBoxMin[3], double bBoxMax[3],
 		double cutoffRadius, double LJCutoffRadius, double tersoffCutoffRadius
 )
-		: ParticleContainer(bBoxMin, bBoxMax),
-			_blockTraverse(this, _subCells, _innerSubCellIndices, _boundarySubCellIndices, _haloSubCellIndices,
-			                     _forwardNeighbourSubOffsets, _backwardNeighbourSubOffsets )
+		: ParticleContainer(bBoxMin, bBoxMax)
 {
 	int numberOfCells = 1;
 	_cutoffRadius = cutoffRadius;
@@ -327,12 +327,107 @@ void AdaptiveSubCells::deleteMolecule(unsigned long molid, double x, double y, d
 	}
 }
 
-void AdaptiveSubCells::traversePairs(ParticlePairsHandler* particlePairsHandler) {
+void AdaptiveSubCells::traverseCells(CellProcessor& cellProcessor) {
 	if (_cellsValid == false) {
-		global_log->error() << "Cell structure in AdaptiveSubCells (traversePairs) invalid, call update first" << endl;
+		global_log->error() << "Cell structure in LinkedCells (traversePairs) invalid, call update first" << endl;
 		exit(1);
 	}
-	_blockTraverse.traversePairs(particlePairsHandler);
+
+	vector<unsigned long>::iterator cellIndexIter;
+	vector<unsigned long>::iterator neighbourOffsetsIter;
+
+#ifndef NDEBUG
+	global_log->debug() << "LinkedCells::traverseCells: Processing pairs and preprocessing Tersoff pairs." << endl;
+	global_log->debug() << "_minNeighbourOffset=" << _minNeighbourOffset << "; _maxNeighbourOffset=" << _maxNeighbourOffset<< endl;
+#endif
+
+	cellProcessor.initTraversal(_maxNeighbourOffset + _minNeighbourOffset +1);
+	// open the window of cells activated
+	for (unsigned int cellIndex = 0; cellIndex < _maxNeighbourOffset; cellIndex++) {
+		#ifndef NDEBUG
+		global_log->debug() << "Open cells window for cell index= " << cellIndex
+				<< " numMolecules()="<<_subCells[cellIndex].getMoleculeCount() << endl;
+		#endif
+		cellProcessor.preprocessCell(_subCells[cellIndex]);
+	}
+
+	// loop over all inner cells and calculate forces to forward neighbours
+	for (unsigned int cellIndex = 0; cellIndex < _subCells.size(); cellIndex++) {
+		ParticleCell& currentCell = _subCells[cellIndex];
+
+		// extend the window of cells with cache activated
+		if (cellIndex + _maxNeighbourOffset < _subCells.size()) {
+			#ifndef NDEBUG
+			global_log->debug() << "Opening cached cells window for cell index=" << (cellIndex + _maxNeighbourOffset)
+					<< " with numMolecules()="<< _subCells[cellIndex + _maxNeighbourOffset].getMoleculeCount()
+					<< " currentCell " << cellIndex << endl;
+			#endif
+			cellProcessor.preprocessCell(_subCells[cellIndex + _maxNeighbourOffset]);
+		}
+
+		if (currentCell.isInnerCell()) {
+			cellProcessor.processCell(currentCell);
+			// loop over all neighbours
+			for (neighbourOffsetsIter = _forwardNeighbourSubOffsets[cellIndex].begin(); neighbourOffsetsIter != _forwardNeighbourSubOffsets[cellIndex].end(); neighbourOffsetsIter++) {
+				ParticleCell& neighbourCell = _subCells[cellIndex + *neighbourOffsetsIter];
+				cellProcessor.processCellPair(currentCell, neighbourCell);
+			}
+		}
+
+		if (currentCell.isHaloCell()) {
+			cellProcessor.processCell(currentCell);
+			for (neighbourOffsetsIter = _forwardNeighbourSubOffsets[cellIndex].begin(); neighbourOffsetsIter != _forwardNeighbourSubOffsets[cellIndex].end(); neighbourOffsetsIter++) {
+				int neighbourCellIndex = cellIndex + *neighbourOffsetsIter;
+				if ((neighbourCellIndex < 0) || (neighbourCellIndex >= (int) (_subCells.size())))
+					continue;
+				ParticleCell& neighbourCell = _subCells[neighbourCellIndex];
+				if (!neighbourCell.isHaloCell())
+					continue;
+
+				cellProcessor.processCellPair(currentCell, neighbourCell);
+			}
+		}
+
+		// loop over all boundary cells and calculate forces to forward and backward neighbours
+		if (currentCell.isBoundaryCell()) {
+			cellProcessor.processCell(currentCell);
+
+			// loop over all forward neighbours
+			for (neighbourOffsetsIter = _forwardNeighbourSubOffsets[cellIndex].begin(); neighbourOffsetsIter != _forwardNeighbourSubOffsets[cellIndex].end(); neighbourOffsetsIter++) {
+				ParticleCell& neighbourCell = _subCells[cellIndex + *neighbourOffsetsIter];
+				cellProcessor.processCellPair(currentCell, neighbourCell);
+			}
+
+			// loop over all backward neighbours. calculate only forces
+			// to neighbour cells in the halo region, all others already have been calculated
+			for (neighbourOffsetsIter = _backwardNeighbourSubOffsets[cellIndex].begin(); neighbourOffsetsIter != _backwardNeighbourSubOffsets[cellIndex].end(); neighbourOffsetsIter++) {
+				ParticleCell& neighbourCell = _subCells[cellIndex + *neighbourOffsetsIter];
+				if (neighbourCell.isHaloCell()) {
+					cellProcessor.processCellPair(currentCell, neighbourCell);
+				}
+			}
+		} // if ( isBoundaryCell() )
+
+		// narrow the window of cells activated
+		if (cellIndex >= _minNeighbourOffset) {
+#ifndef NDEBUG
+			global_log->debug() << "Narrowing cells window for cell index=" << (cellIndex - _minNeighbourOffset)
+									<< " with size()="<<_subCells[cellIndex - _minNeighbourOffset].getMoleculeCount()
+									<< " currentCell " << cellIndex << endl;
+#endif
+			cellProcessor.postprocessCell(_subCells[cellIndex - _minNeighbourOffset]);
+		}
+	} // loop over all cells
+
+	// close the window of cells with cache activated
+	for (unsigned int cellIndex = _subCells.size() - _minNeighbourOffset; cellIndex < _subCells.size(); cellIndex++) {
+#ifndef NDEBUG
+			global_log->debug() << "Narrowing cached cells window for cell index=" << cellIndex
+					<< " size()="<<_subCells[cellIndex].getMoleculeCount() << endl;
+#endif
+			cellProcessor.postprocessCell(_subCells[cellIndex]);
+	}
+	cellProcessor.endTraversal();
 }
 
 double AdaptiveSubCells::getEnergy(Molecule* m1) {
@@ -676,6 +771,8 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 		_forwardNeighbourSubOffsets[f].clear();
 		_backwardNeighbourSubOffsets[f].clear();
 	}
+	_maxNeighbourOffset = 0;
+	_minNeighbourOffset = 0;
 	// loop over all cellIndices of the coarse grid
 	// @todo only necessary cells!
 	for (unsigned int i = 0; i < _cells.size(); i++) {
@@ -695,11 +792,18 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 				for (int l = k + 1; l < 8; l++) {
 					SubCellOffset = (int) (l - k);
 					_forwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+					assert(SubCellOffset > 0);
+					if ((unsigned) SubCellOffset > _maxNeighbourOffset) {
+						_maxNeighbourOffset = SubCellOffset;
+					}
 				}
 				// compute the backward index offsets of the local subCells
 				for (int m = 0; m < k; m++) {
 					SubCellOffset = (int) (m - k);
 					_backwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+					if ((unsigned) abs(SubCellOffset) > _minNeighbourOffset) {
+						_minNeighbourOffset = abs(SubCellOffset);
+					}
 				}
 				// loop over all neighbouring ("continue" in case of the cell itself) coarse cells
 				for (int zIndex = -_haloWidthInNumCells[2]; zIndex <= _haloWidthInNumCells[2]; zIndex++) {
@@ -771,9 +875,16 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 											SubCellOffset = metaCellOffset + p - k;
 											if (SubCellOffset > 0) {
 												_forwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+												assert(SubCellOffset > 0);
+												if ((unsigned) SubCellOffset > _maxNeighbourOffset) {
+													_maxNeighbourOffset = SubCellOffset;
+												}
 											}
 											else { // 0 can't happen as only real neighbours are considered
 												_backwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+												if ((unsigned) abs(SubCellOffset) > _minNeighbourOffset) {
+													_minNeighbourOffset = abs(SubCellOffset);
+												}
 											}
 										} // if Distance < cutoffRadius
 									} // loop over the subcells in the neighbouring cell
@@ -795,9 +906,16 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 										SubCellOffset = metaCellOffset - k;
 										if (SubCellOffset > 0) {
 											_forwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+											assert(SubCellOffset > 0);
+											if ((unsigned) SubCellOffset > _maxNeighbourOffset) {
+												_maxNeighbourOffset = SubCellOffset;
+											}
 										}
 										else { // 0 can't happen as only real neighbours are considered
 											_backwardNeighbourSubOffsets[_metaCellIndex[i] + k].push_back(SubCellOffset);
+											if ((unsigned) abs(SubCellOffset) > _minNeighbourOffset) {
+												_minNeighbourOffset = abs(SubCellOffset);
+											}
 										}
 									} // if Distance < cutoffRadius
 								} // CASE 2
@@ -852,9 +970,16 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 										SubCellOffset = metaCellOffset + p;
 										if (SubCellOffset > 0) {
 											_forwardNeighbourSubOffsets[_metaCellIndex[i]].push_back(SubCellOffset);
+											assert(SubCellOffset > 0);
+											if ((unsigned) SubCellOffset > _maxNeighbourOffset) {
+												_maxNeighbourOffset = SubCellOffset;
+											}
 										}
 										else { // 0 can't happen as only real neighbours are considered
 											_backwardNeighbourSubOffsets[_metaCellIndex[i]].push_back(SubCellOffset);
+											if ((unsigned) abs(SubCellOffset) > _minNeighbourOffset) {
+												_minNeighbourOffset = abs(SubCellOffset);
+											}
 										}
 									} // if Distance < cutoffRadius
 								} // loop over the subcells in the neighbouring cell
@@ -876,9 +1001,16 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 									SubCellOffset = metaCellOffset;
 									if (SubCellOffset > 0) {
 										_forwardNeighbourSubOffsets[_metaCellIndex[i]].push_back(SubCellOffset);
+										assert(SubCellOffset > 0);
+										if ((unsigned) SubCellOffset > _maxNeighbourOffset) {
+											_maxNeighbourOffset = SubCellOffset;
+										}
 									}
 									else { // 0 can't happen as only real neighbours are considered
 										_backwardNeighbourSubOffsets[_metaCellIndex[i]].push_back(SubCellOffset);
+										if ((unsigned) abs(SubCellOffset) > _minNeighbourOffset) {
+											_minNeighbourOffset = abs(SubCellOffset);
+										}
 									}
 								}
 							} // CASE 4
@@ -888,6 +1020,10 @@ void AdaptiveSubCells::calculateSubNeighbourIndices() {
 			} // loop over zIndex
 		} // else case (cell A is not refined)
 	} // loop over all cells
+#ifndef NDEBUG
+	global_log->info() << "Neighbour offsets are bounded by "
+			<< _minNeighbourOffset << ", " << _maxNeighbourOffset << endl;
+#endif
 } // end method
 
 

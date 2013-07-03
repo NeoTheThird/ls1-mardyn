@@ -21,13 +21,13 @@
 #define LINKEDCELLS_H_
 
 #include "particleContainer/ParticleContainer.h"
-#include "BlockTraverse.h"
 
 #include <vector>
 
 class ParticleCell;
 class ChemicalPotential;
 class DomainDecompBase;
+class CellProcessor;
 
 //! @brief Linked Cell Data Structure
 //! @author Martin Buchholz
@@ -131,7 +131,9 @@ public:
 	//!     If it is Halo, the force is calculated, if it isn't, the force is not calculated,
 	//!     because the same pair of cells has already been processed in one of the other loops.
 	//! @param particlePairsHandler specified concrete action to be done for each pair
-	void traversePairs(ParticlePairsHandler* particlePairsHandler);
+//	void traversePairs(ParticlePairsHandler* particlePairsHandler);
+
+	void traverseCells(CellProcessor& cellProcessor);
 
 	//! @return the number of particles stored in the Linked Cells
 	unsigned long getNumberOfParticles();
@@ -275,6 +277,8 @@ private:
 
 	std::vector<unsigned long> _forwardNeighbourOffsets; //!< Neighbours that come in the total ordering after a cell
 	std::vector<unsigned long> _backwardNeighbourOffsets; //!< Neighbours that come in the total ordering before a cell
+	unsigned int _maxNeighbourOffset;
+	unsigned int _minNeighbourOffset;
 
 	double _haloBoundingBoxMin[3]; //!< low corner of the bounding box around the linked cells (including halo)
 	double _haloBoundingBoxMax[3]; //!< high corner of the bounding box around the linked cells (including halo)
@@ -302,9 +306,6 @@ private:
 	//! abort the program if not). After the cells are updated, _cellsValid
 	//! should be set to true.
 	bool _cellsValid;
-
-	BlockTraverse _blockTraverse;
-
 
 };
 

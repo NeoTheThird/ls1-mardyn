@@ -6,6 +6,7 @@
 #include <vector>
 
 class Molecule;
+class CellDataSoA ;
 
 //! @brief ParticleCell data structure.
 //! @author Martin Buchholz
@@ -26,23 +27,29 @@ class Molecule;
 //! If more than one of them is true, there must be an error in the code \n
 //! If none of them is true, the cell wasn't assigned to any region yet.
 //! A cell which is completely outside shouldn't exist, as it completely useless.
-//! 
-//! For cuboid domains, a cell doesn't need much information
-//! (you could even avoid a seperate class completely)
-//! Most information (position, neighbours,...) can be calculated
-//! from the cell's index in the linked cell vector.
-//! e.g. for a domain of 10x10x10 cells, the cell with index (counting from zero)
-//! 561 has spacial index (counting from zero)  (1,6,5) and the cell indices of
-//! the neighbours are e.g. 450, 451, 452, 460, 461, ... 
-//! But for either unregular domains or unregular spacial decompositions
-//! in the parallelisation (e.g. space filling curves), it's not easy to store that
-//! information in the linked cell vector (if it is a vector at all)
-//! That's why this class was introduced, so additional information which is
-//! specific to a cell should be stored here.
-
-
+/**
+ * \details <br>(Johannes Heckl)<br>
+ * Also stores data for various CellProcessor%s.<br>
+ * If you add a new data member, update the _assign() method with deep copy<br>
+ * semantics for the new data member.<br>
+ * Uses the default copy constructor and the default assignment operator despite<br>
+ * having pointer data members. This is because these data members are not controlled<br>
+ * by the ParticleCell itself, but by the various CellProcessor%s so ParticleCell can not<br>
+ * know the proper copy semantics. This should not cause any problems because no copy<br>
+ * actions should be executed during CellProcessor applications.
+ */
 class ParticleCell : public Cell {
 public:
+	/**
+	 * \brief Initialize data pointers to 0.
+	 * \author Johannes Heckl
+	 */
+	ParticleCell() ;
+	/**
+	 * \brief Destructor.
+	 * \author Johannes Heckl
+	 */
+	~ParticleCell() ;
 
 	//! removes all elements from the list molecules
 	void removeAllParticles();
@@ -58,9 +65,32 @@ public:
 	//! return the number of molecules contained in this cell
 	int getMoleculeCount() const;
 	
-private:
-	std::vector<Molecule *> molecules;
+	/**
+	 * \brief Get the structure of arrays for VectorizedCellProcessor.
+	 * \author Johannes Heckl
+	 */
+	CellDataSoA* getCellDataSoA() const {
+		return _cellDataSoA;
+	}
 
+	/**
+	 * \brief Set the sturcture of arrays for VectorizedCellProcessor.
+	 * \author Johannes Heckl
+	 */
+	void setCellDataSoA(CellDataSoA * p) {
+		_cellDataSoA = p;
+	}
+
+private:
+	/**
+	 * \brief A list of pointers to the Molecules in this cell.
+	 */
+	std::vector<Molecule *> molecules;
+	/**
+	 * \brief Structure of arrays for VectorizedCellProcessor.
+	 * \author Johannes Heckl
+	 */
+	CellDataSoA * _cellDataSoA;
 };
 
 #endif /* PARTICLE CELL_H_ */

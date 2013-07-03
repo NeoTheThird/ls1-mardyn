@@ -3,6 +3,14 @@
 
 using namespace std;
 
+ParticleCell::ParticleCell() :
+		_cellDataSoA(0) {
+}
+
+ParticleCell::~ParticleCell() {
+	assert(!_cellDataSoA);
+}
+
 void ParticleCell::removeAllParticles() {
 	molecules.clear();
 }

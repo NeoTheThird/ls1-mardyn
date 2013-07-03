@@ -44,6 +44,9 @@
 #endif
 
 #include "particleContainer/adapter/ParticlePairs2PotForceAdapter.h"
+#include "particleContainer/adapter/LegacyCellProcessor.h"
+#include "particleContainer/adapter/VectorizedCellProcessor.h"
+#include "particleContainer/adapter/LJFlopCounter.h"
 #include "integrators/Integrator.h"
 #include "integrators/Leapfrog.h"
 
@@ -80,6 +83,7 @@ Simulation* global_simulation;
 
 Simulation::Simulation() :
 	_rdf(NULL),
+	_ljFlopCounter(NULL),
 	_domainDecomposition(NULL) {
 
 	initialize();
@@ -102,6 +106,10 @@ Simulation::~Simulation() {
 		delete _integrator;
 	if (_inputReader)
 		delete _inputReader;
+	if (_cellProcessor)
+		delete _cellProcessor;
+	if (_ljFlopCounter)
+		delete _ljFlopCounter;
 }
 
 void Simulation::exit(int exitcode) {
@@ -958,6 +966,36 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		_LJCutoffRadius = this->_cutoffRadius;
 	_domain->initFarFieldCorr(_cutoffRadius, _LJCutoffRadius);
 
+	bool lj_present = false;
+	bool charge_present = false;
+	bool dipole_present = false;
+	bool quadrupole_present = false;
+	bool tersoff_present = false;
+
+	const vector<Component> components = _domain->getComponents();
+	for (size_t i = 0; i < components.size(); i++) {
+		lj_present |= components[i].numLJcenters() != 0;
+		charge_present |= components[i].numCharges() != 0;
+		dipole_present |= components[i].numDipoles() != 0;
+		quadrupole_present |= components[i].numQuadrupoles() != 0;
+		tersoff_present |= components[i].numTersoff() != 0;
+	}
+	global_log->info() << "xx lj present: " << lj_present << endl;
+	global_log->info() << "xx charge present: " << charge_present << endl;
+	global_log->info() << "xx dipole present: " << dipole_present << endl;
+	global_log->info() << "xx quadrupole present: " << quadrupole_present << endl;
+	global_log->info() << "xx tersoff present: " << tersoff_present << endl;
+
+#if 1
+	if (charge_present || dipole_present || quadrupole_present || tersoff_present) {
+		_cellProcessor = new LegacyCellProcessor( _cutoffRadius, _LJCutoffRadius, _tersoffCutoffRadius, _particlePairsHandler);
+	} else {
+		_cellProcessor = new VectorizedCellProcessor( *_domain,_LJCutoffRadius);
+	}
+#else
+	_cellProcessor = new LegacyCellProcessor( _cutoffRadius, _LJCutoffRadius, _tersoffCutoffRadius, _particlePairsHandler);
+#endif
+
 	// @todo comment
 	_integrator = new Leapfrog(timestepLength);
 
@@ -1001,7 +1039,16 @@ void Simulation::prepare_start() {
 	global_log->info() << "Updating domain decomposition" << endl;
 	updateParticleContainerAndDecomposition();
 	global_log->info() << "Performing inital force calculation" << endl;
-	_moleculeContainer->traversePairs(_particlePairsHandler);
+
+    if(!_cellProcessor) {
+        global_log->warning() << "No cell processor initialised. Using Legacy Cell Processor." << endl;
+        _cellProcessor = new LegacyCellProcessor( _cutoffRadius, _LJCutoffRadius, _tersoffCutoffRadius, _particlePairsHandler);
+    }
+	_moleculeContainer->traverseCells(*_cellProcessor);
+
+	_ljFlopCounter = new LJFlopCounter(_LJCutoffRadius);
+	_moleculeContainer->traverseCells(*_ljFlopCounter);
+
 	// TODO:
 	// here we have to call calcFM() manually, otherwise force and moment are not
 	// updated inside the molecule (actually this is done in upd_postF)
@@ -1183,7 +1230,9 @@ void Simulation::simulate() {
 		
 		// Force calculation
 		global_log->debug() << "Traversing pairs" << endl;
-		_moleculeContainer->traversePairs(_particlePairsHandler);
+		//_moleculeContainer->traversePairs(_particlePairsHandler);
+		_moleculeContainer->traverseCells(*_cellProcessor);
+
 		if(_applyWallFun){
 		  _wall.calcTSLJ_9_3(_moleculeContainer, _domain);
 		}
@@ -1403,6 +1452,11 @@ void Simulation::simulate() {
 	global_log->info() << "IO in main loop  took:         " << perStepIoTimer.get_etime() << " sec" << endl;
 	global_log->info() << "Final IO took:                 " << ioTimer.get_etime() << " sec" << endl;
 
+	unsigned long numTimeSteps = _numberOfTimesteps - _initSimulation + 1; // +1 because of <= in loop
+	double elapsed_time = loopTimer.get_etime() + decompositionTimer.get_etime();
+	double flop_rate = _ljFlopCounter->getTotalFlopCount() * numTimeSteps / elapsed_time / (1024*1024);
+	global_log->info() << "LJ-FLOP-Count per Iteration: " << _ljFlopCounter->getTotalFlopCount() << " FLOPs" <<endl;
+	global_log->info() << "FLOP-rate: " << flop_rate << " MFLOPS" << endl;
 }
 
 void Simulation::output(unsigned long simstep) {
