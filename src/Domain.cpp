@@ -1398,7 +1398,7 @@ void Domain::outputCylProfile(const char* prefix){
 	   	         {
 	   	        	 *rhoProf <<"> "<< (n_phi+0.5)/this->_universalInvProfileUnit[0] <<"\n0 \t";
 	   	        	 for(unsigned n_r2 = 0; n_r2 < this->_universalNProfileUnits[1]; n_r2++){
-	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5*sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
+	   	        		 *rhoProf << sqrt(n_r2/this->_universalInvProfileUnit[1])+0.5/sqrt(this->_universalInvProfileUnit[1])<<"  \t"; // Eintragen der radialen Koordinaten r_i in Header
 	   	        	 }
 	   	        	 *rhoProf << "\n";
 	   	        	for(unsigned n_h = 0; n_h < this->_universalNProfileUnits[2]; n_h++)
