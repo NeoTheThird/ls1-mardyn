@@ -356,6 +356,20 @@ public:
 	double getSigma(unsigned cid, unsigned nthSigma);
 	// needed for the MmspdWriter (MegaMol)
 	unsigned getNumberOfComponents();
+
+	// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+
+	/** get center of mass (system) coordinate */
+	double GetSystemCenterOfMass(unsigned short d) const { return _dSystemCenterOfMass[d]; }
+	/** set center of mass (system) coordinate */
+	void SetSystemCenterOfMass(unsigned short d, double dVal) { _dSystemCenterOfMass[d] = dVal; }
+	/** get center of system coordinate */
+	double GetSystemCenter(unsigned short d) const { return _dSystemCenter[d]; }
+	/** set center of system coordinate */
+	void SetSystemCenter(unsigned short d, double dVal) { _dSystemCenter[d] = dVal; }
+
+	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
 private:
 
 	//! rank of the local process
@@ -482,6 +496,11 @@ private:
 	//! modified Lorentz-Berthelot mixing rule parameters
 	//! @todo more explanation
 	std::vector<double> _mixcoeff;
+
+	// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+	double _dSystemCenterOfMass[3];  // center of mass of the system with respect to all molecules
+	double _dSystemCenter[3];  // center of system
+	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 };
 
 
