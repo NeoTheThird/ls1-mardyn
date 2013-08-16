@@ -57,7 +57,7 @@ public:
 	~AdaptiveSubCells();
 
 	// documentation see father class (ParticleContainer.h)
-	void rebuild(double bBoxMin[3], double bBoxMax[3]);
+	void build(double bBoxMin[3], double bBoxMax[3]);
 
 	//! Pointers to the particles are put into cells depending on the spacial position
 	//! of the particles.
