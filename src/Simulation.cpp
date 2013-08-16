@@ -145,6 +145,10 @@ void Simulation::readXML(XMLfileUnits& xmlconfig) {
 	if( "NVT" == ensembletype) {
 		_ensemble = new CanonicalEnsemble();
 	}
+	else if( "NVE" == ensembletype) {
+		_ensemble = new CanonicalEnsemble();
+		_domain->thermostatOff();
+	}
 	else if( "muVT" == ensembletype) {
 		global_log->error() << "muVT ensemble not completely implemented." << endl;
 		this->exit(1);
@@ -1003,8 +1007,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		} else if (token == "NVE") {
 			/* TODO: Documentation, what it does (no "Enerstat" at the moment) */
 			_domain->thermostatOff();
-			global_log->error() << "Not implemented" << endl;
-			this->exit(1);
+//			global_log->error() << "Not implemented" << endl;
+//			this->exit(1);
 		} else if (token == "initCanonical") {
 			inputfilestream >> _initCanonical;
 		} else if (token == "initGrandCanonical") { /* suboption of chemical potential */
@@ -1241,6 +1245,13 @@ void Simulation::simulate() {
 	Timer perStepIoTimer;
 	Timer ioTimer;
 
+	// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
+	double dPos[3];
+	double rSum[3];
+	int nNumMols;
+	Molecule* tempMolecule;
+	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
 	loopTimer.start();
 	for (_simstep = _initSimulation; _simstep <= _numberOfTimesteps; _simstep++) {
 		if (_simstep >= _initGrandCanonical) {
@@ -1258,6 +1269,61 @@ void Simulation::simulate() {
 		global_log->debug() << "simulation time: " << getSimulationTime() << endl;
 
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
+
+
+		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		nNumMols = _moleculeContainer->getNumberOfParticles();
+		global_log->info() << "number of particles: " << nNumMols << endl;
+
+		rSum[0] = 0.0;
+		rSum[1] = 0.0;
+		rSum[2] = 0.0;
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+		for (tempMolecule = _moleculeContainer->begin(); tempMolecule != _moleculeContainer->end(); tempMolecule = _moleculeContainer->next())
+		{
+			// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+			rSum[0] += tempMolecule->r(0);
+			rSum[1] += tempMolecule->r(1);
+			rSum[2] += tempMolecule->r(2);
+
+			// global_log->info() << "rSum x: " << rSum[0] << " " << "rSum y: " << rSum[1] << " " << "rSum z: " << rSum[2] << " " << endl;
+
+			// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+		}
+		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		_domain->SetSystemCenterOfMass(0, rSum[0] / (double)nNumMols );
+		_domain->SetSystemCenterOfMass(1, rSum[1] / (double)nNumMols );
+		_domain->SetSystemCenterOfMass(2, rSum[2] / (double)nNumMols );
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		// global_log->info() << "length x: " << _domain->getGlobalLength(0) << " " << "length y: " << _domain->getGlobalLength(1) << " " << "length z: " << _domain->getGlobalLength(2) << " " << endl;
+
+		// Systemschwerpunkt in die Mitte des Systems verschieben
+
+		for (tempMolecule = _moleculeContainer->begin(); tempMolecule != _moleculeContainer->end(); tempMolecule = _moleculeContainer->next())
+		{
+			dPos[0] = tempMolecule->r(0) + _domain->getGlobalLength(0) / 2.0 - _domain->GetSystemCenterOfMass(0);
+			dPos[1] = tempMolecule->r(1) + _domain->getGlobalLength(1) / 2.0 - _domain->GetSystemCenterOfMass(1);
+			dPos[2] = tempMolecule->r(2) + _domain->getGlobalLength(2) / 2.0 - _domain->GetSystemCenterOfMass(2);
+
+			// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
+
+			tempMolecule->setr(0, dPos[0] );
+			tempMolecule->setr(1, dPos[1] );
+			tempMolecule->setr(2, dPos[2] );
+
+			// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
+		}
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+//		global_log->info() << "Schwerpunkt x: " << _domain->GetSystemCenterOfMass(0)
+//						   << " y: " << _domain->GetSystemCenterOfMass(1)
+//						   << " z: " << _domain->GetSystemCenterOfMass(2) << endl;
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
 
 		// activate RDF sampling
 		if ((_simstep >= this->_initStatistics) && this->_rdf != NULL) {
