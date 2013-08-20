@@ -28,5 +28,6 @@
 #include "io/vtk/VTKMoleculeWriter.h"
 #include "io/vtk/VTKGridWriter.h"
 #endif
+#include "io/TraWriter.h"  // mheinen_2013-08-20
 
 #endif  /* __IO_H__  */
