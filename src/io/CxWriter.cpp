@@ -191,7 +191,7 @@ void CxWriter::CalcConcentrAtX( ParticleContainer* particleContainer, DomainDeco
 			if(cid == nCompID)
 				_nNumMolsSliceComp++;
 		}
-/*
+
 		// Wert akkumulieren mit anderen Prozessen
 		domainDecomp->collCommInit(2);
 		domainDecomp->collCommAppendInt(_nNumMolsSlice);
@@ -200,7 +200,7 @@ void CxWriter::CalcConcentrAtX( ParticleContainer* particleContainer, DomainDeco
 		_nNumMolsSlice = domainDecomp->collCommGetInt();
 		_nNumMolsSliceComp = domainDecomp->collCommGetInt();
 		domainDecomp->collCommFinalize();
-*/
+
 		global_log->info() << "calculating x ..." << endl;
 		dX = _dDeltaX / 2.0 + _dDeltaX * (double)(i);
 		global_log->info() << "x: " << dX << endl;
