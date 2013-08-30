@@ -13,8 +13,12 @@ class DomainDecompBase;
 class Domain;
 class ChemicalPotential;
 
+class TraWriter;
 class CxWriter : public OutputBase
 {
+
+friend class TraWriter;  // to access C(x) profile.
+
 public:
 	//! @brief writes a .cox file
 	//!
