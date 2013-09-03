@@ -16,16 +16,25 @@
  * Foundation, 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.   *
  *************************************************************************/
 
+// Modification Log
+//
+// mheinen_2013-08-22 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+//
+
 #ifndef DOMAIN_H_
 #define DOMAIN_H_
 
 #include <string>
 #include <map>
+#include <list>  // mheinen_2013-08-12 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+#include <vector>
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
 #include "ensemble/EnsembleBase.h"
 #include "Simulation.h"
+
+#include "io/Region.h"
 
 /* 
  * TODO add comments for variables 
@@ -358,7 +367,6 @@ public:
 	unsigned getNumberOfComponents();
 
 	// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
-
 	/** get center of mass (system) coordinate */
 	double GetSystemCenterOfMass(unsigned short d) const { return _dSystemCenterOfMass[d]; }
 	/** set center of mass (system) coordinate */
@@ -367,8 +375,14 @@ public:
 	double GetSystemCenter(unsigned short d) const { return _dSystemCenter[d]; }
 	/** set center of system coordinate */
 	void SetSystemCenter(unsigned short d, double dVal) { _dSystemCenter[d] = dVal; }
-
 	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+	// begin --> mheinen_2013-08-21 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+	int FindPhaseBoundarys(std::list<double*> &phaseBoundMidpointList);
+	// end <-- OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+
+	void UpdateRegionList(std::vector<Region*> regionList);
+	std::vector<Region*> GetRegionList() {return _regionList;}
 
 private:
 
@@ -501,6 +515,9 @@ private:
 	double _dSystemCenterOfMass[3];  // center of mass of the system with respect to all molecules
 	double _dSystemCenter[3];  // center of system
 	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+	std::vector<Region*> _regionList;
+
 };
 
 

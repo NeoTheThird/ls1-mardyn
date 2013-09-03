@@ -17,6 +17,11 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+// Modification Log
+//
+// mheinen_2013-08-22 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+//
+
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -34,6 +39,8 @@
 
 #include "utils/Logger.h"
 using Log::global_log;
+
+#include "io/Region.h"
 
 using namespace std;
 
@@ -1145,4 +1152,82 @@ void Domain::submitDU(unsigned cid, double DU, double* r)
       _localWidomInstancesTloc[unID] += 1.0;
    }
 }
+
+// begin --> mheinen_2013-08-21 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+int Domain::FindPhaseBoundarys(std::list<double*> &phaseBoundMidpointList)
+{
+/*
+	double dMidpoint[3];
+	double dBoxLength[3];
+	// this->
+
+	dMidpoint[0] = 70.0;
+	dMidpoint[1] = 70.0;
+	dMidpoint[2] = 70.0;
+
+	dBoxLength[0] = 4.0;
+	dBoxLength[1] = 4.0;
+	dBoxLength[2] = 4.0;
+
+
+	std::list<Molecule*> moleculeList;
+	double dLowerCorner[3];
+	double dUpperCorner[3];
+
+	dLowerCorner[0] = dMidpoint[0] - dBoxLength[0] / 2;
+	dLowerCorner[1] = dMidpoint[1] - dBoxLength[1] / 2;
+	dLowerCorner[2] = dMidpoint[2] - dBoxLength[2] / 2;
+
+	dUpperCorner[0] = dMidpoint[0] + dBoxLength[0] / 2;
+	dUpperCorner[1] = dMidpoint[1] + dBoxLength[1] / 2;
+	dUpperCorner[2] = dMidpoint[2] + dBoxLength[2] / 2;
+
+	particleContainer->getRegion(dLowerCorner, dUpperCorner, moleculeList);
+
+
+	phaseBoundMidpointList.push_back(dMidPoint);
+*/
+	return phaseBoundMidpointList.size();
+}
+// begin --> mheinen_2013-08-21 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+
+
+void Domain::UpdateRegionList(std::vector<Region*> regionList)
+{
+	if( regionList.size() < 1)
+		return;
+
+	std::vector<Region*>::iterator it;
+
+	// clear vector
+	_regionList.clear();
+
+	global_log->info() << "Updating domain regionList ..." << endl;
+
+	// refresh vector
+	for(it = regionList.begin(); it != regionList.end(); it++)
+	{
+		_regionList.push_back(*it);
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
