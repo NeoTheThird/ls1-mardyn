@@ -6,18 +6,24 @@
 #include "ensemble/GrandCanonical.h"
 #include <string>
 #include <list>
+#include "io/TraTrack.h"
 
 class ParticleContainer;
 class DomainDecompBase; 
 class Domain;
 class ChemicalPotential;
 
-class TraWriter : public OutputBase {
+class CxWriter;
+class TraWriter : public OutputBase
+{
+	friend class CxWriter;  // to access box length
+
 public:
 	//! @brief writes a .tra file
 	//!
     TraWriter() {}
-	TraWriter( unsigned long writeFrequency, std::string outputPrefix, bool incremental);
+	TraWriter( unsigned long writeFrequency, unsigned long nPhaseBoundaryTrackFreq, unsigned long nNumTrackTimesteps,
+			   bool incremental);
 	~TraWriter();
 	//! @todo comment
 	
@@ -37,13 +43,6 @@ public:
 		return std::string("TraWriter");
 	}
 
-	void SetMidPoint(double* dMidpoint)
-	{
-		_dMidpoint[0] = dMidpoint[0];
-		_dMidpoint[1] = dMidpoint[1];
-		_dMidpoint[2] = dMidpoint[2];
-	}
-
 	void SetBoxLength(double* dBoxLength)
 	{
 		_dBoxLength[0] = dBoxLength[0];
@@ -51,19 +50,31 @@ public:
 		_dBoxLength[2] = dBoxLength[2];
 	}
 
+	void UpdateTrackList(ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain, const unsigned long &simstep);
+	int FindPhaseBoundaryMidpointsX( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain,
+                                     std::list<double*> &phaseBoundMidpointList);
+
 private:
-	std::string _filename;
 	unsigned long _writeFrequency;
-	unsigned long _numberOfTimesteps;
+	unsigned long _nPhaseBoundaryTrackFreq;
+	unsigned long _nNumTrackTimesteps;
 	bool	_incremental;
 	bool	_filenameisdate;
-	bool  _wroteTra;
 
-	double _dMidpoint[3];
+	std::list<TraTrack*> _TraTrackList;
 	double _dBoxLength[3];
+	unsigned int _nPhaseBoundID;
+	unsigned int _nTrackID;        // number to identify Track
+	unsigned int _nNumCompInBox;
 
-	std::string _outputPrefix;
+	// zur Bestimmung von Konzentrationsprofil
+	unsigned int _nNumMolsSlice;
+	unsigned int _nNumMolsSliceComp;
+
+	std::vector<double[2]> _concentrAtX;
+
 	bool _appendTimestamp;
-};
+
+};  // class TraWriter : public OutputBase
 
 #endif /*TRAWRITER_H_*/

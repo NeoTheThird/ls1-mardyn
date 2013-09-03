@@ -25,7 +25,6 @@ TraTrack::TraTrack()
 
 	// status variables
 	_bTrackFinished = false;
-	_bWroteHeader = false;
 	_bTimestepDirCreated = false;
 	_bPhaseBoundDirCreated = false;
 
@@ -33,7 +32,7 @@ TraTrack::TraTrack()
 	_nTrackID = 0;
 }
 
-TraTrack::TraTrack( unsigned long nNumTrackTimesteps, std::list<unsigned int> lisTrackMoleculeIDs,
+TraTrack::TraTrack( unsigned long nNumTrackTimesteps, std::list<TrackMoleculeData*> trackMolecules,
 		            unsigned long nInitSimstep, unsigned int nPhaseBoundID)
 {
 	// control params
@@ -42,7 +41,6 @@ TraTrack::TraTrack( unsigned long nNumTrackTimesteps, std::list<unsigned int> li
 
 	// status variables
 	_bTrackFinished = false;
-	_bWroteHeader = false;
 	_bTimestepDirCreated = false;
 	_bPhaseBoundDirCreated = false;
 
@@ -54,10 +52,10 @@ TraTrack::TraTrack( unsigned long nNumTrackTimesteps, std::list<unsigned int> li
 	_strTimestepDirName   = oss1.str();
 	_strPhaseBoundDirName = oss2.str();
 
-	std::list<unsigned int>::iterator it;
-	for(it = lisTrackMoleculeIDs.begin(); it != lisTrackMoleculeIDs.end(); ++it)
+	std::list<TrackMoleculeData*>::iterator it;
+	for(it = trackMolecules.begin(); it != trackMolecules.end(); ++it)
 	{
-		_lisTrackMoleculeIDs.push_back(*it);
+		_trackMolecules.push_back(*it);
 	}
 
 	// Track ID
@@ -68,15 +66,18 @@ TraTrack::TraTrack( unsigned long nNumTrackTimesteps, std::list<unsigned int> li
 
 TraTrack::~TraTrack()
 {
+	std::list<TrackMoleculeData*>::iterator it;
+	for(it = _trackMolecules.begin(); it != _trackMolecules.end(); ++it)
+	{
+		delete (*it);
+		(*it) = NULL;
+	}
 }
 
 void TraTrack::SetStatus(int nStatusType, bool bStatus)
 {
 	switch(nStatusType)
 	{
-	case TTST_WROTE_HEADER:
-		_bWroteHeader = bStatus;
-		break;
 	case TTST_TIMESTEP_DIRECTORY_CREATED:
 		_bTimestepDirCreated = bStatus;
 		break;
@@ -135,5 +136,33 @@ void TraTrack::CreatePhaseBoundDir(void)
 	mkdir( tmpstream.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 	this->SetStatus(TTST_TIMESTEP_DIRECTORY_CREATED, true);
 }
+
+bool TraTrack::WroteHeader(unsigned long nMolID)
+{
+	std::list<TrackMoleculeData*>::iterator it;
+
+	for(it = _trackMolecules.begin(); it != _trackMolecules.end(); it++)
+	{
+		if( (*it)->GetID() == nMolID )
+			return (*it)->WroteHeader();
+	}
+
+	return false;
+}
+
+void TraTrack::SetWroteHeader(unsigned long nMolID, bool bWroteHeader)
+{
+	std::list<TrackMoleculeData*>::iterator it;
+
+	for(it = _trackMolecules.begin(); it != _trackMolecules.end(); it++)
+	{
+		if( (*it)->GetID() == nMolID )
+			(*it)->SetWroteHeader(bWroteHeader);
+	}
+}
+
+
+
+
 
 
