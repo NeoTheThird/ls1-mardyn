@@ -17,6 +17,11 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
+// Modification Log
+//
+// mheinen_2013-08-20 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+// mheinen_2013-08-27 --> OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
+
 // Simulation.cpp
 #include <iostream>
 #include <iterator>
@@ -375,6 +380,11 @@ void Simulation::readXML(XMLfileUnits& xmlconfig) {
 		else if(pluginname == "XyzWriter") {
 			outputPlugin = new XyzWriter();
 		}
+		// begin --> mheinen_2013-08-20 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+		else if(pluginname == "TraWriter") {
+			outputPlugin = new TraWriter();
+		}
+		// end <-- OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
 		else {
 			global_log->warning() << "Unknown plugin " << pluginname << endl;
 			continue;
@@ -782,6 +792,29 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			      _outputPlugins.push_back(new MmspdWriter(writeFrequency, outputPathAndPrefix));
 			      global_log->debug() << "MmspdWriter " << writeFrequency << " '" << outputPathAndPrefix << "'.\n";
 			}
+			// begin --> mheinen_2013-08-20 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+			// output trajectory files (*.tra)
+			else if (token == "TraWriter")
+			{
+				unsigned long writeFrequency, nPhaseBoundaryTrackFreq, nNumTrackTimesteps;
+				inputfilestream >> writeFrequency >> nPhaseBoundaryTrackFreq >> nNumTrackTimesteps;
+				_outputPlugins.push_back(new TraWriter(writeFrequency, nPhaseBoundaryTrackFreq, nNumTrackTimesteps, true) );
+				global_log->debug() << "TraWriter " << writeFrequency << nPhaseBoundaryTrackFreq << nNumTrackTimesteps << ".\n";
+			}
+			// end <-- OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
+
+			// begin mheinen_2013_08_27 --> OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
+			// output concentration profile files (*.cox)
+			else if (token == "CxWriter" || token == "CXWriter")
+			{
+				unsigned long writeFrequency, updateFrequency;
+				double dDeltaX;
+				unsigned int nDeltaXSteps;
+				inputfilestream >> writeFrequency >> updateFrequency >> dDeltaX >> nDeltaXSteps;
+				_outputPlugins.push_back(new CxWriter(writeFrequency, updateFrequency, dDeltaX, nDeltaXSteps, true) );
+				global_log->debug() << "CxWriter " << writeFrequency << updateFrequency << dDeltaX << nDeltaXSteps << ".\n";
+			}
+			// end <-- OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
 			else {
 				global_log->warning() << "Unknown output plugin " << token << endl;
 			}
@@ -1246,10 +1279,10 @@ void Simulation::simulate() {
 	Timer ioTimer;
 
 	// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
-	double dPos[3];
-	double rSum[3];
-	int nNumMols;
-	Molecule* tempMolecule;
+//	double dPos[3];
+//	double rSum[3];
+//	int nNumMols;
+//	Molecule* tempMolecule;
 	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 
 	loopTimer.start();
@@ -1271,6 +1304,20 @@ void Simulation::simulate() {
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
 
 
+/*
+		_nGloblaNumMolecules = _moleculeContainer->getNumberOfParticles();
+
+		_domainDecomposition->collCommInit(1);
+		_domainDecomposition->collCommAppendInt(_nGloblaNumMolecules);
+		_domainDecomposition->collCommAllreduceSum();
+		_nGloblaNumMolecules = _domainDecomposition->collCommGetInt();
+		_domainDecomposition->collCommFinalize();
+
+		global_log->info() << "number of particles (using collComm: " << _nGloblaNumMolecules << endl;
+*/
+
+
+/*
 		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
 		nNumMols = _moleculeContainer->getNumberOfParticles();
 		global_log->info() << "number of particles: " << nNumMols << endl;
@@ -1323,7 +1370,7 @@ void Simulation::simulate() {
 //						   << " y: " << _domain->GetSystemCenterOfMass(1)
 //						   << " z: " << _domain->GetSystemCenterOfMass(2) << endl;
 		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
-
+*/
 
 		// activate RDF sampling
 		if ((_simstep >= this->_initStatistics) && this->_rdf != NULL) {
