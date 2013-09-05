@@ -88,7 +88,7 @@ void TraWriter::doOutput(ParticleContainer* particleContainer,
 	std::vector<Region*>::iterator itReg;
 	unsigned short nRegionType;
 	int nNumUnfinishedTracks;
-	unsigned int nCompID;
+	unsigned int nCompID = -1;  // invalid ID
 
 	UpdateTrackList(particleContainer, domainDecomp, domain, simstep);
 	nNumUnfinishedTracks = 0;
@@ -146,38 +146,53 @@ void TraWriter::doOutput(ParticleContainer* particleContainer,
 				// outputstream << "#" << endl;
 			}
 
-			outputstream << simstep;
 
+			// walk over whole particleContainer
 			for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next() )
 			{
+				// check if molecule remains inside halo
 				bool halo = false;
-				for (unsigned short d = 0; d < 3; d++) {
-					if ((pos->r(d) < particleContainer->getBoundingBoxMin(d)) || (pos->r(d) > particleContainer->getBoundingBoxMax(d))) {
+				for (unsigned short d = 0; d < 3; d++)
+				{
+					if ( (pos->r(d) < particleContainer->getBoundingBoxMin(d) ) ||
+						 (pos->r(d) > particleContainer->getBoundingBoxMax(d) ) )
+					{
 						halo = true;
 						break;
 					}
 				}
-				if (!halo && pos->id() == (*itMol)->GetID() )
+
+				if ( pos->id() == (*itMol)->GetID() )
 				{
-					for (unsigned short d = 0; d < 3; d++)
-					{
-						outputstream << std::setw(11) << std::setprecision(6) << pos->r(d);
-					}
-
-					// get region type
-					nRegionType = -1;  // invalid type
-
-					for(itReg = regionList.begin(); itReg != regionList.end(); itReg++)
-					{
-						if( (*itReg)->MoleculeIsInside(pos) )
-							nRegionType = (*itReg)->GetType();
-					}
-
-					outputstream << std::setw(11) << nRegionType << endl;
-
 					// get component id
 					nCompID = pos->component()->ID() + 1;  // ls1 component ids starts with 0, input files with 1 --> transform with: +1
-				}
+
+					// only write out data when molecule does not remain inside halo
+					if ( !halo )
+					{
+						// number of timestep
+						outputstream << simstep;
+
+						// position of molecule
+						for (unsigned short d = 0; d < 3; d++)
+						{
+							outputstream << std::setw(11) << std::setprecision(6) << pos->r(d);
+						}
+
+						// get region type
+						nRegionType = -1;  // invalid type
+
+						for(itReg = regionList.begin(); itReg != regionList.end(); itReg++)
+						{
+							if( (*itReg)->MoleculeIsInside(pos) )
+								nRegionType = (*itReg)->GetType();
+						}
+
+						outputstream << std::setw(11) << nRegionType << endl;
+
+					}  // if molecule does not remain inside halo
+
+				}  // if molecule ID is that of the tracked one
 
 			}  // for each molecule in particleContainer
 
@@ -259,13 +274,75 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 
 		global_log->info() << "particlePtrs - size: " << particlePtrs.size() << endl;
 
-		// create list of Molecule IDs
+		// create list of track molecules data
 		std::list<TrackMoleculeData*> trackMolecules;
+		std::vector<unsigned long> vnMolIDListLocal;
+		std::vector<unsigned long>::iterator it;
+		int nNumIDsLocal;
 
 		for(itMol = particlePtrs.begin(); itMol != particlePtrs.end(); itMol++)
 		{
-			trackMolecules.push_back( new TrackMoleculeData( (*itMol)->id() ) );
+			vnMolIDListLocal.push_back( ( *itMol)->id() );
 		}
+		nNumIDsLocal = vnMolIDListLocal.size();
+
+		#ifdef ENABLE_MPI
+		    std::vector<unsigned long> vnMolIDListGlobal;
+			std::vector<int> recvcounts;
+			std::vector<int> displs;
+	    	int numprocs = domainDecomp->getNumProcs();
+	    	int myrank   = domainDecomp->getRank();
+			int nNumIDsGlobal;
+
+	    	// receive array
+		    recvcounts.resize(numprocs);
+	    	MPI_Allgather(&nNumIDsLocal, 1, MPI_INT, recvcounts.data(), 1, MPI_INT, MPI_COMM_WORLD);
+
+	        if(myrank == 0)
+	        {
+	            for(int i=0; i < recvcounts.size(); i++)
+	            {
+	            	global_log->info() << "recvcounts-array element " << i << ": " << recvcounts.at(i) << endl;
+	            }
+	        }
+
+	        // displace array
+	        displs.push_back(0);
+	        for(int i=0; i < recvcounts.size()-1; i++)
+	        {
+	        	displs.push_back( recvcounts.at(i) + displs.at(i) );
+	        }
+
+	        if(myrank == 0)
+	        {
+	            for(int i=0; i < displs.size(); i++)
+	            {
+	            	global_log->info() << "displs-array element " << i << ": " << displs.at(i) << endl;
+	            }
+	        }
+
+	        // resize global ID-List array
+	        MPI_Allreduce( &nNumIDsLocal, &nNumIDsGlobal, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+	        vnMolIDListGlobal.resize(nNumIDsGlobal);
+
+			// create global ID-list
+		    MPI_Allgatherv( vnMolIDListLocal.data(), nNumIDsLocal, MPI_UNSIGNED_LONG, vnMolIDListGlobal.data(),
+		    		        recvcounts.data(), displs.data(), MPI_UNSIGNED_LONG, MPI_COMM_WORLD);
+
+		    // create track molecule list
+			for(int i=0; i < nNumIDsGlobal; i++)
+			{
+				trackMolecules.push_back( new TrackMoleculeData( vnMolIDListGlobal.at(i) ) );
+			}
+
+		#else
+		    // create track molecule list
+			for(int i=0; i < nNumIDsLocal; i++)
+			{
+				trackMolecules.push_back( new TrackMoleculeData( vnMolIDListLocal.at(i) ) );
+			}
+
+		#endif
 
 		_nPhaseBoundID++;
 		track = new TraTrack(_nNumTrackTimesteps, trackMolecules, simstep, _nPhaseBoundID);
