@@ -30,5 +30,7 @@
 #endif
 #include "io/TraWriter.h"  // mheinen_2013-08-20
 #include "io/CxWriter.h"  // mheinen_2013-08-27
+#include "io/XyzProfilesWriter.h"  // mheinen_2013-09-24
+#include "io/RadialProfilesWriter.h"  // mheinen_2013-09-25
 
 #endif  /* __IO_H__  */
