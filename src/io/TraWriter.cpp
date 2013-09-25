@@ -23,7 +23,7 @@
 using namespace std;
 
 TraWriter::TraWriter( unsigned long writeFrequency, unsigned long nPhaseBoundaryTrackFreq, unsigned long nNumTrackTimesteps,
-		              bool incremental)
+		              double* dBoxLength, bool incremental)
 {
 	_writeFrequency = writeFrequency;
 	_nPhaseBoundaryTrackFreq = nPhaseBoundaryTrackFreq;
@@ -34,6 +34,11 @@ TraWriter::TraWriter( unsigned long writeFrequency, unsigned long nPhaseBoundary
 
 	// TODO: IDs für Phasengrenze anders, an anderer Stelle vergeben
 	_nPhaseBoundID = 0;
+
+	// init box length
+	_dBoxLength[0] = dBoxLength[0];
+	_dBoxLength[1] = dBoxLength[1];
+	_dBoxLength[2] = dBoxLength[2];
 }
 
 TraWriter::~TraWriter(){}
@@ -190,28 +195,28 @@ void TraWriter::doOutput(ParticleContainer* particleContainer,
 
 						outputstream << std::setw(11) << nRegionType << endl;
 
+						filepathstream << "./" << (*itTrack)->GetTimestepDirName() << "/" << (*itTrack)->GetPhaseBoundDirName() << "/"
+									   << "mol-id_" << (*itMol)->GetID() << "_Comp-id_" << nCompID << ".tra";
+
+						char filepath[filepathstream.str().size()+1];
+						strcpy(filepath,filepathstream.str().c_str());
+
+						// convert string
+						long outputsize = outputstream.str().size();
+						//cout << "rank: " << rank << "; step: " << simstep << "; outputsize: " << outputsize << endl;
+						char output[outputsize+1];
+						strcpy(output,outputstream.str().c_str());
+
+						// write to file
+						ofstream fileout(filepath, ios::out|ios::app);
+						fileout << output;
+						fileout.close();
+
 					}  // if molecule does not remain inside halo
 
 				}  // if molecule ID is that of the tracked one
 
 			}  // for each molecule in particleContainer
-
-			filepathstream << "./" << (*itTrack)->GetTimestepDirName() << "/" << (*itTrack)->GetPhaseBoundDirName() << "/"
-						   << "mol-id_" << (*itMol)->GetID() << "_Comp-id_" << nCompID << ".tra";
-
-			char filepath[filepathstream.str().size()+1];
-			strcpy(filepath,filepathstream.str().c_str());
-
-			// convert string
-			long outputsize = outputstream.str().size();
-			//cout << "rank: " << rank << "; step: " << simstep << "; outputsize: " << outputsize << endl;
-			char output[outputsize+1];
-			strcpy(output,outputstream.str().c_str());
-
-			// write to file
-			ofstream fileout(filepath, ios::out|ios::app);
-			fileout << output;
-			fileout.close();
 
 		}  // for each track molecule of track
 
@@ -256,13 +261,13 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 		dBoundaryMidpoint[1] = (*itReg)->GetMidpoint(1);
 		dBoundaryMidpoint[2] = (*itReg)->GetMidpoint(2);
 
-		dLowerCorner[0] = dBoundaryMidpoint[0] - 50.0;
-		dLowerCorner[1] = dBoundaryMidpoint[1] - 50.0;
-		dLowerCorner[2] = dBoundaryMidpoint[2] - 50.0;
+		dLowerCorner[0] = dBoundaryMidpoint[0] - _dBoxLength[0]/2;  // in A°
+		dLowerCorner[1] = dBoundaryMidpoint[1] - _dBoxLength[1]/2;
+		dLowerCorner[2] = dBoundaryMidpoint[2] - _dBoxLength[2]/2;
 
-		dUpperCorner[0] = dBoundaryMidpoint[0] + 50.0;
-		dUpperCorner[1] = dBoundaryMidpoint[1] + 50.0;
-		dUpperCorner[2] = dBoundaryMidpoint[2] + 50.0;
+		dUpperCorner[0] = dBoundaryMidpoint[0] + _dBoxLength[0]/2;
+		dUpperCorner[1] = dBoundaryMidpoint[1] + _dBoxLength[1]/2;
+		dUpperCorner[2] = dBoundaryMidpoint[2] + _dBoxLength[2]/2;
 
 		global_log->info() << "LowerCorner x: " << dLowerCorner[0] <<  ", y: " << dLowerCorner[1] <<  ", z: " << dLowerCorner[2] << endl;
 		global_log->info() << "UpperCorner x: " << dUpperCorner[0] <<  ", y: " << dUpperCorner[1] <<  ", z: " << dUpperCorner[2] << endl;
@@ -332,6 +337,7 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 		    // create track molecule list
 			for(int i=0; i < nNumIDsGlobal; i++)
 			{
+				global_log->info() << "vnMolIDListGlobal, element " << i << ": " << vnMolIDListGlobal.at(i) << endl;
 				trackMolecules.push_back( new TrackMoleculeData( vnMolIDListGlobal.at(i) ) );
 			}
 
@@ -339,6 +345,7 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 		    // create track molecule list
 			for(int i=0; i < nNumIDsLocal; i++)
 			{
+				global_log->info() << "vnMolIDListLocal, element " << i << ": " << vnMolIDListLocal.at(i) << endl;
 				trackMolecules.push_back( new TrackMoleculeData( vnMolIDListLocal.at(i) ) );
 			}
 

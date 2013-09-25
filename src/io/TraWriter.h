@@ -23,7 +23,7 @@ public:
 	//!
     TraWriter() {}
 	TraWriter( unsigned long writeFrequency, unsigned long nPhaseBoundaryTrackFreq, unsigned long nNumTrackTimesteps,
-			   bool incremental);
+			   double* dBoxLength, bool incremental);
 	~TraWriter();
 	//! @todo comment
 	
