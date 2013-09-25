@@ -21,6 +21,8 @@
 //
 // mheinen_2013-08-20 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
 // mheinen_2013-08-27 --> OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
+// mheinen_2013-09-24 --> OUTPUT_PLUGIN_XYZPROFILESWRITER_TO_WRITE_XYZ_PROFILES
+// mheinen_2013-09-24 --> OUTPUT_PLUGIN_RADIALPROFILESWRITER_TO_WRITE_RADIAL_PROFILES
 
 // Simulation.cpp
 #include <iostream>
@@ -797,8 +799,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			else if (token == "TraWriter")
 			{
 				unsigned long writeFrequency, nPhaseBoundaryTrackFreq, nNumTrackTimesteps;
+				double dBoxLength[3];
 				inputfilestream >> writeFrequency >> nPhaseBoundaryTrackFreq >> nNumTrackTimesteps;
-				_outputPlugins.push_back(new TraWriter(writeFrequency, nPhaseBoundaryTrackFreq, nNumTrackTimesteps, true) );
+				inputfilestream >> dBoxLength[0] >> dBoxLength[1] >> dBoxLength[2];
+				_outputPlugins.push_back(new TraWriter(writeFrequency, nPhaseBoundaryTrackFreq, nNumTrackTimesteps, dBoxLength, true) );
 				global_log->debug() << "TraWriter " << writeFrequency << nPhaseBoundaryTrackFreq << nNumTrackTimesteps << ".\n";
 			}
 			// end <-- OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
@@ -815,6 +819,36 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				global_log->debug() << "CxWriter " << writeFrequency << updateFrequency << dDeltaX << nDeltaXSteps << ".\n";
 			}
 			// end <-- OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
+
+			// begin mheinen_2013_09_24 --> OUTPUT_PLUGIN_XYZPROFILESWRITER_TO_WRITE_XYZ_PROFILES
+			// output xyz profile files (*.prf)
+			else if (token == "XyzProfilesWriter" || token == "XYZProfilesWriter")
+			{
+				unsigned long writeFrequency, updateFrequency;
+				double dSliceWidth;
+				unsigned int nMoveSteps, nRecSwitches[6];
+				inputfilestream >> writeFrequency >> updateFrequency >> dSliceWidth >> nMoveSteps;
+				inputfilestream >> nRecSwitches[0] >> nRecSwitches[1] >> nRecSwitches[2];  // switch on concentration record
+				inputfilestream >> nRecSwitches[3] >> nRecSwitches[4] >> nRecSwitches[5];  // switch on temperature record
+				_outputPlugins.push_back(new XyzProfilesWriter(writeFrequency, updateFrequency, dSliceWidth, nMoveSteps, nRecSwitches, true) );
+				global_log->debug() << "XyzProfilesWriter " << writeFrequency << updateFrequency << dSliceWidth << nMoveSteps << ".\n";
+			}
+			// end <-- OUTPUT_PLUGIN_XYZPROFILESWRITER_TO_WRITE_XYZ_PROFILES
+
+			// begin mheinen_2013_09_25 --> OUTPUT_PLUGIN_RADIALPROFILESWRITER_TO_WRITE_RADIAL_PROFILES
+			// output radial profile files (*.rpf)
+			else if (token == "RadialProfilesWriter" || token == "RADIALProfilesWriter")
+			{
+				unsigned long writeFrequency, updateFrequency, writeFreqAverage;
+				unsigned int nNumShells, nNumDiscretSteps;
+				unsigned long nNumTimestepsMaxValDetection;
+				inputfilestream >> writeFrequency >> updateFrequency >> writeFreqAverage;
+				inputfilestream >> nNumShells >> nNumDiscretSteps >> nNumTimestepsMaxValDetection;
+				_outputPlugins.push_back( new RadialProfilesWriter(writeFrequency, updateFrequency, writeFreqAverage, nNumShells, nNumDiscretSteps, nNumTimestepsMaxValDetection, true) );
+				global_log->debug() << "RadialProfilesWriter " << writeFrequency << updateFrequency << writeFreqAverage << nNumShells << nNumDiscretSteps << nNumTimestepsMaxValDetection << ".\n";
+			}
+			// end <-- OUTPUT_PLUGIN_RADIALPROFILESWRITER_TO_WRITE_RADIAL_PROFILES
+
 			else {
 				global_log->warning() << "Unknown output plugin " << token << endl;
 			}
