@@ -1,6 +1,7 @@
 #ifndef COLLECTIVECOMMDUMMY_H_
 #define COLLECTIVECOMMDUMMY_H_
 
+#include <cassert>
 
 //! @brief This class is just a dummy class which ensures that the collective communication
 //!        commands also work if the program is executed sequentially without MPI
@@ -46,43 +47,53 @@ public:
 
 	//! Append an int value to the list of values to be stored
 	void appendInt(int intValue) {
+		assert(_setCounter < _numValues);
 		_values[_setCounter++].val_int = intValue;
 	}
 	//! Append a unsigned long value to the list of values to be stored
 	void appendUnsLong(unsigned long unsLongValue) {
+		assert(_setCounter < _numValues);
 		_values[_setCounter++].val_unsLong = unsLongValue;
 	}
 	//! Append a float value to the list of values to be stored
 	void appendFloat(float floatValue) {
+		assert(_setCounter < _numValues);
 		_values[_setCounter++].val_float = floatValue;
 	}
 	//! Append a double value to the list of values to be stored
 	void appendDouble(double doubleValue) {
+		assert(_setCounter < _numValues);
 		_values[_setCounter++].val_double = doubleValue;
 	}
 	//! Append a long double value to the list of values to be stored
 	void appendLongDouble(double longDoubleValue) {
+		assert(_setCounter < _numValues);
 		_values[_setCounter++].val_longDouble = longDoubleValue;
 	}
 
 	//! Get the next value from the list, which must be int
 	int getInt() {
+		assert(_getCounter < _numValues);
 		return _values[_getCounter++].val_int;
 	}
 	//! Get the next value from the list, which must be unsigned long
 	unsigned long getUnsLong() {
+		assert(_getCounter < _numValues);
 		return _values[_getCounter++].val_unsLong;
 	}
 	//! Get the next value from the list, which must be float
 	float getFloat() {
+		assert(_getCounter < _numValues);
 		return _values[_getCounter++].val_float;
 	}
 	//! Get the next value from the list, which must be double
 	double getDouble() {
+		assert(_getCounter < _numValues);
 		return _values[_getCounter++].val_double;
 	}
 	//! Get the next value from the list, which must be long double
 	long double getLongDouble() {
+		assert(_getCounter < _numValues);
 		return _values[_getCounter++].val_longDouble;
 	}
 	//! number of values (possibly different types) to be communicated

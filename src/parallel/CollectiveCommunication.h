@@ -183,6 +183,7 @@ public:
 
 	//! Append an int value to the list of values to be sent
 	void appendInt(int intValue) {
+		assert(_setCounter < _numValues);
 		_recvValues[_setCounter].val_int = intValue;
 		_listOfTypes[_setCounter] = MPI_INT;
 		_setCounter++;
@@ -190,6 +191,7 @@ public:
 
 	//! Append a unsigned long value to the list of values to be sent
 	void appendUnsLong(unsigned long unsLongValue) {
+		assert(_setCounter < _numValues);
 		_sendValues[_setCounter].val_unsLong = unsLongValue;
 		_listOfTypes[_setCounter] = MPI_UNSIGNED_LONG;
 		_setCounter++;
@@ -197,6 +199,7 @@ public:
 
 	//! Append a float value to the list of values to be sent
 	void appendFloat(float floatValue) {
+		assert(_setCounter < _numValues);
 		_sendValues[_setCounter].val_float = floatValue;
 		_listOfTypes[_setCounter] = MPI_FLOAT;
 		_setCounter++;
@@ -204,6 +207,7 @@ public:
 
 	//! Append a double value to the list of values to be sent
 	void appendDouble(double doubleValue) {
+		assert(_setCounter < _numValues);
 		_sendValues[_setCounter].val_double = doubleValue;
 		_listOfTypes[_setCounter] = MPI_DOUBLE;
 		_setCounter++;
@@ -211,6 +215,7 @@ public:
 
 	//! Append a long double value to the list of values to be sent
 	void appendLongDouble(double longDoubleValue) {
+		assert(_setCounter < _numValues);
 		_sendValues[_setCounter].val_longDouble = longDoubleValue;
 		_listOfTypes[_setCounter] = MPI_LONG_DOUBLE;
 		_setCounter++;
@@ -222,26 +227,31 @@ public:
 
 	//! Get the next value from the list, which must be int
 	int getInt() {
+		assert(_getCounter < _numValues);
 		return _recvValues[_getCounter++].val_int;
 	}
 
 	//! Get the next value from the list, which must be unsigned long
 	unsigned long getUnsLong() {
+		assert(_getCounter < _numValues);
 		return _recvValues[_getCounter++].val_unsLong;
 	}
 
 	//! Get the next value from the list, which must be float
 	float getFloat() {
+		assert(_getCounter < _numValues);
 		return _recvValues[_getCounter++].val_float;
 	}
 
 	//! Get the next value from the list, which must be double
 	double getDouble() {
+		assert(_getCounter < _numValues);
 		return _recvValues[_getCounter++].val_double;
 	}
 
 	//! Get the next value from the list, which must be long double
 	long double getLongDouble() {
+		assert(_getCounter < _numValues);
 		return _recvValues[_getCounter++].val_longDouble;
 	}
 
