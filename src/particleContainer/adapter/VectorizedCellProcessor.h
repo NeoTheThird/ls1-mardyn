@@ -66,7 +66,7 @@ public:
 	 * \brief Construct and set up the internal parameter table.
 	 * \details Components and parameters should be finalized before this call.
 	 */
-	VectorizedCellProcessor(Domain & domain, double cutoffRadius);
+	VectorizedCellProcessor(Domain & domain, double cutoffRadius, double LJcutoffRadius);
 
 	~VectorizedCellProcessor();
 
@@ -107,10 +107,25 @@ private:
 	 * \brief The Domain where macroscopic values will be stored.
 	 */
 	Domain & _domain;
+
 	/**
 	 * \brief The squared cutoff radius.
 	 */
-	const double _rc2;
+	const double _cutoffRadiusSquare;
+
+	/**
+	 * \brief The squared LJ cutoff radius.
+	 */
+	const double _LJcutoffRadiusSquare;
+
+	/**
+	 * \brief One LJ center enumeration start index for each component.
+	 * \details All the LJ centers of all components are enumerated.<br>
+	 * Comp1 gets indices 0 through n1 - 1, Comp2 n1 through n2 - 1 and so on.<br>
+	 * This is necessary for finding the respective parameters for each interaction<br>
+	 * between two centers.
+	 */
+
 	/**
 	 * \brief One LJ center enumeration start index for each component.
 	 * \details All the LJ centers of all components are enumerated.<br>
@@ -132,27 +147,64 @@ private:
 	 */
 	std::vector<DoubleArray> _shift6;
 	/**
-	 * \brief Sum of all potentials.
+	 * \brief Sum of all LJ potentials.
 	 * \details Multiplied by 6.0 for performance reasons.
 	 */
 	double _upot6lj;
+
+	/**
+	 * \brief Sum of all Xpole potentials.
+	 */
+	double _upotXpoles;
+
 	/**
 	 * \brief The virial.
 	 */
 	double _virial;
 
+	// lookup array for the distance molecule-molecule on a molecule-center basis.
+	DoubleArray _centers_dist_lookup;
+
 	// vector holding pointers to the above objects, used as a stack for
 	// managing free objects
 	std::vector<CellDataSoA*> _particleCellDataVector;
-
-	// lookup array for the distance molecule-molecule on a molecule-center basis.
-	DoubleArray _center_dist_lookup;
 
 	/**
 	 * \brief The body of the inner loop of the non-vectorized force calculation.
 	 */
 	template<class ForcePolicy, class MacroPolicy>
 		void _loopBodyNovec(const CellDataSoA & soa1, size_t i, const CellDataSoA & soa2, size_t j, const double *const forceMask);
+
+	/**
+	 * \brief The body of the inner loop of the non-vectorized force calculation between charges.
+	 * \author Robert Hajda
+	 */
+	template<class ForcePolicy, class MacroPolicy>
+		void _loopBodyNovecCharges(const CellDataSoA & soa1, size_t i, const CellDataSoA & soa2, size_t j, const double *const forceMask);
+
+
+	/**
+	 * \brief The dist lookup for a molecule and all centers of a type
+	 * \author Robert Hajda
+	 */
+	template<class ForcePolicy, class MacroPolicy>
+#if VLJCP_VEC_TYPE==VLJCP_NOVEC
+	unsigned long
+#elif VLJCP_VEC_TYPE==VLJCP_VEC_SSE3
+	__m128d
+#elif VLJCP_VEC_TYPE==VLJCP_VEC_AVX
+	__m256d
+#endif
+	calcDistLookup (const CellDataSoA & soa1, const size_t & i, const size_t & i_center_idx, const size_t & soa2_num_centers, const double & cutoffRadiusSquare,
+			double* const soa2_center_dist_lookup, const double* const soa2_m_r_x, const double* const soa2_m_r_y, const double* const soa2_m_r_z
+	#if VLJCP_VEC_TYPE==VLJCP_VEC_SSE3
+			, const __m128d & cutoffRadiusSquareD, size_t end_j, const __m128d m1_r_x, const __m128d m1_r_y, const __m128d m1_r_z
+	#elif VLJCP_VEC_TYPE==VLJCP_VEC_AVX
+			, const __m256d & cutoffRadiusSquareD, size_t end_j, const __m256d m1_r_x, const __m256d m1_r_y, const __m256d m1_r_z
+	#endif
+			);
+
+
 
 	/**
 	 * \brief Force calculation with abstraction of cell pairs.

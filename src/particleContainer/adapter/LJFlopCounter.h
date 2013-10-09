@@ -105,17 +105,27 @@ private:
 	public:
 		void clear() {
 			calc_LJ = 0;
+			calc_Charges = 0;
 			calc_Macro = 0;
 			calc_molDist = 0;
+			vect_op = 0;
+			masked_elements = 0;
 		}
 		void addCounts(const _Counts c) {
 			calc_LJ += c.calc_LJ;
+			calc_Charges += c.calc_Charges;
 			calc_Macro += c.calc_Macro;
 			calc_molDist += c.calc_molDist;
+			vect_op += c.vect_op;
+			masked_elements += c.masked_elements;
 		}
 		double calc_molDist;
 		double calc_LJ;
+		double calc_Charges;
 		double calc_Macro;
+
+		double vect_op;
+		double masked_elements;
 	};
 
 	_Counts _totalCounts;
@@ -129,7 +139,7 @@ private:
 	 */
 	static const size_t _flops_MolDist = 8;
 	/**
-	 * \brief The calculation of the distance between 2 LJ centers.
+	 * \brief The calculation of the distance between 2 centers.
 	 * \details Same as _flops_MolDist for distances between centers.
 	 */
 	static const size_t _flops_CenterDist = 8;
@@ -140,18 +150,29 @@ private:
 	 */
 	static const size_t _flops_LJKernel = 12;
 	/**
-	 * \brief Summing up the LJ forces.
+	 * \brief The calculation of the force between 2 charges.
+	 * \details 1 for inverse of r squared, 3 for calculation of scale, 3 for applying the
+	 * scale.
+	 */
+	static const size_t _flops_ChargesKernel = 7;
+	/**
+	 * \brief Summing up the forces.
 	 * \details 3 for adding the resulting force to one molecule, 3 for subtracting from
 	 * the other.
 	 */
-	static const size_t _flops_LJSum = 6;
+	static const size_t _flops_ForcesSum = 6;
 	/**
-	 * \brief The calculation of Virial and UPotLJ.
+	 * \brief The calculation of Virial and UPot for LJ centers.
 	 * \details 2 for upot, 5 for virial.
 	 */
-	static const size_t _flops_MacroValues = 7;
+	static const size_t _flops_LJMacroValues = 7;
 	/**
-	 * \brief Summing up Virial and UPotLJ.
+	 * \brief The calculation of Virial and UPot for charges.
+	 * \details 0 for upot, 5 for virial.
+	 */
+	static const size_t _flops_ChargesMacroValues = 57;
+	/**
+	 * \brief Summing up Virial and UPot.
 	 * \details 2 additions.
 	 */
 	static const size_t _flops_MacroSum = 2;
