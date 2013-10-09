@@ -99,8 +99,8 @@ void LinkedCells::build(double bBoxMin[3], double bBoxMax[3]) {
 			boxWidthInNumCells[1] < 2* _haloWidthInNumCells[1] ||
 			boxWidthInNumCells[2] < 2* _haloWidthInNumCells[2]) {
 		global_log->error() << "LinkedCells (constructor): bounding box too small for calculated cell length" << endl;
-		global_log->error() << "_cellsPerDimension" << _cellsPerDimension[0] << " / " << _cellsPerDimension[1] << " / " << _cellsPerDimension[2] << endl;
-		global_log->error() << "_haloWidthInNumCells" << _haloWidthInNumCells[0] << " / " << _haloWidthInNumCells[1] << " / " << _haloWidthInNumCells[2] << endl;
+		global_log->error() << "_cellsPerDimension (incl. halo) " << _cellsPerDimension[0] << " / " << _cellsPerDimension[1] << " / " << _cellsPerDimension[2] << endl;
+		global_log->error() << "_haloWidthInNumCells " << _haloWidthInNumCells[0] << " / " << _haloWidthInNumCells[1] << " / " << _haloWidthInNumCells[2] << endl;
 		exit(5);
 	}
 
@@ -135,6 +135,37 @@ void LinkedCells::build(double bBoxMin[3], double bBoxMax[3]) {
 
 
 void LinkedCells::update() {
+#define BINNING
+#ifdef BINNING
+	double bucketLength[3];
+	for (int i = 0; i < 3; i++) {
+		bucketLength[i] = _cellLength[i] / NBUCKET;
+	}
+
+	std::list<Molecule>::iterator pos;
+	for (pos = _particles.begin(); pos != _particles.end(); ++pos) {
+		// determine the cell into which the particle belongs
+		Molecule& mol = *pos;
+
+		int bucketIndex[3]; // 3D Cell index
+		int bucketKey = 0;
+		for (int dim = 0; dim < 2; dim++) {
+			bucketIndex[dim] = (int) floor((mol.r(dim) - _haloBoundingBoxMin[dim]) / bucketLength[dim]);
+			bucketKey = (bucketKey << NBUCKETEXP) | (bucketIndex[dim] & (NBUCKET-1));
+		}
+		bucketIndex[2] = (int) floor((mol.r(2) - _haloBoundingBoxMin[2]) / _cellLength[2]);
+		unsigned long index =  cellIndexOf3DIndex(bucketIndex[0] / NBUCKET, bucketIndex[1] / NBUCKET, bucketIndex[2]);
+		_cells[index].addParticle(&mol, bucketKey);
+	}
+
+	// clear all Cells
+	std::vector<ParticleCell>::iterator celliter;
+	for (celliter = (_cells).begin(); celliter != (_cells).end(); ++celliter) {
+		(*celliter).update();
+	}
+
+	_cellsValid = true;
+#else
 	// clear all Cells
 	std::vector<ParticleCell>::iterator celliter;
 	for (celliter = (_cells).begin(); celliter != (_cells).end(); ++celliter) {
@@ -149,6 +180,7 @@ void LinkedCells::update() {
 		_cells[index].addParticle(&(*pos));
 	}
 	_cellsValid = true;
+#endif
 }
 
 void LinkedCells::addParticle(Molecule& particle) {

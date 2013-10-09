@@ -19,6 +19,34 @@ void ParticleCell::addParticle(Molecule* particle_ptr) {
 	molecules.push_back(particle_ptr);
 }
 
+
+void ParticleCell::update() {
+	removeAllParticles();
+
+	for (int i = 0; i < NBUCKET*NBUCKET; i++) {
+		std::vector<Molecule*>& currentBucket = _buckets[i];
+		int nmols = currentBucket.size();
+		int kmax = nmols;
+		bool swapped;
+		do {
+			swapped = false;
+			for (int k = 0; k < kmax-1; k++) {
+				if (currentBucket[k+1]->r(2) < currentBucket[k]->r(2)){
+					Molecule* tmp = currentBucket[k];
+					currentBucket[k] = currentBucket[k+1];
+					currentBucket[k+1] = tmp;
+					swapped = true;
+				}
+			}
+			kmax = kmax-1;
+		} while (swapped == true);
+
+		molecules.insert(molecules.end(), currentBucket.begin(), currentBucket.end());
+		currentBucket.clear();
+	}
+}
+
+
 vector<Molecule*>& ParticleCell::getParticlePointers() {
 	return molecules;
 }

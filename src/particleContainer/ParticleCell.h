@@ -8,6 +8,11 @@
 class Molecule;
 class CellDataSoA ;
 
+// number of buckets per dimension
+#define NBUCKET 2 //8
+// exponent to base two of NBUCKET
+#define NBUCKETEXP 1 // 3
+
 //! @brief ParticleCell data structure.
 //! @author Martin Buchholz
 //!
@@ -57,6 +62,13 @@ public:
 	//! insert a single molecule into this cell
 	void addParticle(Molecule* particle_ptr);
 
+	//! insert a single molecule into this cell
+	void addParticle(Molecule* particle_ptr, int bucketID) {
+		_buckets[bucketID].push_back(particle_ptr);
+	}
+
+	void update();
+
 	//! return a reference to the list of molecules (molecule pointers) in this cell
 	std::vector<Molecule*>& getParticlePointers();
 
@@ -86,6 +98,9 @@ private:
 	 * \brief A list of pointers to the Molecules in this cell.
 	 */
 	std::vector<Molecule *> molecules;
+
+	std::vector<Molecule*> _buckets[NBUCKET * NBUCKET];
+
 	/**
 	 * \brief Structure of arrays for VectorizedCellProcessor.
 	 * \author Johannes Heckl
