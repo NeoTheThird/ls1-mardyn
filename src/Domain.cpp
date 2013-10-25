@@ -104,6 +104,8 @@ Domain::Domain(int rank, PressureGradient* pg){
 	this->_universalSelectiveThermostatCounter = 0;
 	this->_universalSelectiveThermostatWarning = 0;
 	this->_universalSelectiveThermostatError = 0;
+
+	_bAlignCenterOfMassOn = false;
 }
 
 void Domain::readXML(XMLfileUnits& xmlconfig) {
@@ -1211,6 +1213,75 @@ void Domain::UpdateRegionList(std::vector<Region*> regionList)
 	}
 }
 
+void Domain::UpdateSystemCenterOfMass(ParticleContainer* moleculeContainer, DomainDecompBase* domainDecomp)
+{
+	Molecule* tempMolecule;
+	double drSumLocalX, drSumLocalY, drSumLocalZ;
+	double drSumGlobalX, drSumGlobalY, drSumGlobalZ;
+	unsigned long int nNumMols = getglobalNumMolecules();
+
+	// init values
+	drSumLocalX = 0.0;
+	drSumLocalY = 0.0;
+	drSumLocalZ = 0.0;
+
+	drSumGlobalX = 0.0;
+	drSumGlobalY = 0.0;
+	drSumGlobalZ = 0.0;
+
+	// sum up molecule positions
+	for (tempMolecule = moleculeContainer->begin(); tempMolecule != moleculeContainer->end(); tempMolecule = moleculeContainer->next())
+	{
+		drSumLocalX += tempMolecule->r(0);
+		drSumLocalY += tempMolecule->r(1);
+		drSumLocalZ += tempMolecule->r(2);
+
+		// global_log->info() << "rSum x: " << rSum[0] << " " << "rSum y: " << rSum[1] << " " << "rSum z: " << rSum[2] << " " << endl;
+	}
+
+	// collective Communication
+	domainDecomp->collCommInit(3);
+	domainDecomp->collCommAppendDouble(drSumLocalX);
+	domainDecomp->collCommAppendDouble(drSumLocalY);
+	domainDecomp->collCommAppendDouble(drSumLocalZ);
+	domainDecomp->collCommAllreduceSum();
+	drSumGlobalX = domainDecomp->collCommGetDouble();
+	drSumGlobalY = domainDecomp->collCommGetDouble();
+	drSumGlobalZ = domainDecomp->collCommGetDouble();
+	domainDecomp->collCommFinalize();
+
+	// set new center of mass
+	_dSystemCenterOfMass[0] = (double) (drSumGlobalX / nNumMols);
+	_dSystemCenterOfMass[1] = (double) (drSumGlobalY / nNumMols);
+	_dSystemCenterOfMass[2] = (double) (drSumGlobalZ / nNumMols);
+}
+
+void Domain::AlignSystemCenterOfMass(ParticleContainer* moleculeContainer)
+{
+	Molecule* tempMolecule;
+	double dPos[3];
+	double dLength[3];
+
+	for (tempMolecule = moleculeContainer->begin(); tempMolecule != moleculeContainer->end(); tempMolecule = moleculeContainer->next())
+	{
+		dPos[0] = tempMolecule->r(0) + _globalLength[0] / 2.0 - _dSystemCenterOfMass[0];
+		dPos[1] = tempMolecule->r(1) + _globalLength[1] / 2.0 - _dSystemCenterOfMass[1];
+		dPos[2] = tempMolecule->r(2) + _globalLength[2] / 2.0 - _dSystemCenterOfMass[2];
+
+		// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
+
+		tempMolecule->setr(0, dPos[0] );
+		tempMolecule->setr(1, dPos[1] );
+		tempMolecule->setr(2, dPos[2] );
+
+		// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
+	}
+
+//		global_log->info() << "Schwerpunkt x: " << _domain->GetSystemCenterOfMass(0)
+//						   << " y: " << _domain->GetSystemCenterOfMass(1)
+//						   << " z: " << _domain->GetSystemCenterOfMass(2) << endl;
+
+}
 
 
 

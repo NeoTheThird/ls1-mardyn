@@ -23,6 +23,7 @@
 // mheinen_2013-08-27 --> OUTPUT_PLUGIN_CXWRITER_TO_WRITE_CONCENTRATION_PROFILES
 // mheinen_2013-09-24 --> OUTPUT_PLUGIN_XYZPROFILESWRITER_TO_WRITE_XYZ_PROFILES
 // mheinen_2013-09-24 --> OUTPUT_PLUGIN_RADIALPROFILESWRITER_TO_WRITE_RADIAL_PROFILES
+// mheinen_2013-10-11 --> ALIGN_SYSTEM_CENTER_OF_MASS
 
 // Simulation.cpp
 #include <iostream>
@@ -1094,6 +1095,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			double rc;
 			inputfilestream >> rc;
 			this->setTersoffCutoff(rc);
+		} else if (token == "ALIGN_COM") {
+			_domain->AlignCenterOfMassOn();
 		} else {
 			if (token != "")
 				global_log->warning() << "Did not process unknown token "
@@ -1312,12 +1315,6 @@ void Simulation::simulate() {
 	Timer perStepIoTimer;
 	Timer ioTimer;
 
-	// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
-//	double dPos[3];
-//	double rSum[3];
-//	int nNumMols;
-//	Molecule* tempMolecule;
-	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 
 	loopTimer.start();
 	for (_simstep = _initSimulation; _simstep <= _numberOfTimesteps; _simstep++) {
@@ -1338,73 +1335,15 @@ void Simulation::simulate() {
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
 
 
-/*
-		_nGloblaNumMolecules = _moleculeContainer->getNumberOfParticles();
-
-		_domainDecomposition->collCommInit(1);
-		_domainDecomposition->collCommAppendInt(_nGloblaNumMolecules);
-		_domainDecomposition->collCommAllreduceSum();
-		_nGloblaNumMolecules = _domainDecomposition->collCommGetInt();
-		_domainDecomposition->collCommFinalize();
-
-		global_log->info() << "number of particles (using collComm: " << _nGloblaNumMolecules << endl;
-*/
-
-
-/*
-		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
-		nNumMols = _moleculeContainer->getNumberOfParticles();
-		global_log->info() << "number of particles: " << nNumMols << endl;
-
-		rSum[0] = 0.0;
-		rSum[1] = 0.0;
-		rSum[2] = 0.0;
-		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
-
-		for (tempMolecule = _moleculeContainer->begin(); tempMolecule != _moleculeContainer->end(); tempMolecule = _moleculeContainer->next())
+		// keep center of mass in the middle of system
+		if(_domain->AlignCenterOfMassSwitchedOn() == true)
 		{
-			// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
-			rSum[0] += tempMolecule->r(0);
-			rSum[1] += tempMolecule->r(1);
-			rSum[2] += tempMolecule->r(2);
-
-			// global_log->info() << "rSum x: " << rSum[0] << " " << "rSum y: " << rSum[1] << " " << "rSum z: " << rSum[2] << " " << endl;
-
-			// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+			// begin --> mheinen_2013-08-16 --> ALIGN_SYSTEM_CENTER_OF_MASS
+			_domain->UpdateSystemCenterOfMass(_moleculeContainer, _domainDecomposition);
+			_domain->AlignSystemCenterOfMass(_moleculeContainer);
+			// end <-- ALIGN_SYSTEM_CENTER_OF_MASS
 		}
-		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
-		_domain->SetSystemCenterOfMass(0, rSum[0] / (double)nNumMols );
-		_domain->SetSystemCenterOfMass(1, rSum[1] / (double)nNumMols );
-		_domain->SetSystemCenterOfMass(2, rSum[2] / (double)nNumMols );
-		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 
-		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
-		// global_log->info() << "length x: " << _domain->getGlobalLength(0) << " " << "length y: " << _domain->getGlobalLength(1) << " " << "length z: " << _domain->getGlobalLength(2) << " " << endl;
-
-		// Systemschwerpunkt in die Mitte des Systems verschieben
-
-		for (tempMolecule = _moleculeContainer->begin(); tempMolecule != _moleculeContainer->end(); tempMolecule = _moleculeContainer->next())
-		{
-			dPos[0] = tempMolecule->r(0) + _domain->getGlobalLength(0) / 2.0 - _domain->GetSystemCenterOfMass(0);
-			dPos[1] = tempMolecule->r(1) + _domain->getGlobalLength(1) / 2.0 - _domain->GetSystemCenterOfMass(1);
-			dPos[2] = tempMolecule->r(2) + _domain->getGlobalLength(2) / 2.0 - _domain->GetSystemCenterOfMass(2);
-
-			// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
-
-			tempMolecule->setr(0, dPos[0] );
-			tempMolecule->setr(1, dPos[1] );
-			tempMolecule->setr(2, dPos[2] );
-
-			// global_log->info() << "mPos x: " << tempMolecule->r(0) << " " << "mPos y: " << tempMolecule->r(1) << " " << "mPos z: " << tempMolecule->r(2) << " " << endl;
-		}
-		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
-
-		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
-//		global_log->info() << "Schwerpunkt x: " << _domain->GetSystemCenterOfMass(0)
-//						   << " y: " << _domain->GetSystemCenterOfMass(1)
-//						   << " z: " << _domain->GetSystemCenterOfMass(2) << endl;
-		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
-*/
 
 		// activate RDF sampling
 		if ((_simstep >= this->_initStatistics) && this->_rdf != NULL) {

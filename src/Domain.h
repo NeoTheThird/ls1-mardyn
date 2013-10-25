@@ -375,6 +375,10 @@ public:
 	double GetSystemCenter(unsigned short d) const { return _dSystemCenter[d]; }
 	/** set center of system coordinate */
 	void SetSystemCenter(unsigned short d, double dVal) { _dSystemCenter[d] = dVal; }
+
+	void UpdateSystemCenterOfMass(ParticleContainer* moleculeContainer, DomainDecompBase* domainDecomp);  // TODO: unterschiedliche Massen berücksichtigen
+	void AlignSystemCenterOfMass(ParticleContainer* moleculeContainer);  // TODO: nur x, y od. z; x,y od. y,z od. xz; x,y,z
+
 	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 
 	// begin --> mheinen_2013-08-21 --> OUTPUT_PLUGIN_TRAWRITER_TO_WRITE_TRAJECTORYS
@@ -383,6 +387,10 @@ public:
 
 	void UpdateRegionList(std::vector<Region*> regionList);
 	std::vector<Region*> GetRegionList() {return _regionList;}
+
+	// keep center of mass in the middle of system
+	void AlignCenterOfMassOn() { _bAlignCenterOfMassOn = true;}
+	bool AlignCenterOfMassSwitchedOn() {return _bAlignCenterOfMassOn;}
 
 private:
 
@@ -517,6 +525,9 @@ private:
 	// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
 
 	std::vector<Region*> _regionList;
+
+	// keep center of mass in the middle of system
+	bool _bAlignCenterOfMassOn;
 
 };
 

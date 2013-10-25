@@ -459,6 +459,8 @@ private:
 	double h;
 	double _forced_checkpoint_time;
 
+	int _nGloblaNumMolecules;  // test für collComm
+
 	
 };
 #endif /*SIMULATION_H_*/
