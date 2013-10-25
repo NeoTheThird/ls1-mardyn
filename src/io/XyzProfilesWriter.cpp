@@ -115,6 +115,7 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	if ( !(simstep % _writeFrequency == 0) )
 		return;
 
+#ifdef ENABLE_MPI
 	struct rlimit limit;
 	/* Set the stack limit in bytes. */
 	//
@@ -125,6 +126,7 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 		cout << "setrlimit() failed.";
 		exit(1);
 	}
+#endif
 
 	// writing .prf-files
 	std::stringstream outputstream;

@@ -68,6 +68,7 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
                          unsigned long simstep, list<ChemicalPotential>* lmu){
 	if (simstep % _writeFrequency == 0) {
 
+#ifdef ENABLE_MPI
 		  struct rlimit limit;
 		  /* Set the stack limit in bytes. */
 		  //
@@ -77,6 +78,7 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 		    cout << "setrlimit() failed.";
 		    exit(1);
 		  }
+#endif
 
 
 

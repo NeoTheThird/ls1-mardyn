@@ -40,29 +40,41 @@ public:
 	
 	std::string getPluginName() { return std::string("RadialProfilesWriter"); }
 
-	void CalcVelocityDistributaion( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain );
+	void CalcRadialProfiles( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain );
 	double CalcMaxVelocity( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain );
-	void DoDiscretisation();
+	void DoDiscretisation(Domain* domain);
 
 private:
 	unsigned long _writeFrequency;
 	unsigned long _updateFrequency;
 	unsigned long _writeFreqAverage;
 	unsigned int  _nNumShells;
-	unsigned int  _nNumDiscretSteps;
+	unsigned int  _nNumDiscretSteps;  // resolution of velocity value
 
 	// first determine max value for discretisation
 	unsigned long _nNumDetectionTimesteps;
 	unsigned long _nNumTimestepsDetected;
 	double _dVeloMax;
+	double* _dDiscreteRadiusValues;
+	double* _dDiscreteVelocityValues;
+	double* _dDensityProfile;
+	double* _dShellVolumesReduced;
+
+	double _dAverageFactor; // == 0.5 or 1.0
 
 	bool _incremental;
 	bool _bMaxVeloDetermined;
 	bool _bDiscretisationDone;
 	bool _bWroteHeaderVmax;
 
-	unsigned int** _veloDistrMatrix;
-	unsigned int** _veloDistrMatrixAve;
+	// radial density profile
+	unsigned long* _nNumMoleculesInsideShellLocal;
+#ifdef ENABLE_MPI
+	unsigned long* _nNumMoleculesInsideShellGlobal;
+#endif
+
+	unsigned long** _veloDistrMatrix;
+	unsigned long** _veloDistrMatrixAve;
 
 	bool _appendTimestamp;
 

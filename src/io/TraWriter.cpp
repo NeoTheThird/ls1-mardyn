@@ -121,6 +121,7 @@ void TraWriter::doOutput(ParticleContainer* particleContainer,
 		if( (*itTrack)->TrackFinished() )
 			continue;
 
+#ifdef ENABLE_MPI
 		struct rlimit limit;
 		/* Set the stack limit in bytes. */
 		//
@@ -131,6 +132,7 @@ void TraWriter::doOutput(ParticleContainer* particleContainer,
 			cout << "setrlimit() failed.";
 			exit(1);
 		}
+#endif
 
 		std::list<TrackMoleculeData*>::iterator itMol;
 		std::list<TrackMoleculeData*> trackMolecules = (*itTrack)->GetTrackMolecules();
