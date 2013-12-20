@@ -825,14 +825,15 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			// output xyz profile files (*.prf)
 			else if (token == "XyzProfilesWriter" || token == "XYZProfilesWriter")
 			{
-				unsigned long writeFrequency, updateFrequency;
-				double dSliceWidth;
-				unsigned int nMoveSteps, nRecSwitches[6];
-				inputfilestream >> writeFrequency >> updateFrequency >> dSliceWidth >> nMoveSteps;
-				inputfilestream >> nRecSwitches[0] >> nRecSwitches[1] >> nRecSwitches[2];  // switch on concentration record
-				inputfilestream >> nRecSwitches[3] >> nRecSwitches[4] >> nRecSwitches[5];  // switch on temperature record
-				_outputPlugins.push_back(new XyzProfilesWriter(writeFrequency, updateFrequency, dSliceWidth, nMoveSteps, nRecSwitches, true) );
-				global_log->debug() << "XyzProfilesWriter " << writeFrequency << updateFrequency << dSliceWidth << nMoveSteps << ".\n";
+				unsigned long writeFrequency, updateFrequency, nNumAverageTimesteps;
+				unsigned int nNumShells[3];
+				unsigned int nMoveSteps[3];
+				inputfilestream >> writeFrequency >> updateFrequency >> nNumAverageTimesteps;
+				inputfilestream >> nNumShells[0] >> nNumShells[1] >> nNumShells[2];  // number of shells
+				inputfilestream >> nMoveSteps[0] >> nMoveSteps[1] >> nMoveSteps[2];  // number of move steps
+				_outputPlugins.push_back( new XyzProfilesWriter(writeFrequency, updateFrequency, nNumAverageTimesteps, nNumShells, nMoveSteps, _domain) );
+				global_log->debug() << "XyzProfilesWriter " << writeFrequency << updateFrequency << nNumShells[0] << nNumShells[1] << nNumShells[2]
+				                                                                                 << nMoveSteps[0] << nMoveSteps[1] << nMoveSteps[2] <<".\n";
 			}
 			// end <-- OUTPUT_PLUGIN_XYZPROFILESWRITER_TO_WRITE_XYZ_PROFILES
 
