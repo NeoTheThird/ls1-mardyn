@@ -2,6 +2,7 @@
 
 #include "io/RadialProfilesWriter.h"
 #include "io/xyVal.h"
+#include "utils/Vector3d.h"
 #include "Common.h"
 #include "particleContainer/ParticleContainer.h"
 #include "parallel/DomainDecompBase.h"
@@ -39,12 +40,50 @@ RadialProfilesWriter::RadialProfilesWriter( unsigned long writeFrequency, unsign
 	_bDiscretisationDone = false;
 	_bWroteHeaderVmax = false;
 
-//	_veloDistrMatrix = NULL;
-//	_veloDistrMatrixAve = NULL;
-
 	_appendTimestamp = false;
 
 	_dAverageFactor = 1.0;
+
+
+	// radial velocity distribution
+	_veloDistrMatrixLocal    = new unsigned long*[_nNumShells];
+	_veloDistrMatrixLocal_r  = new unsigned long*[_nNumShells];
+	_veloDistrMatrixLocal_t1 = new unsigned long*[_nNumShells];
+	_veloDistrMatrixLocal_t2 = new unsigned long*[_nNumShells];
+
+	for(unsigned int i = 0; i < _nNumShells; i++)
+	{
+		_veloDistrMatrixLocal[i]    = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixLocal_r[i]  = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixLocal_t1[i] = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixLocal_t2[i] = new unsigned long[_nNumDiscretSteps];
+	}
+
+#ifdef ENABLE_MPI
+	_veloDistrMatrixGlobal    = new unsigned long*[_nNumShells];
+	_veloDistrMatrixGlobal_r  = new unsigned long*[_nNumShells];
+	_veloDistrMatrixGlobal_t1 = new unsigned long*[_nNumShells];
+	_veloDistrMatrixGlobal_t2 = new unsigned long*[_nNumShells];
+
+	for(unsigned int i = 0; i < _nNumShells; i++)
+	{
+		_veloDistrMatrixGlobal[i]    = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixGlobal_r[i]  = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixGlobal_t1[i] = new unsigned long[_nNumDiscretSteps];
+		_veloDistrMatrixGlobal_t2[i] = new unsigned long[_nNumDiscretSteps];
+	}
+#endif
+	// radial velocity distribution
+
+
+	// radial density profile
+	_nNumMoleculesInsideShellLocal = new unsigned long[_nNumShells];
+#ifdef ENABLE_MPI
+	_nNumMoleculesInsideShellGlobal = new unsigned long[_nNumShells];
+#endif
+
+	_dDensityProfile = new double[_nNumShells];
+	// radial density profile
 }
 
 RadialProfilesWriter::~RadialProfilesWriter()
@@ -61,13 +100,32 @@ RadialProfilesWriter::~RadialProfilesWriter()
 #endif
 
 	// delete all dynamic allocated 2d-arrays
-	for(int i=0; i < _nNumShells; i++)
+	for(unsigned int i=0; i < _nNumShells; i++)
 	{
-		delete[] _veloDistrMatrix[i];
-		delete[] _veloDistrMatrixAve[i];
+		delete[] _veloDistrMatrixLocal[i];
+		delete[] _veloDistrMatrixLocal_r[i];
+		delete[] _veloDistrMatrixLocal_t1[i];
+		delete[] _veloDistrMatrixLocal_t2[i];
+
+#ifdef ENABLE_MPI
+		delete[] _veloDistrMatrixGlobal[i];
+		delete[] _veloDistrMatrixGlobal_r[i];
+		delete[] _veloDistrMatrixGlobal_t1[i];
+		delete[] _veloDistrMatrixGlobal_t2[i];
+#endif
 	}
-	delete[] _veloDistrMatrix;
-	delete[] _veloDistrMatrixAve;
+
+	delete[] _veloDistrMatrixLocal;
+	delete[] _veloDistrMatrixLocal_r;
+	delete[] _veloDistrMatrixLocal_t1;
+	delete[] _veloDistrMatrixLocal_t2;
+
+#ifdef ENABLE_MPI
+	delete[] _veloDistrMatrixGlobal;
+	delete[] _veloDistrMatrixGlobal_r;
+	delete[] _veloDistrMatrixGlobal_t1;
+	delete[] _veloDistrMatrixGlobal_t2;
+#endif
 
 	// set all pointers to NULL
 	_dDiscreteRadiusValues = NULL;
@@ -80,8 +138,18 @@ RadialProfilesWriter::~RadialProfilesWriter()
 	_nNumMoleculesInsideShellGlobal = NULL;
 #endif
 
-	_veloDistrMatrix = NULL;
-	_veloDistrMatrixAve = NULL;
+	_veloDistrMatrixLocal = NULL;
+	_veloDistrMatrixLocal_r = NULL;
+	_veloDistrMatrixLocal_t1 = NULL;
+	_veloDistrMatrixLocal_t2 = NULL;
+
+#ifdef ENABLE_MPI
+	_veloDistrMatrixGlobal = NULL;
+	_veloDistrMatrixGlobal_r = NULL;
+	_veloDistrMatrixGlobal_t1 = NULL;
+	_veloDistrMatrixGlobal_t2 = NULL;
+#endif
+
 }
 
 void RadialProfilesWriter::initOutput( ParticleContainer* particleContainer,
@@ -193,9 +261,11 @@ void RadialProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	if(_bDiscretisationDone == false)
 		return;
 
+	/*
 	// update profiles with respect to update frequency
 	if ( !(simstep % _updateFrequency == 0) )
 		return;
+	*/
 
 	// start averaging after first simstep
 	if(simstep > 0)
@@ -204,7 +274,7 @@ void RadialProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	// calculate radial profiles
 	global_log->info() << "calculating radial profiles..." << endl;
 
-	CalcRadialProfiles( particleContainer, domainDecomp, domain );
+	CalcRadialProfiles( particleContainer, domainDecomp, domain, simstep );
 
 	global_log->info() << "... calculation done!" << endl;
 
@@ -214,17 +284,29 @@ void RadialProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	if ( !(simstep % _writeFrequency == 0) )
 		return;
 
-	global_log->info() << "writing radial density profile..." << endl;
+	global_log->info() << "writing radial properties files..." << endl;
 
 	// writing .rpf-files
-	std::stringstream outputstream, outputstreamVelo;
-	std::stringstream filenamestream, filenamestreamVelo;
+	std::stringstream outputstream;
+	std::stringstream outputstreamVelo, outputstreamVelo_r, outputstreamVelo_t1, outputstreamVelo_t2;
+	std::stringstream filenamestream;
+	std::stringstream filenamestreamVelo, filenamestreamVelo_r, filenamestreamVelo_t1, filenamestreamVelo_t2;
 	filenamestream << "radial_density_profile_averaged_TS" << simstep << ".rpf";
 	filenamestreamVelo << "velocity_distribution_TS" << simstep << ".rpf";
+	filenamestreamVelo_r << "velocity_distribution_TS" << simstep << "_r.rpf";
+	filenamestreamVelo_t1 << "velocity_distribution_TS" << simstep << "_t1.rpf";
+	filenamestreamVelo_t2 << "velocity_distribution_TS" << simstep << "_t2.rpf";
 	char filename[filenamestream.str().size()+1];
 	strcpy(filename,filenamestream.str().c_str());
 	char filenameVelo[filenamestreamVelo.str().size()+1];
 	strcpy(filenameVelo,filenamestreamVelo.str().c_str());
+
+	char filenameVelo_r[filenamestreamVelo_r.str().size()+1];
+	strcpy(filenameVelo_r,filenamestreamVelo_r.str().c_str());
+	char filenameVelo_t1[filenamestreamVelo_t1.str().size()+1];
+	strcpy(filenameVelo_t1,filenamestreamVelo_t1.str().c_str());
+	char filenameVelo_t2[filenamestreamVelo_t2.str().size()+1];
+	strcpy(filenameVelo_t2,filenamestreamVelo_t2.str().c_str());
 
 	#ifdef ENABLE_MPI
 		int rank = domainDecomp->getRank();
@@ -236,7 +318,7 @@ void RadialProfilesWriter::doOutput( ParticleContainer* particleContainer,
 			// radial density profile
 			outputstream << "r           rho           \n";
 
-			for(int i = 0; i < _nNumShells; i++)
+			for(unsigned int i = 0; i < _nNumShells; i++)
 			{
 				outputstream << _dDiscreteRadiusValues[i] << std::setw(11) << std::setprecision(6) << _dDensityProfile[i] << std::endl;
 			}
@@ -259,36 +341,97 @@ void RadialProfilesWriter::doOutput( ParticleContainer* particleContainer,
 
 			// radial velocity distribution
 			outputstreamVelo << "v/R       ";
+			outputstreamVelo_r << "v/R       ";
+			outputstreamVelo_t1 << "v/R       ";
+			outputstreamVelo_t2 << "v/R       ";
 
 			// first line - discrete radius values
-			for(int i = 0; i < _nNumShells; i++)
+			for(unsigned int i = 0; i < _nNumShells; i++)
 			{
 				outputstreamVelo << _dDiscreteRadiusValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_r << _dDiscreteRadiusValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_t1 << _dDiscreteRadiusValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_t2 << _dDiscreteRadiusValues[i] << std::setw(11) << std::setprecision(6);
 			}
 			outputstreamVelo << endl;
+			outputstreamVelo_r << endl;
+			outputstreamVelo_t1 << endl;
+			outputstreamVelo_t2 << endl;
+
+			global_log->info() << "header done." << endl;
 
 			// velocity distribution matrix
-			for(int i = 0; i < _nNumDiscretSteps; i++)
+			for(unsigned int i = 0; i < _nNumDiscretSteps; i++)
 			{
 				outputstreamVelo << _dDiscreteVelocityValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_r << _dDiscreteVelocityValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_t1 << _dDiscreteVelocityValues[i] << std::setw(11) << std::setprecision(6);
+				outputstreamVelo_t2 << _dDiscreteVelocityValues[i] << std::setw(11) << std::setprecision(6);
 
-				for(int j = 0; j < _nNumShells; j++)
+				for(unsigned int j = 0; j < _nNumShells; j++)
 				{
-					outputstreamVelo << _veloDistrMatrix[j][i] << std::setw(11) << std::setprecision(6);
+					#ifdef ENABLE_MPI
+
+					outputstreamVelo << _veloDistrMatrixGlobal[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_r << _veloDistrMatrixGlobal_r[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_t1 << _veloDistrMatrixGlobal_t1[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_t2 << _veloDistrMatrixGlobal_t2[j][i] << std::setw(11) << std::setprecision(6);
+
+					#else
+
+					outputstreamVelo << _veloDistrMatrixLocal[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_r << _veloDistrMatrixLocal_r[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_t1 << _veloDistrMatrixLocal_t1[j][i] << std::setw(11) << std::setprecision(6);
+					outputstreamVelo_t2 << _veloDistrMatrixLocal_t2[j][i] << std::setw(11) << std::setprecision(6);
+
+					#endif
 				}
 				outputstreamVelo << endl;
+				outputstreamVelo_r << endl;
+				outputstreamVelo_t1 << endl;
+				outputstreamVelo_t2 << endl;
 			}
+
+			global_log->info() << "matrix done." << endl;
+			global_log->info() << "typumwandlung ..." << endl;
 
 			// typumwandlung
 			long outputsize2 = outputstreamVelo.str().size();
+			long outputsize2_r = outputstreamVelo_r.str().size();
+			long outputsize2_t1 = outputstreamVelo_t1.str().size();
+			long outputsize2_t2 = outputstreamVelo_t2.str().size();
 			//cout << "rank: " << rank << "; step: " << simstep << "; outputsize: " << outputsize << endl;
 			char output2[outputsize2+1];
+			char output2_r[outputsize2_r+1];
+			char output2_t1[outputsize2_t1+1];
+			char output2_t2[outputsize2_t2+1];
 			strcpy(output2,outputstreamVelo.str().c_str());
+			strcpy(output2_r,outputstreamVelo_r.str().c_str());
+			strcpy(output2_t1,outputstreamVelo_t1.str().c_str());
+			strcpy(output2_t2,outputstreamVelo_t2.str().c_str());
+
+			global_log->info() << "typumwandlung ..." << endl;
+			global_log->info() << "opening files ..." << endl;
 
 			// Datei zum schreiben öffnen, daten schreiben
 			ofstream fileout2(filenameVelo, ios::out|ios::app);
 			fileout2 << output2;
 			fileout2.close();
+
+			ofstream fileout2_r(filenameVelo_r, ios::out|ios::app);
+			fileout2_r << output2_r;
+			fileout2_r.close();
+
+			ofstream fileout2_t1(filenameVelo_t1, ios::out|ios::app);
+			fileout2_t1 << output2_t1;
+			fileout2_t1.close();
+
+			ofstream fileout2_t2(filenameVelo_t2, ios::out|ios::app);
+			fileout2_t2 << output2_t2;
+			fileout2_t2.close();
+
+			global_log->info() << "files cclosed." << endl;
+
 			// radial velocity distribution
 
 	#ifdef ENABLE_MPI
@@ -302,25 +445,35 @@ void RadialProfilesWriter::finishOutput( ParticleContainer* particleContainer,
 {
 }
 
-void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain )
+void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep )
 {
 	// calculate radius vector
 	double dRadiusLength;
 	double dShellWidth;
 	unsigned int nRadiusIndex;
+
+	double dVelocity;
+	double dVelocity_r;
+	double dVelocity_t1;
+	double dVelocity_t2;
+
 	unsigned int nVelocityIndex;
+	unsigned int nVelocityIndex_r;
+	unsigned int nVelocityIndex_t1;
+	unsigned int nVelocityIndex_t2;
+
 	unsigned int nIndexMax = _nNumShells-1;
 	unsigned int nIndexMaxVelo = _nNumDiscretSteps-1;
 	double dSystemMidpoint[3];
 	double dRadiusVector[3];
-	double dMaxVelo = _dVeloMax * 1.2;  // velocity discretisation, highest value with safety factor
+	double dMaxVelo = _dVeloMax * 1.1;  // velocity discretisation, highest value with safety factor
 
 
-	global_log->info() << "dMaxVelo: " << dMaxVelo << endl;
+//	global_log->info() << "dMaxVelo: " << dMaxVelo << endl;
 
 
 	// init local density profile array
-	for(int i = 0; i < _nNumShells; i++)
+	for(unsigned int i = 0; i < _nNumShells; i++)
 	{
 		_nNumMoleculesInsideShellLocal[i] = 0;
 	#ifdef ENABLE_MPI
@@ -330,24 +483,20 @@ void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContai
 	// radial density profile
 
 
-	// radial velocity distribution
-	unsigned long** veloDistrMatrixLocal = new unsigned long*[_nNumShells];
-
-	for(int i = 0; i < _nNumShells; i++)
+/*
+	if (_writeFreqAverage % simstep == 0)
 	{
-		veloDistrMatrixLocal[i] = new unsigned long[_nNumDiscretSteps];
-	}
-
-	// init array
-	for(int i = 0; i < _nNumShells; i++)
-	{
-		for(int j = 0; j < _nNumDiscretSteps; j++)
+		// reset local radial velocity profile array
+		for(int i = 0; i < _nNumShells; i++)
 		{
-			veloDistrMatrixLocal[i][j] = 0;
+			for(int j = 0; j < _nNumDiscretSteps; j++)
+			{
+				_veloDistrMatrixLocal[i][j] = 0;
+			}
 		}
+		// radial velocity distribution
 	}
-	// radial velocity distribution
-
+*/
 
 	// calc shell width
 	dShellWidth = domain->getGlobalLength(0) * 0.5 / _nNumShells;
@@ -414,15 +563,45 @@ void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContai
 
 
 		// radial velocity distribution
-		nVelocityIndex = (unsigned int) (pos->v2() / dMaxVelo * _nNumDiscretSteps);
+		dVelocity = sqrt( pos->v2() );
+		global_log->info() << "dVelocity: " << dVelocity << endl;
 
-		// global_log->info() << "nVelocityIndex: " << nVelocityIndex << endl;
+		Vector3d vec3dMidpoint( dSystemMidpoint[0], dSystemMidpoint[1], dSystemMidpoint[2] );
+		Vector3d vec3dPosition( pos->r(0), pos->r(1), pos->r(2) );
+		Vector3d vec3dVelocity( pos->v(0), pos->v(1), pos->v(2) );
+
+		// in Komponenten zerlegen
+		vec3dVelocity.CalcRadialTangentialComponentLength( vec3dMidpoint, vec3dPosition, dVelocity_r, dVelocity_t1, dVelocity_t2);
+
+		nVelocityIndex    = (unsigned int) (dVelocity    / dMaxVelo * _nNumDiscretSteps);
+		nVelocityIndex_r  = (unsigned int) (dVelocity_r  / dMaxVelo * _nNumDiscretSteps);
+		nVelocityIndex_t1 = (unsigned int) (dVelocity_t1 / dMaxVelo * _nNumDiscretSteps);
+		nVelocityIndex_t2 = (unsigned int) (dVelocity_t2 / dMaxVelo * _nNumDiscretSteps);
+
+//		global_log->info() << "nVelocityIndex: " << nVelocityIndex << endl;
+//		global_log->info() << "nVelocityIndex_r: " << nVelocityIndex_r << endl;
+//		global_log->info() << "nVelocityIndex_t1: " << nVelocityIndex_t1 << endl;
+//		global_log->info() << "nVelocityIndex_t2: " << nVelocityIndex_t2 << endl;
 
 		if(nVelocityIndex < nIndexMaxVelo && nRadiusIndex < nIndexMax)  // respect finite resolution of radius and velocity
 		{
-			veloDistrMatrixLocal[nRadiusIndex][nVelocityIndex]++;
+			_veloDistrMatrixLocal[nRadiusIndex][nVelocityIndex]++;
+		}
+		if(nVelocityIndex_r < nIndexMaxVelo && nRadiusIndex < nIndexMax)  // respect finite resolution of radius and velocity
+		{
+			_veloDistrMatrixLocal_r[nRadiusIndex][nVelocityIndex_r]++;
+		}
+		if(nVelocityIndex_t1 < nIndexMaxVelo && nRadiusIndex < nIndexMax)  // respect finite resolution of radius and velocity
+		{
+			_veloDistrMatrixLocal_t1[nRadiusIndex][nVelocityIndex_t1]++;
+		}
+		if(nVelocityIndex_t2 < nIndexMaxVelo && nRadiusIndex < nIndexMax)  // respect finite resolution of radius and velocity
+		{
+			_veloDistrMatrixLocal_t2[nRadiusIndex][nVelocityIndex_t2]++;
 		}
 		// radial velocity distribution
+
+//		global_log->info() << "calculation of velocity distribution done." << endl;
 
 	}  // foreach molecule
 
@@ -433,20 +612,44 @@ void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContai
 		//MPI_Reduce( dDensityProfileLocal, _dDensityProfile, _nNumShells, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 		MPI_Reduce( _nNumMoleculesInsideShellLocal, _nNumMoleculesInsideShellGlobal, _nNumShells, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
 
-		for(int i = 0; i < _nNumShells; i++)
+		for(unsigned int i = 0; i < _nNumShells; i++)
 		{
 			_dDensityProfile[i] = (_dDensityProfile[i] + _nNumMoleculesInsideShellGlobal[i] / _dShellVolumesReduced[i] ) * _dAverageFactor;  // _dAverageFactor == 1.0 or 0.5
 		}
 		// radial density profile
 
 
+		global_log->info() << "MPI - reducing..." << endl;
+
+
 		// radial velocity distribution
 
-		for(int i = 0; i < _nNumShells; i++)
+		for(unsigned int i = 0; i < _nNumShells; i++)
 		{
-			MPI_Reduce( veloDistrMatrixLocal[i], _veloDistrMatrix[i], _nNumShells, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+			MPI_Reduce( _veloDistrMatrixLocal[i],    _veloDistrMatrixGlobal[i],    _nNumDiscretSteps, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+			// global_log->info() << "i = " << i << ", ges - reduction done." << endl;
+		}
+
+		for(unsigned int i = 0; i < _nNumShells; i++)
+		{
+			MPI_Reduce( _veloDistrMatrixLocal_r[i],  _veloDistrMatrixGlobal_r[i],  _nNumDiscretSteps, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+			// global_log->info() << "i = " << i << ", r - reduction done." << endl;
+		}
+
+		for(unsigned int i = 0; i < _nNumShells; i++)
+		{
+			MPI_Reduce( _veloDistrMatrixLocal_t1[i], _veloDistrMatrixGlobal_t1[i], _nNumDiscretSteps, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+			global_log->info() << "i = " << i << ", t1 - reduction done." << endl;
+		}
+
+		for(unsigned int i = 0; i < _nNumShells; i++)
+		{
+			MPI_Reduce( _veloDistrMatrixLocal_t2[i], _veloDistrMatrixGlobal_t2[i], _nNumDiscretSteps, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+			global_log->info() << "i = " << i << ", t2 - reduction done." << endl;
 		}
 		// radial velocity distribution
+
+		global_log->info() << "MPI - reduction done." << endl;
 
 	#else
 
@@ -456,17 +659,6 @@ void RadialProfilesWriter::CalcRadialProfiles( ParticleContainer* particleContai
 			_dDensityProfile[i] = (_dDensityProfile[i] + _nNumMoleculesInsideShellLocal[i] / _dShellVolumesReduced[i] ) * _dAverageFactor;  // _dAverageFactor == 1.0 or 0.5
 		}
 		// radial density profile
-
-
-		// radial velocity distribution
-		for(int i = 0; i < _nNumShells; i++)
-		{
-			for(int j = 0; j < _nNumDiscretSteps; j++)
-			{
-				_veloDistrMatrix[i][j] = veloDistrMatrixLocal[i][j];
-			}
-		}
-		// radial velocity distribution
 
 	#endif
 
@@ -480,7 +672,7 @@ double RadialProfilesWriter::CalcMaxVelocity( ParticleContainer* particleContain
 
 	for (Molecule* pos = particleContainer->begin(); pos != particleContainer->end(); pos = particleContainer->next() )
 	{
-		dVelo = pos->v2();
+		dVelo = sqrt( pos->v2() );
 		dVeloMaxLocal = dVeloMaxLocal + (dVelo - dVeloMaxLocal) * (dVelo > dVeloMaxLocal);
 
 		// global_log->info() << "dVelo: " << dVelo << endl;
@@ -523,39 +715,28 @@ void RadialProfilesWriter::DoDiscretisation(Domain* domain)
 
 	double pi = 3.141592654;
 
-	double dVeloMax = _dVeloMax * 1.2;  // velocity discretisation, highest value with safety factor
+	double dVeloMax = _dVeloMax * 1.1;  // velocity discretisation, highest value with safety factor
 	double dRadiusMax = domain->getGlobalLength(0) * 0.5;
 	double dShellWidth = dRadiusMax / _nNumShells;
 
 	double dRi, dRa;
 
-	// velocity distribution
-	_veloDistrMatrix = new unsigned long* [_nNumShells];
 
-	for(int i = 0; i < _nNumShells; i++)
+	// init local radial velocity distribution matrix
+	for(unsigned int i = 0; i < _nNumShells; i++)
 	{
-		_veloDistrMatrix[i] = new unsigned long[_nNumDiscretSteps];
-	}
-
-	// init matrix
-	for(int i = 0; i < _nNumShells; i++)
-	{
-		for(int j = 0; j < _nNumDiscretSteps; j++)
+		for(unsigned int j = 0; j < _nNumDiscretSteps; j++)
 		{
-			_veloDistrMatrix[i][j] = 0;
+			_veloDistrMatrixLocal[i][j]    = 0;
+			_veloDistrMatrixLocal_r[i][j]  = 0;
+			_veloDistrMatrixLocal_t1[i][j] = 0;
+			_veloDistrMatrixLocal_t2[i][j] = 0;
 		}
 	}
 
-	// radial density profile
-	_nNumMoleculesInsideShellLocal = new unsigned long[_nNumShells];
-#ifdef ENABLE_MPI
-	_nNumMoleculesInsideShellGlobal = new unsigned long[_nNumShells];
-#endif
 
-	// densityProfile
-	_dDensityProfile = new double[_nNumShells];
-
-	for(int i = 0; i < _nNumShells; i++)
+	// init local molecules array / density profile
+	for(unsigned int i = 0; i < _nNumShells; i++)
 	{
 		_dDensityProfile[i] = 0.0;
 		_nNumMoleculesInsideShellLocal[i] = 0;
@@ -569,7 +750,7 @@ void RadialProfilesWriter::DoDiscretisation(Domain* domain)
 	// calc discrete radius values
 	_dDiscreteRadiusValues = new double[_nNumShells];
 
-	for(int i = 0; i < _nNumShells; i++)
+	for(unsigned int i = 0; i < _nNumShells; i++)
 	{
 		_dDiscreteRadiusValues[i] = (i + 0.5) * dShellWidth;
 	}
@@ -578,7 +759,7 @@ void RadialProfilesWriter::DoDiscretisation(Domain* domain)
 	// calc reduced shell volumes
 	_dShellVolumesReduced = new double[_nNumShells];
 
-	for(int i = 0; i < _nNumShells; i++)
+	for(unsigned int i = 0; i < _nNumShells; i++)
 	{
 		dRi = dShellWidth * i;
 		dRa = dShellWidth * (i+1);
@@ -590,7 +771,7 @@ void RadialProfilesWriter::DoDiscretisation(Domain* domain)
 	_dDiscreteVelocityValues = new double[_nNumDiscretSteps];
 	double dDeltaVelo = dVeloMax / _nNumDiscretSteps;
 
-	for(int i = 0; i < _nNumDiscretSteps; i++)
+	for(unsigned int i = 0; i < _nNumDiscretSteps; i++)
 	{
 		_dDiscreteVelocityValues[i] = dDeltaVelo * (i + 0.5);
 	}

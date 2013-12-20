@@ -40,7 +40,7 @@ public:
 	
 	std::string getPluginName() { return std::string("RadialProfilesWriter"); }
 
-	void CalcRadialProfiles( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain );
+	void CalcRadialProfiles( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep );
 	double CalcMaxVelocity( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain );
 	void DoDiscretisation(Domain* domain);
 
@@ -69,12 +69,22 @@ private:
 
 	// radial density profile
 	unsigned long* _nNumMoleculesInsideShellLocal;
+
 #ifdef ENABLE_MPI
 	unsigned long* _nNumMoleculesInsideShellGlobal;
 #endif
 
-	unsigned long** _veloDistrMatrix;
-	unsigned long** _veloDistrMatrixAve;
+	unsigned long** _veloDistrMatrixLocal;
+	unsigned long** _veloDistrMatrixLocal_r;
+	unsigned long** _veloDistrMatrixLocal_t1;
+	unsigned long** _veloDistrMatrixLocal_t2;
+
+#ifdef ENABLE_MPI
+	unsigned long** _veloDistrMatrixGlobal;
+	unsigned long** _veloDistrMatrixGlobal_r;
+	unsigned long** _veloDistrMatrixGlobal_t1;
+	unsigned long** _veloDistrMatrixGlobal_t2;
+#endif
 
 	bool _appendTimestamp;
 
