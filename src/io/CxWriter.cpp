@@ -263,9 +263,6 @@ void CxWriter::ClearCxVector(void)
 int CxWriter::UpdateRegionList(Domain* domain)
 {
 	int nNumRegions = 0;
-	// double dTraWriterBoxLengthX = TraWriter::_dBoxLength[0];
-	double dTraWriterBoxLengthX = 10.0;  // TODO get length from TraWriter
-	unsigned int nNumValuesMin = 1; // (int)(dTraWriterBoxLengthX / _dDeltaX) + 2.0; TODO evntl anpassen
 	unsigned int nNumValues;
 	std::vector<xyVal*>::iterator it;
 	std::vector<xyVal*>::iterator itLast;
@@ -273,7 +270,7 @@ int CxWriter::UpdateRegionList(Domain* domain)
 	double dLowerCorner[3];
 	double dUpperCorner[3];
 	int nPresentPhasesState = PPS_UNKNOWN;
-	int nPresentPhasesStateLast;
+	int nPresentPhasesStateLast = PPS_UNKNOWN;
 	int UpdateRegionListState = URLS_INITIAL_STEP;
 	double dDeltaXSteps = (double) _nDeltaXSteps;
 	double dBoxLengthX = domain->getGlobalLength(0);
@@ -294,7 +291,7 @@ int CxWriter::UpdateRegionList(Domain* domain)
 	this->ClearRegionList();
 
 	unsigned int i = 0;
-	unsigned int nSize = _Cx.size();
+	// unsigned int nSize = _Cx.size();
 
 	for(it = _Cx.begin(); it != _Cx.end(); it++)
 	{

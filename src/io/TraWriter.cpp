@@ -244,7 +244,6 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 	stringstream strStream;
 	std::vector<Region*> regionList = domain->GetRegionList();
 	std::vector<Region*>::iterator itReg;
-	int nRet;
 
 	TraTrack* track;
 	double dLowerCorner[3];
@@ -307,7 +306,7 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 
 	        if(myrank == 0)
 	        {
-	            for(int i=0; i < recvcounts.size(); i++)
+	            for(unsigned int i=0; i < recvcounts.size(); i++)
 	            {
 	            	global_log->info() << "recvcounts-array element " << i << ": " << recvcounts.at(i) << endl;
 	            }
@@ -315,14 +314,14 @@ void TraWriter::UpdateTrackList(ParticleContainer* particleContainer, DomainDeco
 
 	        // displace array
 	        displs.push_back(0);
-	        for(int i=0; i < recvcounts.size()-1; i++)
+	        for(unsigned int i=0; i < recvcounts.size()-1; i++)
 	        {
 	        	displs.push_back( recvcounts.at(i) + displs.at(i) );
 	        }
 
 	        if(myrank == 0)
 	        {
-	            for(int i=0; i < displs.size(); i++)
+	            for(unsigned int i=0; i < displs.size(); i++)
 	            {
 	            	global_log->info() << "displs-array element " << i << ": " << displs.at(i) << endl;
 	            }
