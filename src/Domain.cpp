@@ -1260,7 +1260,6 @@ void Domain::AlignSystemCenterOfMass(ParticleContainer* moleculeContainer)
 {
 	Molecule* tempMolecule;
 	double dPos[3];
-	double dLength[3];
 
 	for (tempMolecule = moleculeContainer->begin(); tempMolecule != moleculeContainer->end(); tempMolecule = moleculeContainer->next())
 	{
