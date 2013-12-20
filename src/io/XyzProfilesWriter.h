@@ -28,8 +28,8 @@ public:
 	//! @brief writes .prf files
 	//!
 	XyzProfilesWriter() {}
-	XyzProfilesWriter( unsigned long writeFrequency, unsigned long updateFrequency, double dSliceWidth, unsigned int nMoveSteps,
-                       unsigned int* nRecSwitches, bool incremental );
+	XyzProfilesWriter( unsigned long writeFrequency, unsigned long updateFrequency, unsigned long nNumAverageTimesteps,
+			           unsigned int* nNumShells, unsigned int* nMoveSteps, Domain* ptrDomain);
 	~XyzProfilesWriter();
 	//! @todo comment
 	
@@ -49,27 +49,86 @@ public:
 		return std::string("XyzProfilesWriter");
 	}
 
+/*
 	void CalcConcentrProfile( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain,
 			                  unsigned int nCompID, unsigned int nDimension);
 	void ClearCxyzVector(unsigned int nDimension);
+*/
+	void CountMoleculesInsideShells( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain,
+                                         int nDimension );
+	void CalcShellVolumes(Domain* ptrDomain);
+	void CalcShellMidpointPositions(Domain* ptrDomain);  // coordinates
+	void CalcDensityProfiles();
+	void CalcConcentrationProfiles();
+        void CalcTemperatureProfiles();
 
 private:
+	// frequencys
 	unsigned long _writeFrequency;
 	unsigned long _updateFrequency;
-	bool	_incremental;
-	bool	_filenameisdate;
 
-	// zur Bestimmung von Konzentrationsprofil
-	unsigned int _nNumMolsSlice;
-	unsigned int _nNumMolsSliceComp;
-	double _dSliceWidth;
-	unsigned int _nMoveSteps;
+    // number of shells that divide the domain
+	unsigned int _nNumShellsX;
+	unsigned int _nNumShellsY;
+	unsigned int _nNumShellsZ;
 
-	std::vector<xyVal*> _Cxyz[3];
-	std::vector<xyVal*> _Txyz[3];
-	unsigned int _nRecSwitches[6];
+    // moving shell, steps to next shell --> increasing datapoints
+	unsigned int _nMoveStepsX;
+	unsigned int _nMoveStepsY;
+	unsigned int _nMoveStepsZ;
 
-	bool _appendTimestamp;
+	// shell width
+	double* _dShellWidth;
+
+	// shell volumes
+	double _dShellVolumeX;
+	double _dShellVolumeY;
+	double _dShellVolumeZ;
+
+	// number of molecules inside shells, componentwise
+	unsigned long*** _nNumMoleculesInsideShells;
+
+	// mean squred velocity inside shells, componentwise
+	long double*** _dKineticEnergyInsideShells;
+
+	// number of coordinates
+	unsigned int* _nNumMidpointPositions;
+
+	// values of coordinates
+	double* _dShellMidpointPositionsX;
+	double* _dShellMidpointPositionsY;
+	double* _dShellMidpointPositionsZ;
+
+	// density profiles
+	double* _densityProfileX;
+	double* _densityProfileY;
+	double* _densityProfileZ;
+
+	double* _densityProfileXAvg;
+	double* _densityProfileYAvg;
+	double* _densityProfileZAvg;
+
+	unsigned long _nNumAverageTimesteps;
+	unsigned long _nAveragedTimesteps;
+
+	// concentration profiles
+	double** _concentrationProfileX;
+	double** _concentrationProfileY;
+	double** _concentrationProfileZ;
+
+	// temperature profiles
+	long double** _temperatureProfileX;
+	long double** _temperatureProfileY;
+	long double** _temperatureProfileZ;
+
+	long double** _temperatureProfileAvgX;
+	long double** _temperatureProfileAvgY;
+	long double** _temperatureProfileAvgZ;
+
+	unsigned long _nAveragedTimestepsTemperature;
+
+	// pointer to domain
+	Domain* _ptrDomain;
 
 };  // class XyzProfilesWriter : public OutputBase
 
