@@ -1,3 +1,7 @@
+// Modification-Log
+//
+// mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+
 #include <map>
 
 #include "Leapfrog.h"
@@ -50,9 +54,57 @@ void Leapfrog::transition1to2(ParticleContainer* molCont, Domain* domain) {
 		Molecule* tempMolecule;
 		double vcorr = 2. - 1. / domain->getGlobalBetaTrans();
 		double Dcorr = 2. - 1. / domain->getGlobalBetaRot();
-		for (tempMolecule = molCont->begin(); tempMolecule != molCont->end(); tempMolecule = molCont->next()) {
+
+/*
+		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		double dPos[3] = {0.0, 0.0, 0.0};
+		int nNumMols = molCont->getNumberOfParticles();
+		global_log->info() << "number of particles: " << nNumMols << endl;
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		double rSum[3];
+		rSum[0] = 0.0;
+		rSum[1] = 0.0;
+		rSum[2] = 0.0;
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+*/
+		for (tempMolecule = molCont->begin(); tempMolecule != molCont->end(); tempMolecule = molCont->next())
+		{
 			tempMolecule->upd_preF(_timestepLength, vcorr, Dcorr);
+/*
+			// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+			rSum[0] += tempMolecule->r(0);
+			rSum[1] += tempMolecule->r(1);
+			rSum[2] += tempMolecule->r(2);
+
+			global_log->info() << "rSum x: " << rSum[0] << " " << "rSum y: " << rSum[1] << " " << "rSum z: " << rSum[2] << " " << endl;
+			// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+*/
 		}
+/*
+		// begin --> mheinen_2013-08-12 --> FOCUS_SYSTEM_CENTER_OF_MASS
+		domain->SetSystemCenterOfMass(0, rSum[0] / (double)nNumMols );
+		domain->SetSystemCenterOfMass(1, rSum[1] / (double)nNumMols );
+		domain->SetSystemCenterOfMass(2, rSum[2] / (double)nNumMols );
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+
+		// begin --> mheinen_2013-08-16 --> FOCUS_SYSTEM_CENTER_OF_MASS
+
+		// Systemschwerpunkt in die Mitte des Systems verschieben
+		global_log->info() << "length x: " << domain->getGlobalLength(0) << " " << "length y: " << domain->getGlobalLength(1) << " " << "length z: " << domain->getGlobalLength(2) << " " << endl;
+
+		for (tempMolecule = molCont->begin(); tempMolecule != molCont->end(); tempMolecule = molCont->next())
+		{
+			dPos[0] += domain->getGlobalLength(0) / 2.0 - domain->GetSystemCenterOfMass(0);
+			dPos[1] += domain->getGlobalLength(1) / 2.0 - domain->GetSystemCenterOfMass(1);
+			dPos[2] += domain->getGlobalLength(2) / 2.0 - domain->GetSystemCenterOfMass(2);
+			tempMolecule->setr(0, dPos[0] );
+			tempMolecule->setr(1, dPos[1] );
+			tempMolecule->setr(2, dPos[2] );
+		}
+		// end <-- FOCUS_SYSTEM_CENTER_OF_MASS
+*/
 
 		this->_state = STATE_PRE_FORCE_CALCULATION;
 	}

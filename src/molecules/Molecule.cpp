@@ -127,7 +127,14 @@ void Molecule::upd_preF(double dt, double vcorr, double Dcorr) {
 	double dtInv2m = dt_halve / _m;
 	for (unsigned short d = 0; d < 3; ++d) {
 		_v[d] = vcorr * _v[d] + dtInv2m * _F[d];
-		_r[d] += dt * _v[d];
+
+		// cout << "id: " << this->componentid() << endl;
+
+		// Componente 2 soll an Ort und Stelle bleiben
+		// if(this->componentid() != 1)
+		// {
+			_r[d] += dt * _v[d];
+		// }
 	}
 
 	double w[3];
