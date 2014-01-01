@@ -47,7 +47,11 @@ class Molecule;
 
 /**
  * \brief
- * \author Johannes Heckl
+ * \author Johannes Heckl, Wolfgang Eckhardt, Robert Hajda
+ *
+ * @todo consider halo / boundary cells similar to the potential / virial computation,
+ *       so that the FLOP-count does not depend on the number of processors any more
+ * @todo consider possibly different cut-off radius of LJ and electrostatics
  */
 class LJFlopCounter: public CellProcessor {
 public:
