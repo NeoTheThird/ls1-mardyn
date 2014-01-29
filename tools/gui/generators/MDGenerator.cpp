@@ -266,9 +266,5 @@ void MDGenerator::removeMomentum(ParticleContainer* particleContainer, const std
 		momentum_sum[2] = momentum_sum[2] + mass * molecule->v(2);
 		molecule = particleContainer->next();
 	}
-
-	printf("momentum_sum[0] from removeMomentum is %lf\n", momentum_sum[0]);
-	printf("momentum_sum[1] from removeMomentum is %lf\n", momentum_sum[1]);
-	printf("momentum_sum[2] from removeMomentum is %lf\n", momentum_sum[2]);
 }
 
