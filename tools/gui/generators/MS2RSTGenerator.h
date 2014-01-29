@@ -38,7 +38,7 @@ private:
 	double _temperature;
 
 	double _simBoxLength; // length of the simulation box
-
+	double _originalSimBoxLength; // length of the simulation box, as it is defined by the ms2 input file
 	// conversion factor from mardyn unit length to angstroem
 	double _ms2_to_angstroem;
 
@@ -50,6 +50,10 @@ private:
 	 */
 	bool _hasRotationalDOF;
 	unsigned long long int _numMolecules;
+
+	// indicate how often the box should be replicated per dimension
+	// e.g. for a value of 2: 2^3=8 boxes will be generated
+	int _numberOfBoxesPerDimension;
 
 public:
 	/**

@@ -33,8 +33,9 @@ extern "C" {
 
 MS2RSTGenerator::MS2RSTGenerator() :
 	MDGenerator("MS2RSTGenerator"), _molarDensity(0),
-	_temperature(0), _simBoxLength(0), _ms2_to_angstroem(0),
-	_filePath(""), _hasRotationalDOF(false), _numMolecules(0)
+	_temperature(0), _simBoxLength(0), _originalSimBoxLength(0), _ms2_to_angstroem(0),
+	_filePath(""), _hasRotationalDOF(false), _numMolecules(0),
+	_numberOfBoxesPerDimension(1)
 {
 	_components.resize(1);
 	_components[0].addLJcenter(0, 0, 0, 1.0, 1.0, 1.0, 0.0, false);
@@ -70,6 +71,10 @@ vector<ParameterCollection*> MS2RSTGenerator::getParameters() {
 					"Temperature in the domain in Kelvin", Parameter::LINE_EDIT,
 					false, _temperature / MDGenerator::kelvin_2_mardyn ));
 	tab->addParameter(
+			new ParameterWithIntValue("numBoxes", "Number of Boxes",
+					"How many times should the box replicated per dimension?", Parameter::SPINBOX,
+					true, _numberOfBoxesPerDimension));
+	tab->addParameter(
 			new ComponentParameters("component1", "component1",
 					"Set up the parameters of component 1", _components[0]));
 	tab->addParameter(
@@ -85,6 +90,9 @@ void MS2RSTGenerator::setParameter(Parameter* p) {
 	string id = p->getNameId();
 	if (id == "numMolecules") {
 		_numMolecules = static_cast<ParameterWithLongIntValue*> (p)->getValue();
+		calculateSimulationBoxLength();
+	} else if (id == "numBoxes") {
+		_numberOfBoxesPerDimension = static_cast<ParameterWithIntValue*> (p)->getValue();
 		calculateSimulationBoxLength();
 	} else if (id == "path") {
 		_filePath = static_cast<ParameterWithStringValue*> (p)->getStringValue();
@@ -111,7 +119,8 @@ void MS2RSTGenerator::calculateSimulationBoxLength() {
 // 1 mol/l = 0.6022 / nm^3 = 0.0006022 / Ang^3 = 0.089236726516 / a0^3
 double parts_per_a0 = _molarDensity * MDGenerator::molPerL_2_mardyn;
 double volume = _numMolecules / parts_per_a0;
-_simBoxLength = pow(volume, 1./3.);
+_originalSimBoxLength = pow(volume, 1./3.);
+_simBoxLength =  _originalSimBoxLength * _numberOfBoxesPerDimension;
 }
 
 
@@ -162,10 +171,26 @@ unsigned long MS2RSTGenerator::readPhaseSpace(ParticleContainer* particleContain
 				ms2mols[i].print(cout);
 			}
 		}
-		addMolecule(ms2mols[i], particleContainer);
 	}
 
-	// todo: temperature!
+	int id = 0;
+	for (int x = 0; x < _numberOfBoxesPerDimension; x++) {
+		for (int y = 0; y < _numberOfBoxesPerDimension; y++) {
+			for (int z = 0; z < _numberOfBoxesPerDimension; z++) {
+
+				for (int i = 0; i < _numMolecules; i++) {
+					MS2RestartReader::MoleculeData tmpData = ms2mols[i];
+					tmpData.x[0] = tmpData.x[0] + x * _originalSimBoxLength;
+					tmpData.x[1] = tmpData.x[1] + y * _originalSimBoxLength;
+					tmpData.x[2] = tmpData.x[2] + z * _originalSimBoxLength;
+					tmpData.id = id;
+
+					addMolecule(tmpData, particleContainer);
+					id++;
+				}
+			}
+		}
+	}
 
 	delete ms2mols;
 
