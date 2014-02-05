@@ -1,7 +1,7 @@
 // XyzProfilesWriter.cpp
 
 #include "io/XyzProfilesWriter.h"
-#include "io/xyVal.h"
+// #include "io/xyVal.h"  // <-- not used any more
 #include "Common.h"
 #include "particleContainer/ParticleContainer.h"
 #include "parallel/DomainDecompBase.h"
@@ -114,7 +114,13 @@ XyzProfilesWriter::XyzProfilesWriter( unsigned long writeFrequency, unsigned lon
 	_densityProfileZAvg = new double[ _nNumMidpointPositions[2] ];
 
 	_nNumAverageTimesteps = nNumAverageTimesteps;
-	_nAveragedTimesteps = 0;  // will be set to zero again, when max number of average timesteps is reached
+	_nAveragedTimestepsDensity = new unsigned long[3];
+
+	// will be set to zero again, when max number of average timesteps is reached
+	for(unsigned long d=0; d < nNumComponents; d++)
+	{
+		_nAveragedTimestepsDensity[d] = 0;
+	}
 
 	// concentration profiles
 	_concentrationProfileX = new double*[nNumComponents];
@@ -228,14 +234,22 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	// update number of molecules in shells
 //	global_log->info() << "update number molecules ..." << endl;
 
-	CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_X);
+	if(_nNumShellsX > 0)
+	{
+		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_X);
+	}
+
+	if(_nNumShellsY > 0)
+	{
+		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Y);
+	}
+
+	if(_nNumShellsZ > 0)
+	{
+		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Z);
+	}
 
 //	global_log->info() << "molecule count updated." << endl;
-
-	// write out profiles with respect to write frequency
-	if ( !(simstep % _writeFrequency == 0) )
-		return;
-
 
 	// calc density, concentration profiles
 	CalcDensityProfiles();
@@ -248,34 +262,37 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 //	global_log->info() << "... calculation done." << endl;
 
 
+	// write out profiles with respect to write frequency
+	if ( !(simstep % _writeFrequency == 0) )
+		return;
 
-#ifdef ENABLE_MPI
-	struct rlimit limit;
-	/* Set the stack limit in bytes. */
-	//
-	limit.rlim_cur = 1099511627776;
-	limit.rlim_max = 1099511627776;
-	if (setrlimit(RLIMIT_STACK, &limit) != 0)
-	{
-		cout << "setrlimit() failed.";
-		exit(1);
-	}
-#endif
 
 	// writing .prf-files
-	std::stringstream outputstream, outputstreamC, outputstreamT;
-	std::stringstream filenamestream, filenamestreamC, filenamestreamT;
-	filenamestream << "density-profile_TS-" << simstep << ".prf";
+	std::stringstream outputstream_rhoX, outputstream_rhoY, outputstream_rhoZ;
+	std::stringstream outputstreamC, outputstreamT;
+	std::stringstream filenamestream_rhoX, filenamestream_rhoY, filenamestream_rhoZ;
+	std::stringstream filenamestreamC, filenamestreamT;
+
+	filenamestream_rhoX << "density-profile_TS-" << simstep << ".prfx";
+	filenamestream_rhoY << "density-profile_TS-" << simstep << ".prfy";
+	filenamestream_rhoZ << "density-profile_TS-" << simstep << ".prfz";
+
 	filenamestreamC << "concentration-profile_TS-" << simstep << ".prf";
 	filenamestreamT << "temperature-profile_TS-" << simstep << ".prf";
 
-	char filename[filenamestream.str().size()+1];
+	char filename_rhoX[filenamestream_rhoX.str().size()+1];
+	char filename_rhoY[filenamestream_rhoY.str().size()+1];
+	char filename_rhoZ[filenamestream_rhoZ.str().size()+1];
+
 	char filenameC[filenamestreamC.str().size()+1];
 	char filenameT[filenamestreamT.str().size()+1];
 
-	strcpy(filename,filenamestream.str().c_str());
+	strcpy(filename_rhoX, filenamestream_rhoX.str().c_str());
+	strcpy(filename_rhoY, filenamestream_rhoY.str().c_str());
+	strcpy(filename_rhoZ, filenamestream_rhoZ.str().c_str());
+
 	strcpy(filenameC,filenamestreamC.str().c_str());
-        strcpy(filenameT,filenamestreamT.str().c_str());
+    strcpy(filenameT,filenamestreamT.str().c_str());
 
 	#ifdef ENABLE_MPI
 		int rank = domainDecomp->getRank();
@@ -283,7 +300,9 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 		if (rank== 0)
 		{
 	#endif
-			outputstream <<  "x                   rho                 avg                 \n";
+			outputstream_rhoX <<  "x                   rhoX                 avgX                 \n";
+			outputstream_rhoY <<  "y                   rhoY                 avgY                 \n";
+			outputstream_rhoZ <<  "z                   rhoZ                 avgZ                 \n";
 			outputstreamC << "x                   ";
 			for(unsigned long c=1; c < nNumComponents; c++)
 			{
@@ -291,7 +310,7 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 			}
 			outputstreamC << "\n";
 
-                        outputstreamT <<  "x                   t                   avg                 \n";
+            outputstreamT <<  "x                   t                   avg                 \n";
 
 			// global_log->info() << "concentrAtX size: " << _Cx.size() << endl;
 
@@ -308,10 +327,13 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 			// density profile
 			for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
 			{
-				// density profile
-				outputstream << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
-				outputstream << std::setw(16) << std::setprecision(6) << _densityProfileX[p];
-				outputstream << std::setw(16) << std::setprecision(6) << _densityProfileXAvg[p] << endl;
+				if(_nNumShellsX > 0)
+				{
+					// density profile
+					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
+					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _densityProfileX[p];
+					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _densityProfileXAvg[p] << endl;
+				}
 
 				// concentration profile
 				outputstreamC << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
@@ -321,36 +343,92 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 				}
 				outputstreamC << endl;
 
-                                // temperature profile
-                                outputstreamT << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
-                                outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileX[0][p];
-                                outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileAvgX[0][p] << endl;
+				// temperature profile
+				outputstreamT << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
+				outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileX[0][p];
+				outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileAvgX[0][p] << endl;
 			}
 
+
+			// density profile, y
+			if(_nNumShellsY > 0)
+			{
+				for(unsigned long p=0; p < _nNumMidpointPositions[1]; p++)
+				{
+					// density profile
+					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsY[p];
+					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _densityProfileY[p];
+					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _densityProfileYAvg[p] << endl;
+				}
+			}
+
+			// density profile, z
+			if(_nNumShellsZ > 0)
+			{
+				for(unsigned long p=0; p < _nNumMidpointPositions[2]; p++)
+				{
+					// density profile
+					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsZ[p];
+					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _densityProfileZ[p];
+					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _densityProfileZAvg[p] << endl;
+				}
+			}
+
+
 			// typumwandlung
-			long outputsize = outputstream.str().size();
+			long outputsize_rhoX = outputstream_rhoX.str().size();
+			long outputsize_rhoY = outputstream_rhoY.str().size();
+			long outputsize_rhoZ = outputstream_rhoZ.str().size();
+
 			long outputsizeC = outputstreamC.str().size();
-                        long outputsizeT = outputstreamT.str().size();
+            long outputsizeT = outputstreamT.str().size();
 
 			//cout << "rank: " << rank << "; step: " << simstep << "; outputsize: " << outputsize << endl;
-			char output[outputsize+1];
+			char output_rhoX[outputsize_rhoX+1];
+			char output_rhoY[outputsize_rhoY+1];
+			char output_rhoZ[outputsize_rhoZ+1];
+
 			char outputC[outputsizeC+1];
-                        char outputT[outputsizeT+1];
+            char outputT[outputsizeT+1];
 
-			strcpy(output,outputstream.str().c_str());
+			strcpy(output_rhoX,outputstream_rhoX.str().c_str());
+			strcpy(output_rhoY,outputstream_rhoY.str().c_str());
+			strcpy(output_rhoZ,outputstream_rhoZ.str().c_str());
+
 			strcpy(outputC,outputstreamC.str().c_str());
-                        strcpy(outputT,outputstreamT.str().c_str());
+            strcpy(outputT,outputstreamT.str().c_str());
 
-			// Datei zum schreiben öffnen, daten schreiben
-			ofstream fileout(filename, ios::out|ios::app);
+			// open files to stream data to
+            if(_nNumShellsX > 0)
+            {
+            	ofstream fileout_rhoX(filename_rhoX, ios::out|ios::app);
+            	fileout_rhoX << output_rhoX;
+            	fileout_rhoX.close();
+            }
+            if(_nNumShellsY > 0)
+            {
+            	ofstream fileout_rhoY(filename_rhoY, ios::out|ios::app);
+            	fileout_rhoY << output_rhoY;
+            	fileout_rhoY.close();
+            }
+            if(_nNumShellsZ > 0)
+            {
+            	ofstream fileout_rhoZ(filename_rhoZ, ios::out|ios::app);
+            	fileout_rhoZ << output_rhoZ;
+            	fileout_rhoZ.close();
+            }
+
+            // open files
 			ofstream fileoutC(filenameC, ios::out|ios::app);
-                        ofstream fileoutT(filenameT, ios::out|ios::app);
-			fileout << output;
+            ofstream fileoutT(filenameT, ios::out|ios::app);
+
+            // stream data to files
 			fileoutC << outputC;
-                        fileoutT << outputT;
-			fileout.close();
+            fileoutT << outputT;
+
+            // close files
 			fileoutC.close();
-                        fileoutT.close();
+            fileoutT.close();
 	#ifdef ENABLE_MPI
 		}
 	#endif
@@ -472,7 +550,7 @@ void XyzProfilesWriter::ClearCxyzVector(unsigned int nDimension)
 */
 
 void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleContainer, DomainDecompBase* domainDecomp, Domain* domain,
-		                                    int nDimension )
+		                                            int nDimension )
 {
 	list<Molecule*> particlePtrs;
 	list<Molecule*>::iterator it;
@@ -481,12 +559,13 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 	double dDelta[3];
 	double dBoxLength[3];
 	unsigned int nNumComponents = domain->getNumberOfComponents() + 1;  // component: 0 stands for all molecules --> +1
-	unsigned long nNumMoleculesInsideShell;
+	unsigned long nNumMoleculesInsideShell;  //, nNumMoleculesTotal;
 	unsigned long* nNumMoleculesInsideShellComponentwise;
 	long double* dKineticEnergyInsideShellComponentwise;
 	long double dKineticEnergyInsideShell;
 	nNumMoleculesInsideShellComponentwise = new unsigned long[nNumComponents];
 	dKineticEnergyInsideShellComponentwise = new long double[nNumComponents];
+	// nNumMoleculesTotal = 0;
 
     // variables to calculate kinetic energy
 	double mv2;
@@ -504,17 +583,19 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 	// global_log->info() << "cleaning data structures ..." << endl;
 
 	// clean number of molecules matrix
-	for(unsigned long d=0; d < 3; d++)
+//	for(unsigned long d=0; d < 3; d++)
+//	{
+
+	for(unsigned long c=0; c < nNumComponents; c++)
 	{
-		for(unsigned long c=0; c < nNumComponents; c++)
+		for(unsigned long p=0; p < _nNumMidpointPositions[nDimension]; p++)
 		{
-			for(unsigned long p=0; p < _nNumMidpointPositions[d]; p++)
-			{
-				_nNumMoleculesInsideShells[d][c][p] = 0;
-				_dKineticEnergyInsideShells[d][c][p] = 0.0;
-			}
+			_nNumMoleculesInsideShells[nDimension][c][p] = 0;
+			_dKineticEnergyInsideShells[nDimension][c][p] = 0.0;
 		}
 	}
+
+//	}
 
 	// global_log->info() << "... done." << endl;
 
@@ -550,8 +631,7 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 		for(it = particlePtrs.begin(); it != particlePtrs.end(); ++it)
 		{
 			nNumMoleculesInsideShell++;
-			unsigned int cid = (*it)->componentid();
-			cid++;
+			unsigned int cid = (*it)->componentid() + 1;  // why +1? --> componentid starts at 0.
 
 			// global_log->info() << "cid: " << cid << endl;
 			// global_log->info() << "v2: " << (*it)->v2() << endl;			
@@ -581,9 +661,9 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 			// reduce number of molecules
 			nNumMoleculesInsideShell = nNumMoleculesInsideShellComponentwise[c];
 			domainDecomp->collCommInit(1);
-			domainDecomp->collCommAppendInt(nNumMoleculesInsideShell);
+			domainDecomp->collCommAppendUnsLong(nNumMoleculesInsideShell);
 			domainDecomp->collCommAllreduceSum();
-			nNumMoleculesInsideShell = domainDecomp->collCommGetInt();
+			nNumMoleculesInsideShell = domainDecomp->collCommGetUnsLong();
 			domainDecomp->collCommFinalize();
 
 			// reduce kinetic energy
@@ -598,12 +678,18 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 			_nNumMoleculesInsideShells[nDimension][c][p] = nNumMoleculesInsideShell;
             _dKineticEnergyInsideShells[nDimension][c][p] = dKineticEnergyInsideShell / nNumMoleculesInsideShell;
 
+            // global_log->info() << "component " << c << ", shell " << p << ": " << _nNumMoleculesInsideShells[nDimension][c][p] << " molecules."<< endl;
 		}
 
 		// calculate corners of next region (shell)
 		dLowerCorner[nDimension] += dDelta[nDimension];
 		dUpperCorner[nDimension] += dDelta[nDimension];
+
+        // nNumMoleculesTotal += _nNumMoleculesInsideShells[nDimension][0][p];
 	}
+
+//	global_log->info() << "counted: " << nNumMoleculesTotal << " molecules." << endl;
+//	global_log->info() << "system contains: " << domain->getglobalNumMolecules() << " molecules." << endl;  // <-- proofed, gets right number
 
 	// free memory
 	delete[] nNumMoleculesInsideShellComponentwise;
@@ -672,22 +758,84 @@ void XyzProfilesWriter::CalcShellMidpointPositions(Domain* ptrDomain)  // coordi
 
 void XyzProfilesWriter::CalcDensityProfiles()
 {
-	// x dimension
-	for(unsigned int p=0; p < _nNumMidpointPositions[0]; p++)
-	{
-		_densityProfileX[p] = _nNumMoleculesInsideShells[0][0][p] / _dShellVolumeX;
+	double rho_old, rho_new, n;
 
-		// average
-		_densityProfileXAvg[p] = (_densityProfileXAvg[p] * _nAveragedTimesteps + _nNumMoleculesInsideShells[0][0][p] / _dShellVolumeX) / (_nAveragedTimesteps + 1);
+
+	if(_nNumShellsX > 0)
+	{
+		// x dimension
+		for(unsigned int p=0; p < _nNumMidpointPositions[0]; p++)
+		{
+			_densityProfileX[p] = _nNumMoleculesInsideShells[0][0][p] / _dShellVolumeX;
+
+			// average
+			rho_old = _densityProfileXAvg[p];
+			rho_new = _densityProfileX[p];
+			n = (double) _nAveragedTimestepsDensity[1];
+
+			_densityProfileXAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+		}
+
+		if(_nAveragedTimestepsDensity[0] == _nNumAverageTimesteps - 1)  // => z.B.: (n + 1) = 1000
+		{
+			_nAveragedTimestepsDensity[0] = 0;
+		}
+		else
+		{
+			_nAveragedTimestepsDensity[0]++;
+		}
 	}
 
-	if(_nAveragedTimesteps == _nNumAverageTimesteps - 1)  // => z.B.: (n + 1) = 1000
+
+	if(_nNumShellsY > 0)
 	{
-		_nAveragedTimesteps = 0;
+		// y dimension
+		for(unsigned int p=0; p < _nNumMidpointPositions[1]; p++)
+		{
+			_densityProfileY[p] = _nNumMoleculesInsideShells[1][0][p] / _dShellVolumeY;
+
+			// average
+			rho_old = _densityProfileYAvg[p];
+			rho_new = _densityProfileY[p];
+			n = (double) _nAveragedTimestepsDensity[1];
+
+			_densityProfileYAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+		}
+
+		if(_nAveragedTimestepsDensity[1] == _nNumAverageTimesteps)  // => z.B.: (n + 1) = 1000
+		{
+			_nAveragedTimestepsDensity[1] = 0;
+		}
+		else
+		{
+			_nAveragedTimestepsDensity[1]++;
+		}
 	}
-	else
+
+
+	if(_nNumShellsZ > 0)
 	{
-		_nAveragedTimesteps++;
+		// z dimension
+		for(unsigned int p=0; p < _nNumMidpointPositions[2]; p++)
+		{
+			_densityProfileZ[p] = _nNumMoleculesInsideShells[2][0][p] / _dShellVolumeZ;
+
+			// average
+			rho_old = _densityProfileZAvg[p];
+			rho_new = _densityProfileZ[p];
+			n = (double) _nAveragedTimestepsDensity[1];
+
+			_densityProfileZAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+		}
+
+		if(_nAveragedTimestepsDensity[2] == _nNumAverageTimesteps - 1)  // => z.B.: (n + 1) = 1000
+		{
+			_nAveragedTimestepsDensity[2] = 0;
+		}
+		else
+		{
+			_nAveragedTimestepsDensity[2]++;
+		}
 	}
 }
 

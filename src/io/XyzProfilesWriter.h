@@ -2,8 +2,6 @@
 #define XYZPROFILESWRITER_H_
 
 #include "io/OutputBase.h"
-#include "io/xyVal.h"
-#include "io/Region.h"
 #include "Domain.h"
 #include "ensemble/GrandCanonical.h"
 #include <string>
@@ -109,7 +107,7 @@ private:
 	double* _densityProfileZAvg;
 
 	unsigned long _nNumAverageTimesteps;
-	unsigned long _nAveragedTimesteps;
+	unsigned long* _nAveragedTimestepsDensity;
 
 	// concentration profiles
 	double** _concentrationProfileX;
