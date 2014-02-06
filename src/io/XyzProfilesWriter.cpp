@@ -12,6 +12,7 @@
 #include <sstream>
 
 #include <list>
+#include <cmath>
 
 #ifdef ENABLE_MPI
 #include <mpi.h>
@@ -116,10 +117,22 @@ XyzProfilesWriter::XyzProfilesWriter( unsigned long writeFrequency, unsigned lon
 	_nNumAverageTimesteps = nNumAverageTimesteps;
 	_nAveragedTimestepsDensity = new unsigned long[3];
 
-	// will be set to zero again, when max number of average timesteps is reached
-	for(unsigned long d=0; d < nNumComponents; d++)
+	// mean values, standard deviations
+	_dDensityMean           = new double[3];
+	_dDensityMeanAvg        = new double[3];
+	_dDensityStandardDev    = new double[3];
+	_dDensityStandardDevAvg = new double[3];
+
+	for(unsigned long d=0; d < 3; d++)
 	{
+		// will be set to zero again, when max number of average timesteps is reached
 		_nAveragedTimestepsDensity[d] = 0;
+
+		// mean values, standard deviations
+		_dDensityMean[d]           = 0.0;
+		_dDensityMeanAvg[d]        = 0.0;
+		_dDensityStandardDev[d]    = 0.0;
+		_dDensityStandardDevAvg[d] = 0.0;
 	}
 
 	// concentration profiles
@@ -132,6 +145,33 @@ XyzProfilesWriter::XyzProfilesWriter( unsigned long writeFrequency, unsigned lon
 		_concentrationProfileX[c] = new double[ _nNumMidpointPositions[0] ];
 		_concentrationProfileY[c] = new double[ _nNumMidpointPositions[1] ];
 		_concentrationProfileZ[c] = new double[ _nNumMidpointPositions[2] ];
+	}
+
+	_concentrationProfileXAvg = new double*[nNumComponents];
+	_concentrationProfileYAvg = new double*[nNumComponents];
+	_concentrationProfileZAvg = new double*[nNumComponents];
+
+	for(unsigned long c=0; c < nNumComponents; c++)
+	{
+		_concentrationProfileXAvg[c] = new double[ _nNumMidpointPositions[0] ];
+		_concentrationProfileYAvg[c] = new double[ _nNumMidpointPositions[1] ];
+		_concentrationProfileZAvg[c] = new double[ _nNumMidpointPositions[2] ];
+	}
+
+	// will be set to zero again, when max number of average timesteps is reached
+	_nAveragedTimestepsConcentration = new unsigned long*[3];
+
+	for(unsigned long d=0; d<3; d++)
+	{
+		_nAveragedTimestepsConcentration[d] = new unsigned long[nNumComponents];
+	}
+
+	for(unsigned long d=0; d < 3; d++)
+	{
+		for(unsigned long c=0; c < nNumComponents; c++)
+		{
+			_nAveragedTimestepsConcentration[d][c] = 0;
+		}
 	}
 
 	// temperature profiles
@@ -203,63 +243,33 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 	unsigned int nNumComponents;
 	nNumComponents = _ptrDomain->getNumberOfComponents() + 1;  // + 1 because component 0 stands for all components
 
-	/*
-	std::vector<xyVal*>::iterator it;
-	double dPos, dC;
-
 	// update profiles with respect to update frequency
-	if ( simstep % _updateFrequency == 0 )
+	if ( (simstep % _updateFrequency == 0) )
 	{
-		if(_nRecSwitches[0] == 1)
+		// count only for dimensions of interest
+		if(_nNumShellsX > 0)
 		{
-			// calculate new concentration profile, dimension: X
-			CalcConcentrProfile( particleContainer, domainDecomp, domain, 1, XYZPFD_DIMENSION_X);
+			CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_X);
 		}
 
-		if(_nRecSwitches[1] == 1)
+		if(_nNumShellsY > 0)
 		{
-			// calculate new concentration profile, dimension: Y
-			CalcConcentrProfile( particleContainer, domainDecomp, domain, 1, XYZPFD_DIMENSION_Y);
+			CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Y);
 		}
 
-		if(_nRecSwitches[2] == 1)
+		if(_nNumShellsZ > 0)
 		{
-			// calculate new concentration profile, dimension: Z
-			CalcConcentrProfile( particleContainer, domainDecomp, domain, 1, XYZPFD_DIMENSION_Z);
+			CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Z);
 		}
+
+		// calc density, concentration, temperature profiles
+		CalcDensityProfiles();
+		CalcConcentrationProfiles();
+		CalcTemperatureProfiles();
 	}
 
-	*/
 
-	// update number of molecules in shells
-//	global_log->info() << "update number molecules ..." << endl;
-
-	if(_nNumShellsX > 0)
-	{
-		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_X);
-	}
-
-	if(_nNumShellsY > 0)
-	{
-		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Y);
-	}
-
-	if(_nNumShellsZ > 0)
-	{
-		CountMoleculesInsideShells( particleContainer, domainDecomp, domain, XYZPFD_DIMENSION_Z);
-	}
-
-//	global_log->info() << "molecule count updated." << endl;
-
-	// calc density, concentration profiles
-	CalcDensityProfiles();
-	CalcConcentrationProfiles();
-
-//	global_log->info() << "calc temperature profile ..." << endl;
-
-	CalcTemperatureProfiles();
-
-//	global_log->info() << "... calculation done." << endl;
+	global_log->info() << "calculation done." << flush << endl;
 
 
 	// write out profiles with respect to write frequency
@@ -300,9 +310,13 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 		if (rank== 0)
 		{
 	#endif
-			outputstream_rhoX <<  "x                   rhoX                 avgX                 \n";
-			outputstream_rhoY <<  "y                   rhoY                 avgY                 \n";
-			outputstream_rhoZ <<  "z                   rhoZ                 avgZ                 \n";
+			outputstream_rhoX << std::setw(36) <<  "           x        rhoX        avgX";
+			outputstream_rhoX << std::setw(48) <<  "      rhoX_m      avgX_m      stdDev  stdDev_avg" << endl;
+			outputstream_rhoY << std::setw(36) <<  "           y        rhoY        avgY";
+			outputstream_rhoY << std::setw(48) <<  "      rhoY_m      avgY_m      stdDev  stdDev_avg" << endl;
+			outputstream_rhoZ << std::setw(36) <<  "           z        rhoZ        avgZ";
+			outputstream_rhoZ << std::setw(48) <<  "      rhoZ_m      avgZ_m      stdDev  stdDev_avg" << endl;
+
 			outputstreamC << "x                   ";
 			for(unsigned long c=1; c < nNumComponents; c++)
 			{
@@ -312,65 +326,85 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 
             outputstreamT <<  "x                   t                   avg                 \n";
 
-			// global_log->info() << "concentrAtX size: " << _Cx.size() << endl;
 
-			/*
-			for(it = _Cxyz[0].begin(); it != _Cxyz[0].end(); it++)
-			{
-				dPos = (*it)->GetXvalue();
-				dC = (*it)->GetYvalue();
-				outputstream << std::setw(11) << std::setprecision(6) << dPos;
-				outputstream << std::setw(11) << std::setprecision(6) << dC << endl;
-			}
-			*/
-
-			// density profile
+			// concentration, temperature profile
 			for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
 			{
-				if(_nNumShellsX > 0)
-				{
-					// density profile
-					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
-					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _densityProfileX[p];
-					outputstream_rhoX << std::setw(16) << std::setprecision(6) << _densityProfileXAvg[p] << endl;
-				}
-
 				// concentration profile
-				outputstreamC << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
+				outputstreamC << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsX[p];
 				for(unsigned long c=1; c < nNumComponents; c++)
 				{
-					outputstreamC << std::setw(16) << std::setprecision(6) << _concentrationProfileX[c][p];
+					outputstreamC << std::setw(12) << std::setprecision(6) << _concentrationProfileX[c][p];
 				}
 				outputstreamC << endl;
 
 				// temperature profile
-				outputstreamT << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsX[p];
-				outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileX[0][p];
-				outputstreamT << std::setw(16) << std::setprecision(6) << _temperatureProfileAvgX[0][p] << endl;
+				outputstreamT << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsX[p];
+				outputstreamT << std::setw(12) << std::setprecision(6) << _temperatureProfileX[0][p];
+				outputstreamT << std::setw(12) << std::setprecision(6) << _temperatureProfileAvgX[0][p] << endl;
 			}
 
+
+			// density profile, x
+			if(_nNumShellsX > 0)
+			{
+				// first line with mean values
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsX[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _densityProfileX[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _densityProfileXAvg[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dDensityMean[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dDensityMeanAvg[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dDensityStandardDev[0];
+				outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dDensityStandardDevAvg[0] << endl;
+
+				for(unsigned long p=1; p < _nNumMidpointPositions[0]; p++)
+				{
+					// density profile
+					outputstream_rhoX << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsX[p];
+					outputstream_rhoX << std::setw(12) << std::setprecision(6) << _densityProfileX[p];
+					outputstream_rhoX << std::setw(12) << std::setprecision(6) << _densityProfileXAvg[p] << endl;
+				}
+			}
 
 			// density profile, y
 			if(_nNumShellsY > 0)
 			{
-				for(unsigned long p=0; p < _nNumMidpointPositions[1]; p++)
+				// first line with mean values
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsY[0];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _densityProfileY[0];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _densityProfileYAvg[0];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dDensityMean[1];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dDensityMeanAvg[1];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dDensityStandardDev[1];
+				outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dDensityStandardDevAvg[1] << endl;
+
+				for(unsigned long p=1; p < _nNumMidpointPositions[1]; p++)
 				{
 					// density profile
-					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsY[p];
-					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _densityProfileY[p];
-					outputstream_rhoY << std::setw(16) << std::setprecision(6) << _densityProfileYAvg[p] << endl;
+					outputstream_rhoY << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsY[p];
+					outputstream_rhoY << std::setw(12) << std::setprecision(6) << _densityProfileY[p];
+					outputstream_rhoY << std::setw(12) << std::setprecision(6) << _densityProfileYAvg[p] << endl;
 				}
 			}
 
 			// density profile, z
 			if(_nNumShellsZ > 0)
 			{
-				for(unsigned long p=0; p < _nNumMidpointPositions[2]; p++)
+				// first line with mean values
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsZ[0];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _densityProfileZ[0];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _densityProfileZAvg[0];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dDensityMean[2];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dDensityMeanAvg[2];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dDensityStandardDev[2];
+				outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dDensityStandardDevAvg[2] << endl;
+
+				for(unsigned long p=1; p < _nNumMidpointPositions[2]; p++)
 				{
 					// density profile
-					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _dShellMidpointPositionsZ[p];
-					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _densityProfileZ[p];
-					outputstream_rhoZ << std::setw(16) << std::setprecision(6) << _densityProfileZAvg[p] << endl;
+					outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _dShellMidpointPositionsZ[p];
+					outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _densityProfileZ[p];
+					outputstream_rhoZ << std::setw(12) << std::setprecision(6) << _densityProfileZAvg[p] << endl;
 				}
 			}
 
@@ -401,26 +435,26 @@ void XyzProfilesWriter::doOutput( ParticleContainer* particleContainer,
 			// open files to stream data to
             if(_nNumShellsX > 0)
             {
-            	ofstream fileout_rhoX(filename_rhoX, ios::out|ios::app);
+            	ofstream fileout_rhoX(filename_rhoX, ios::out);
             	fileout_rhoX << output_rhoX;
             	fileout_rhoX.close();
             }
             if(_nNumShellsY > 0)
             {
-            	ofstream fileout_rhoY(filename_rhoY, ios::out|ios::app);
+            	ofstream fileout_rhoY(filename_rhoY, ios::out);
             	fileout_rhoY << output_rhoY;
             	fileout_rhoY.close();
             }
             if(_nNumShellsZ > 0)
             {
-            	ofstream fileout_rhoZ(filename_rhoZ, ios::out|ios::app);
+            	ofstream fileout_rhoZ(filename_rhoZ, ios::out);
             	fileout_rhoZ << output_rhoZ;
             	fileout_rhoZ.close();
             }
 
             // open files
-			ofstream fileoutC(filenameC, ios::out|ios::app);
-            ofstream fileoutT(filenameT, ios::out|ios::app);
+			ofstream fileoutC(filenameC, ios::out);
+            ofstream fileoutT(filenameT, ios::out);
 
             // stream data to files
 			fileoutC << outputC;
@@ -559,13 +593,12 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 	double dDelta[3];
 	double dBoxLength[3];
 	unsigned int nNumComponents = domain->getNumberOfComponents() + 1;  // component: 0 stands for all molecules --> +1
-	unsigned long nNumMoleculesInsideShell;  //, nNumMoleculesTotal;
+	unsigned long nNumMoleculesInsideShell;
 	unsigned long* nNumMoleculesInsideShellComponentwise;
 	long double* dKineticEnergyInsideShellComponentwise;
 	long double dKineticEnergyInsideShell;
 	nNumMoleculesInsideShellComponentwise = new unsigned long[nNumComponents];
 	dKineticEnergyInsideShellComponentwise = new long double[nNumComponents];
-	// nNumMoleculesTotal = 0;
 
     // variables to calculate kinetic energy
 	double mv2;
@@ -580,12 +613,7 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 	dBoxLength[1] = _ptrDomain->getGlobalLength(1);
 	dBoxLength[2] = _ptrDomain->getGlobalLength(2);
 
-	// global_log->info() << "cleaning data structures ..." << endl;
-
 	// clean number of molecules matrix
-//	for(unsigned long d=0; d < 3; d++)
-//	{
-
 	for(unsigned long c=0; c < nNumComponents; c++)
 	{
 		for(unsigned long p=0; p < _nNumMidpointPositions[nDimension]; p++)
@@ -595,9 +623,6 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 		}
 	}
 
-//	}
-
-	// global_log->info() << "... done." << endl;
 
 	dLowerCorner[0] = 0.0;
 	dLowerCorner[1] = 0.0;
@@ -678,38 +703,18 @@ void XyzProfilesWriter::CountMoleculesInsideShells( ParticleContainer* particleC
 			_nNumMoleculesInsideShells[nDimension][c][p] = nNumMoleculesInsideShell;
             _dKineticEnergyInsideShells[nDimension][c][p] = dKineticEnergyInsideShell / nNumMoleculesInsideShell;
 
-            // global_log->info() << "component " << c << ", shell " << p << ": " << _nNumMoleculesInsideShells[nDimension][c][p] << " molecules."<< endl;
-		}
+        }
 
 		// calculate corners of next region (shell)
 		dLowerCorner[nDimension] += dDelta[nDimension];
 		dUpperCorner[nDimension] += dDelta[nDimension];
-
-        // nNumMoleculesTotal += _nNumMoleculesInsideShells[nDimension][0][p];
 	}
-
-//	global_log->info() << "counted: " << nNumMoleculesTotal << " molecules." << endl;
-//	global_log->info() << "system contains: " << domain->getglobalNumMolecules() << " molecules." << endl;  // <-- proofed, gets right number
 
 	// free memory
 	delete[] nNumMoleculesInsideShellComponentwise;
 	delete[] dKineticEnergyInsideShellComponentwise;
 }
 
-/*
-void XyzProfilesWriter::ClearCxyzVector(unsigned int nDimension)
-{
-	std::vector<xyVal*>::iterator it;
-
-	for(it = _Cxyz[nDimension].begin(); it != _Cxyz[nDimension].end(); it++)
-	{
-		delete (*it);
-		(*it) = NULL;
-	}
-
-	_Cxyz[nDimension].clear();
-}
-*/
 
 void XyzProfilesWriter::CalcShellVolumes(Domain* ptrDomain)
 {
@@ -758,24 +763,52 @@ void XyzProfilesWriter::CalcShellMidpointPositions(Domain* ptrDomain)  // coordi
 
 void XyzProfilesWriter::CalcDensityProfiles()
 {
-	double rho_old, rho_new, n;
+	double rho_old, rho_new, n, dDeltaRho, dDeltaRhoAvg, dSumStdDev, dSumStdDevAvg, numVals;
 
-
+	// x dimension
 	if(_nNumShellsX > 0)
 	{
-		// x dimension
+		// mean values
+		_dDensityMean[0]    = 0.0;
+		_dDensityMeanAvg[0] = 0.0;
+
+		// number of averaged values
+		n = (double) _nAveragedTimestepsDensity[0];
+
 		for(unsigned int p=0; p < _nNumMidpointPositions[0]; p++)
 		{
 			_densityProfileX[p] = _nNumMoleculesInsideShells[0][0][p] / _dShellVolumeX;
+			_dDensityMean[0] += _densityProfileX[p];
 
 			// average
 			rho_old = _densityProfileXAvg[p];
 			rho_new = _densityProfileX[p];
-			n = (double) _nAveragedTimestepsDensity[1];
 
 			_densityProfileXAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+			_dDensityMeanAvg[0] += _densityProfileXAvg[p];
 		}
+		// mean values
+		_dDensityMean[0]    = _dDensityMean[0]    / (double)(_nNumMidpointPositions[0]);
+		_dDensityMeanAvg[0] = _dDensityMeanAvg[0] / (double)(_nNumMidpointPositions[0]);
 
+		// calculate standard deviation
+		// Papula Formelsamlung, S.294: Standardabweichung des Mittelwerts
+		dSumStdDev = 0.0;
+		dSumStdDevAvg = 0.0;
+		numVals = _nNumMidpointPositions[0];
+
+		for(unsigned int p=0; p < _nNumMidpointPositions[0]; p++)
+		{
+			dDeltaRho = _densityProfileX[p] - _dDensityMean[0];
+			dSumStdDev += dDeltaRho * dDeltaRho;
+
+			dDeltaRhoAvg = _densityProfileXAvg[p] - _dDensityMeanAvg[0];
+			dSumStdDevAvg += dDeltaRhoAvg * dDeltaRhoAvg;
+		}
+		_dDensityStandardDev[0]    = sqrt( dSumStdDev    / (numVals * (numVals - 1.0) ) );
+		_dDensityStandardDevAvg[0] = sqrt( dSumStdDevAvg / (numVals * (numVals - 1.0) ) );
+
+		// inkrement averaged timesteps counter
 		if(_nAveragedTimestepsDensity[0] == _nNumAverageTimesteps - 1)  // => z.B.: (n + 1) = 1000
 		{
 			_nAveragedTimestepsDensity[0] = 0;
@@ -787,21 +820,50 @@ void XyzProfilesWriter::CalcDensityProfiles()
 	}
 
 
+	// y dimension
 	if(_nNumShellsY > 0)
 	{
-		// y dimension
+		// mean values
+		_dDensityMean[1]    = 0.0;
+		_dDensityMeanAvg[1] = 0.0;
+
+		// number of averaged values
+		n = (double) _nAveragedTimestepsDensity[1];
+
 		for(unsigned int p=0; p < _nNumMidpointPositions[1]; p++)
 		{
 			_densityProfileY[p] = _nNumMoleculesInsideShells[1][0][p] / _dShellVolumeY;
+			_dDensityMean[1] += _densityProfileY[p];
 
 			// average
 			rho_old = _densityProfileYAvg[p];
 			rho_new = _densityProfileY[p];
-			n = (double) _nAveragedTimestepsDensity[1];
 
 			_densityProfileYAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+			_dDensityMeanAvg[1] += _densityProfileYAvg[p];
 		}
+		// mean values
+		_dDensityMean[1]    = _dDensityMean[1]    / (double)(_nNumMidpointPositions[1]);
+		_dDensityMeanAvg[1] = _dDensityMeanAvg[1] / (double)(_nNumMidpointPositions[1]);
 
+		// calculate standard deviation
+	    // Papula Formelsamlung, S.294: Standardabweichung des Mittelwerts
+		dSumStdDev = 0.0;
+		dSumStdDevAvg = 0.0;
+		numVals = _nNumMidpointPositions[1];
+
+		for(unsigned int p=0; p < _nNumMidpointPositions[1]; p++)
+		{
+			dDeltaRho = _densityProfileY[p] - _dDensityMean[1];
+			dSumStdDev += dDeltaRho * dDeltaRho;
+
+			dDeltaRhoAvg = _densityProfileYAvg[p] - _dDensityMeanAvg[1];
+			dSumStdDevAvg += dDeltaRhoAvg * dDeltaRhoAvg;
+		}
+		_dDensityStandardDev[1]    = sqrt( dSumStdDev    / (numVals * (numVals - 1.0) ) );
+		_dDensityStandardDevAvg[1] = sqrt( dSumStdDevAvg / (numVals * (numVals - 1.0) ) );
+
+		// inkrement averaged timesteps counter
 		if(_nAveragedTimestepsDensity[1] == _nNumAverageTimesteps)  // => z.B.: (n + 1) = 1000
 		{
 			_nAveragedTimestepsDensity[1] = 0;
@@ -813,21 +875,50 @@ void XyzProfilesWriter::CalcDensityProfiles()
 	}
 
 
+	// z dimension
 	if(_nNumShellsZ > 0)
 	{
-		// z dimension
+		// mean values
+		_dDensityMean[2]    = 0.0;
+		_dDensityMeanAvg[2] = 0.0;
+
+		// number of averaged values
+		n = (double) _nAveragedTimestepsDensity[2];
+
 		for(unsigned int p=0; p < _nNumMidpointPositions[2]; p++)
 		{
 			_densityProfileZ[p] = _nNumMoleculesInsideShells[2][0][p] / _dShellVolumeZ;
+			_dDensityMean[2] += _densityProfileZ[p];
 
 			// average
 			rho_old = _densityProfileZAvg[p];
 			rho_new = _densityProfileZ[p];
-			n = (double) _nAveragedTimestepsDensity[1];
 
 			_densityProfileZAvg[p] = (rho_old * n + rho_new) / (n + 1.0);
+			_dDensityMeanAvg[2] += _densityProfileZAvg[p];
 		}
+		// mean values
+		_dDensityMean[2]    = _dDensityMean[2]    / (double)(_nNumMidpointPositions[2]);
+		_dDensityMeanAvg[2] = _dDensityMeanAvg[2] / (double)(_nNumMidpointPositions[2]);
 
+		// calculate standard deviation
+		// Papula Formelsamlung, S.294: Standardabweichung des Mittelwerts
+		dSumStdDev = 0.0;
+		dSumStdDevAvg = 0.0;
+		numVals = _nNumMidpointPositions[2];
+
+		for(unsigned int p=0; p < _nNumMidpointPositions[2]; p++)
+		{
+			dDeltaRho = _densityProfileZ[p] - _dDensityMean[2];
+			dSumStdDev += dDeltaRho * dDeltaRho;
+
+			dDeltaRhoAvg = _densityProfileZAvg[p] - _dDensityMeanAvg[2];
+			dSumStdDevAvg += dDeltaRhoAvg * dDeltaRhoAvg;
+		}
+		_dDensityStandardDev[2]    = sqrt( dSumStdDev    / (numVals * (numVals - 1.0) ) );
+		_dDensityStandardDevAvg[2] = sqrt( dSumStdDevAvg / (numVals * (numVals - 1.0) ) );
+
+		// inkrement averaged timesteps counter
 		if(_nAveragedTimestepsDensity[2] == _nNumAverageTimesteps - 1)  // => z.B.: (n + 1) = 1000
 		{
 			_nAveragedTimestepsDensity[2] = 0;
@@ -843,13 +934,86 @@ void XyzProfilesWriter::CalcConcentrationProfiles()
 {
 	unsigned int nNumComponents;
 	nNumComponents = _ptrDomain->getNumberOfComponents() + 1;  // + 1 because component 0 stands for all components
+	double c_old, c_new, n;
 
 	for(unsigned long c=1; c < nNumComponents; c++)
 	{
-		// x dimension, component 1
-		for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
+		// x dimension
+		if(_nNumShellsX > 0)
 		{
-			_concentrationProfileX[c][p] = (double)(_nNumMoleculesInsideShells[0][c][p]) / (double)(_nNumMoleculesInsideShells[0][0][p]);
+			for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
+			{
+				_concentrationProfileX[c][p] = (double)(_nNumMoleculesInsideShells[0][c][p]) / (double)(_nNumMoleculesInsideShells[0][0][p]);
+
+				// average
+				c_old = _concentrationProfileXAvg[c][p];
+				c_new = _concentrationProfileX[c][p];
+				n = (double) _nAveragedTimestepsConcentration[0][c];
+
+				_concentrationProfileXAvg[c][p] = (c_old * n + c_new) / (n + 1.0);
+
+				if(_nAveragedTimestepsConcentration[0][c] == _nNumAverageTimesteps)
+				{
+					_nAveragedTimestepsConcentration[0][c] = 0;
+				}
+				else
+				{
+					_nAveragedTimestepsConcentration[0][c]++;
+				}
+			}
+		}
+
+
+		// y dimension
+		if(_nNumShellsY > 0)
+		{
+			for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
+			{
+				_concentrationProfileY[c][p] = (double)(_nNumMoleculesInsideShells[1][c][p]) / (double)(_nNumMoleculesInsideShells[0][0][p]);
+
+				// average
+				c_old = _concentrationProfileYAvg[c][p];
+				c_new = _concentrationProfileY[c][p];
+				n = (double) _nAveragedTimestepsConcentration[1][c];
+
+				_concentrationProfileYAvg[c][p] = (c_old * n + c_new) / (n + 1.0);
+
+				if(_nAveragedTimestepsConcentration[1][c] == _nNumAverageTimesteps)
+				{
+					_nAveragedTimestepsConcentration[1][c] = 0;
+				}
+				else
+				{
+					_nAveragedTimestepsConcentration[1][c]++;
+				}
+			}
+		}
+
+		// z dimension
+		if(_nNumShellsZ > 0)
+		{
+			for(unsigned long p=0; p < _nNumMidpointPositions[0]; p++)
+			{
+				_concentrationProfileZ[c][p] = (double)(_nNumMoleculesInsideShells[2][c][p]) / (double)(_nNumMoleculesInsideShells[0][0][p]);
+
+
+				// average
+				c_old = _concentrationProfileZAvg[c][p];
+				c_new = _concentrationProfileZ[c][p];
+				n = (double) _nAveragedTimestepsConcentration[2][c];
+
+				_concentrationProfileZAvg[c][p] = (c_old * n + c_new) / (n + 1.0);
+
+				if(_nAveragedTimestepsConcentration[2][c] == _nNumAverageTimesteps)
+				{
+					_nAveragedTimestepsConcentration[2][c] = 0;
+				}
+				else
+				{
+					_nAveragedTimestepsConcentration[2][c]++;
+				}
+
+			}
 		}
 	}
 }

@@ -109,10 +109,22 @@ private:
 	unsigned long _nNumAverageTimesteps;
 	unsigned long* _nAveragedTimestepsDensity;
 
+	double* _dDensityMean;            // mean value of profile
+	double* _dDensityMeanAvg;         // mean value of average profile
+	double* _dDensityStandardDev;     // standard deviation of profile
+	double* _dDensityStandardDevAvg;  // standard deviation of average profile
+
+
 	// concentration profiles
 	double** _concentrationProfileX;
 	double** _concentrationProfileY;
 	double** _concentrationProfileZ;
+
+	double** _concentrationProfileXAvg;
+	double** _concentrationProfileYAvg;
+	double** _concentrationProfileZAvg;
+
+	unsigned long** _nAveragedTimestepsConcentration;
 
 	// temperature profiles
 	long double** _temperatureProfileX;
