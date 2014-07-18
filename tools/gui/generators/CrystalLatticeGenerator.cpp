@@ -33,7 +33,9 @@ CrystalLatticeGenerator::CrystalLatticeGenerator() :
 	MDGenerator("CrystalLatticeGenerator"), _numMoleculesPerDim(4), _h(3.0), _charge(1.0) {
 	_components.resize(2);
 	_components[0].addCharge(0, 0, 0, 1.0, _charge);
+        _components[0].setID(0);
 	_components[1].addCharge(0, 0, 0, 1.0, - _charge);
+        _components[1].setID(1);
 	_configuration.setNVE(true);
 	calculateSimulationBoxLength();
 }
@@ -133,33 +135,33 @@ unsigned long CrystalLatticeGenerator::readPhaseSpace(ParticleContainer* particl
 				double y = origin + j * spacing;
 				double z = origin + k * spacing;
 				if (domainDecomp->procOwnsPos(x,y,z, domain)) {
-					addMolecule(x, y, z, id, 0, particleContainer);
+					addMolecule(x, y, z, id+0, 0, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x + spacing ,y,z, domain)) {
-					addMolecule(x + spacing, y, z, id, 1, particleContainer);
+					addMolecule(x + spacing, y, z, id+1, 1, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x,y + spacing,z, domain)) {
-					addMolecule(x, y + spacing, z, id, 1, particleContainer);
+					addMolecule(x, y + spacing, z, id+2, 1, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x + spacing ,y + spacing,z, domain)) {
-					addMolecule(x + spacing, y + spacing, z, id, 0, particleContainer);
+					addMolecule(x + spacing, y + spacing, z, id+3, 0, particleContainer);
 				}
 
 				if (domainDecomp->procOwnsPos(x,y,z + spacing, domain)) {
-					addMolecule(x, y, z + spacing, id, 1, particleContainer);
+					addMolecule(x, y, z + spacing, id+4, 1, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x + spacing ,y,z + spacing, domain)) {
-					addMolecule(x + spacing, y, z + spacing, id, 0, particleContainer);
+					addMolecule(x + spacing, y, z + spacing, id+5, 0, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x,y + spacing,z + spacing, domain)) {
-					addMolecule(x, y + spacing, z + spacing, id, 0, particleContainer);
+					addMolecule(x, y + spacing, z + spacing, id+6, 0, particleContainer);
 				}
 				if (domainDecomp->procOwnsPos(x + spacing ,y + spacing,z + spacing, domain)) {
-					addMolecule(x + spacing, y + spacing, z + spacing, id, 1, particleContainer);
+					addMolecule(x + spacing, y + spacing, z + spacing, id+7, 1, particleContainer);
 				}
 				// increment id in any case, because this particle will probably
 				// be added by some other process
-				id+=4;
+				id+=8;
 			}
 		}
 
@@ -175,10 +177,10 @@ unsigned long CrystalLatticeGenerator::readPhaseSpace(ParticleContainer* particl
 }
 
 void CrystalLatticeGenerator::addMolecule(double x, double y, double z, unsigned long id, unsigned cid, ParticleContainer* particleContainer) {
-	Molecule m(id, cid, x, y, z, // position
+	Molecule m(id, &_components[cid], x, y, z, // position
 			0.0, 0.0, 0.0, // velocity
 			1.0, 0.0, 0.0, 0.0, // orientation
-			0.0, 0.0, 0.0, &_components);
+			0.0, 0.0, 0.0);
 	particleContainer->addParticle(m);
 }
 
