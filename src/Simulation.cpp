@@ -759,7 +759,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			unsigned xun, yun;
 			inputfilestream >> xun >> yun >> width;
 			this->_domain->setupSlabProfile(xun, yun, width);
-			_doRecordProfile = true;
+			_doRecordSlabProfile = true;
 		}
 		else if (token == "yOffset") {
 			double yOffset;

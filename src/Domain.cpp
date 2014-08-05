@@ -1069,8 +1069,11 @@ void Domain::outputSlabProfile(const char* prefix){
 	
 	double segmentVolume; // volume of a single bin, in a0^3 (LJ)
 	segmentVolume = 1.0/this->_universalInvProfileUnit[0]/this->_universalInvProfileUnit[1]/this->_universalInvProfileUnit[2];
-		
+	
+	// Eintragen des Flags '>' zwecks Kompatibilität
+	rhoProf << "> \n"; 
 	// Eintragen der x-Koordinaten x_i in Header
+	rhoProf << 0 <<"  \t"; 
 	for(unsigned n_x = 0; n_x < this->_universalNProfileUnits[0]; n_x++){
 	  rhoProf << (n_x + 0.5) / this->_universalInvProfileUnit[0] <<"  \t"; 
 	}
