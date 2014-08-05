@@ -751,6 +751,16 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			_domain->setupProfile(xun, yun, zun);
 			_doRecordProfile = true;
 		}
+		//! by Stefan Becker, token determining a profile recorded in a slab in the x-y surface, in the middle of the box, i.e. 0.5*Lz
+		else if (token == "slabProfile"){
+			// slab width in which the profile is recorded
+			double width;
+			// number of increments in the x,y-direction
+			unsigned xun, yun;
+			inputfilestream >> xun >> yun >> width;
+			this->_domain->setupSlabProfile(xun, yun, width);
+			_doRecordProfile = true;
+		}
 		else if (token == "yOffset") {
 			double yOffset;
 			inputfilestream >> yOffset;
@@ -1493,6 +1503,24 @@ void Simulation::output(unsigned long simstep) {
 		}
 		_domain->resetProfile();
 	}
+	//! the same profile procedure for the slab profile
+	if ((simstep >= _initStatistics) && _doRecordSlabProfile && !(simstep % _profileRecordingTimesteps)) {
+		_domain->recordSlabProfile(_moleculeContainer);
+	}
+	if ((simstep >= _initStatistics) && _doRecordSlabProfile && !(simstep % _profileOutputTimesteps)) {
+		_domain->collectProfile(_domainDecomposition);
+		if (!ownrank) {
+			ostringstream osstrm;
+			osstrm << _profileOutputPrefix << ".";
+			osstrm.fill('0');
+			osstrm.width(9);
+			osstrm << right << simstep;
+			_domain->outputSlabProfile(osstrm.str().c_str());
+			osstrm.str("");
+			osstrm.clear();
+		}
+		_domain->resetProfile();
+	}
 
 	if (_domain->thermostatWarning())
 		global_log->warning() << "Thermostat!" << endl;
@@ -1567,6 +1595,7 @@ void Simulation::initialize() {
 	_outputPrefix = string("mardyn");
 	_outputPrefix.append(gettimestring());
 	_doRecordProfile = false;
+	_doRecordSlabProfile = false;
 	_profileRecordingTimesteps = 7;
 	_profileOutputTimesteps = 12500;
 	_profileOutputPrefix = "out";

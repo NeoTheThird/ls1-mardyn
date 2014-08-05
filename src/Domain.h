@@ -366,7 +366,16 @@ public:
 	void outputProfile(const char* prefix);
 	void resetProfile();
 
-	// by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods employed for setting up a density profile in cylindrical coordinates
+	//! by Stefan Becker: methods for calculating a slab profile
+	//setting up the coordinate system for a planar profile in the x,y-direction with a width of widthZ in z-direction, located in the middle of the box 0.5*Lz
+	void setupSlabProfile(unsigned xun, unsigned yun, double widthZ);
+	// recording the slab profile
+	void recordSlabProfile(ParticleContainer* molCont);
+	// writing out the slab profile
+	void outputSlabProfile(const char* prefix);
+	
+	
+	//! by Stefan Becker <stefan.becker@mv.uni-kl.de>. Methods employed for setting up a density profile in cylindrical coordinates
 	//begin
 	// prerequisite for the cylindrical coordinate system: R2max, centre, InvProfileUnit[3] => counterpart of setupProfile(), beyond that recordProfile() is extended
 	void sesDrop();
@@ -532,7 +541,13 @@ private:
 
 	//! by Stefan Becker <stefan.becker@mv.uni-kl.de> => concerning the density profile
 	// begin
-	//! writing out a density profile in cylindrical coordinates?
+	//! slab profile of constant width
+	// width*width
+	double _universalSlabWidth2;
+	// middle of the simulation box with respect to z-coordinate
+	double _universalCenterZ;
+	
+	//! writing out a density profile in cylindrical coordinates
 	bool _universalCylindricalGeometry;
 	//! centre of the cylindrical coordinate system
 	double _universalCentre[3];
