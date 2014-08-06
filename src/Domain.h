@@ -543,7 +543,7 @@ private:
 	// begin
 	//! slab profile of constant width
 	// width*width
-	double _universalSlabWidth2;
+	double _maxSlabDist2;
 	// middle of the simulation box with respect to z-coordinate
 	double _universalCenterZ;
 	

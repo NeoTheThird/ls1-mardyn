@@ -996,7 +996,7 @@ void Domain::setupSlabProfile(unsigned xun, unsigned yun, double widthZ){
   this->_universalNProfileUnits[1] = yun;
   this->_universalNProfileUnits[2] = 1;
   
-  this->_universalSlabWidth2 = widthZ*widthZ;
+  this->_maxSlabDist2 = widthZ*widthZ/4.0;
   this->_universalCenterZ = 0.5*this->_globalLength[2];
   
   // inverse step width of the increments (defining the elemental volumes)
@@ -1015,11 +1015,8 @@ void Domain::recordSlabProfile(ParticleContainer* molCont){
 		cid = thismol->componentid();
 		if(this->_universalProfiledComponents[cid])
 		{
-// by Stefan Becker: enquiry if(_universalCylindricalGeometry) ... implemented
-// possible???: if no cylindrical profile is recorded => permanent calculation (before the "if..." ) of "distFor_unID" slows down the code
-// if the profile is however recorded in cylindrical coordinates, the current implementation is fast (?)   => solution?
 			double distToSlab2 = pow(thismol->r(2)- this->_universalCenterZ, 2.0);
-			if(distToSlab2 <= this-> _universalSlabWidth2){
+			if(distToSlab2 <= this-> _maxSlabDist2){
 			xun = (unsigned)floor(thismol->r(0) * this->_universalInvProfileUnit[0]);
 			yun = (unsigned)floor(thismol->r(1) * this->_universalInvProfileUnit[1]);
 			//zun = (unsigned)floor((thismol->r(2)-this->_ * this->_universalInvProfileUnit[2]);
