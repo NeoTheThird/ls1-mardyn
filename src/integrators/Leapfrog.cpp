@@ -39,8 +39,13 @@ void Leapfrog::transition1to2(ParticleContainer* molCont, Domain* domain) {
 		Molecule* tempMolecule;
 		double vcorr = 2. - 1. / domain->getGlobalBetaTrans();
 		double Dcorr = 2. - 1. / domain->getGlobalBetaRot();
+		// turning off the integration of component number 3 (internal cid = 2)
+		unsigned cid;
 		for (tempMolecule = molCont->begin(); tempMolecule != molCont->end(); tempMolecule = molCont->next()) {
-			tempMolecule->upd_preF(_timestepLength, vcorr, Dcorr);
+		  	cid = tempMolecule->componentid();
+			if(cid != 2){
+			  tempMolecule->upd_preF(_timestepLength, vcorr, Dcorr);
+			}
 		}
 
 		this->_state = 2;
@@ -61,10 +66,12 @@ void Leapfrog::transition2to3(ParticleContainer* molCont, Domain* domain) {
 		if (domain->severalThermostats()) {
 			for (tM = molCont->begin(); tM != molCont->end(); tM = molCont->next()) {
 				int cid = tM->componentid();
-				int thermostat = domain->getThermostat(cid);
-				tM->upd_postF(dt_half, summv2[thermostat], sumIw2[thermostat]);
-				N[thermostat]++;
-				rotDOF[thermostat] += domain->getComponentRotDOF(cid);
+				if(cid != 2){
+				  int thermostat = domain->getThermostat(cid);
+				  tM->upd_postF(dt_half, summv2[thermostat], sumIw2[thermostat]);
+				   N[thermostat]++;
+				  rotDOF[thermostat] += domain->getComponentRotDOF(cid);
+				}
 			}
 		}
 		else {
