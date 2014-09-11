@@ -1377,9 +1377,9 @@ void Simulation::simulate() {
 			}
 		  }
 		  else if(_thermostatType == ANDERSEN_THERMOSTAT){ //! the Andersen Thermostat
-		    global_log->info() << "Andersen Thermostat" << endl;
+//		    global_log->info() << "Andersen Thermostat" << endl;
 		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
-		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
+//		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
 		    unsigned numPartThermo = 0; // for testing reasons
 		    double tTarget;
 		    double stdDevTrans, stdDevRot;
@@ -1413,7 +1413,7 @@ void Simulation::simulate() {
 			}
 		      }
 		    }
-		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
+//		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
 		  }
 		}
 
