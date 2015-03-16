@@ -95,3 +95,6 @@ void Bubble::calcBubbleForce( ParticleContainer* partContainer, Domain* domain)
     particlePtrsForRegion.clear();
 } // end mthod calcTSLJ_9_3(...)
 
+double getCentre(unsigned direction){
+  return _bubbleCentre[direction];
+}
