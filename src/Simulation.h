@@ -312,6 +312,8 @@ private:
 
 	//! flag specifying whether planar interface profiles are recorded
 	bool _doRecordProfile;
+	//! flag specifying whether as single planar slab profile is recorded in an otherwise inhomogeneous setup (x,y-direction, at 0.5*Lz)
+	bool _doRecordSlabProfile;
 	//! Interval between two evaluations of the profile.
 	//! This means that only 1 / _profileRecordingTimesteps of the
 	//! internally available data are actually used, so if precision is
