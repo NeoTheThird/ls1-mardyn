@@ -751,16 +751,6 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			_domain->setupProfile(xun, yun, zun);
 			_doRecordProfile = true;
 		}
-		//! by Stefan Becker, token determining a profile recorded in a slab in the x-y surface, in the middle of the box, i.e. 0.5*Lz
-		else if (token == "slabProfile"){
-			// slab width in which the profile is recorded
-			double width;
-			// number of increments in the x,y-direction
-			unsigned xun, yun;
-			inputfilestream >> xun >> yun >> width;
-			this->_domain->setupSlabProfile(xun, yun, width);
-			_doRecordSlabProfile = true;
-		}
 		else if (token == "yOffset") {
 			double yOffset;
 			inputfilestream >> yOffset;
@@ -958,6 +948,13 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		  _wall.initialize(_domain->getComponents(),  rho_w, sig_w, eps_w, xi_sf, eta_sf, y_off, y_cut, yMirr);
 		  delete[] xi_sf;
 		  delete[] eta_sf;
+		}
+		else if (token == "Bubble"){
+		  double centre[3];
+		  double a, b, c, d, bubbleCutOff;
+		  _applyBubbleFun = true;
+		  inputfilestream  >> centre[0] >> centre[1] >> centre[2] >> a >> b >> c >> d >> bubbleCutOff;
+		  _bubble.initialize(a, b, c, d, bubbleCutOff, centre);
 		}
 		else if (token == "NumberOfFluidComponents"){
 		    double numFluidComp;
@@ -1246,6 +1243,9 @@ void Simulation::simulate() {
 		if(_applyWallFun){
 		  _wall.calcTSLJ_9_3(_moleculeContainer, _domain);
 		}
+		if(_applyBubbleFun){
+		  _bubble.calcBubbleForce(_moleculeContainer, _domain);
+		}
 
 		// test deletions and insertions
 		if (_simstep >= _initGrandCanonical) {
@@ -1377,9 +1377,9 @@ void Simulation::simulate() {
 			}
 		  }
 		  else if(_thermostatType == ANDERSEN_THERMOSTAT){ //! the Andersen Thermostat
-//		    global_log->info() << "Andersen Thermostat" << endl;
+		    global_log->info() << "Andersen Thermostat" << endl;
 		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
-//		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
+		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
 		    unsigned numPartThermo = 0; // for testing reasons
 		    double tTarget;
 		    double stdDevTrans, stdDevRot;
@@ -1413,7 +1413,7 @@ void Simulation::simulate() {
 			}
 		      }
 		    }
-//		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
+		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
 		  }
 		}
 
@@ -1503,24 +1503,6 @@ void Simulation::output(unsigned long simstep) {
 		}
 		_domain->resetProfile();
 	}
-	//! the same profile procedure for the slab profile
-	if ((simstep >= _initStatistics) && _doRecordSlabProfile && !(simstep % _profileRecordingTimesteps)) {
-		_domain->recordSlabProfile(_moleculeContainer);
-	}
-	if ((simstep >= _initStatistics) && _doRecordSlabProfile && !(simstep % _profileOutputTimesteps)) {
-		_domain->collectProfile(_domainDecomposition);
-		if (!ownrank) {
-			ostringstream osstrm;
-			osstrm << _profileOutputPrefix << ".";
-			osstrm.fill('0');
-			osstrm.width(9);
-			osstrm << right << simstep;
-			_domain->outputSlabProfile(osstrm.str().c_str());
-			osstrm.str("");
-			osstrm.clear();
-		}
-		_domain->resetProfile();
-	}
 
 	if (_domain->thermostatWarning())
 		global_log->warning() << "Thermostat!" << endl;
@@ -1595,7 +1577,6 @@ void Simulation::initialize() {
 	_outputPrefix = string("mardyn");
 	_outputPrefix.append(gettimestring());
 	_doRecordProfile = false;
-	_doRecordSlabProfile = false;
 	_profileRecordingTimesteps = 7;
 	_profileOutputTimesteps = 12500;
 	_profileOutputPrefix = "out";
@@ -1617,6 +1598,7 @@ void Simulation::initialize() {
 	_doCancelMomentum = false;
 	_momentumInterval = 1000;
 	_applyWallFun = false;
+	_applyBubbleFun = false;
 
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;
