@@ -966,6 +966,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		  inputfilestream  >> centre[0] >> centre[1] >> centre[2] >> a >> b >> c >> d >> bubbleCutOff;
 		  _bubble.initialize(a, b, c, d, bubbleCutOff, centre);
 		}
+		else if (token == "BubbleFreq"){
+		  unsigned _bubbleInsertionTimeStep;
+		  inputfilestream  >>_bubbleInsertionTimeStep;
+		}
 		else if (token == "NumberOfFluidComponents"){
 		    double numFluidComp;
 		    inputfilestream >> numFluidComp;
@@ -1235,6 +1239,20 @@ void Simulation::simulate() {
 			global_log->info()<<"particles after determine shift-methods, halo not present:" << particleNoTest<< "\n";
 #endif
 #endif
+		}
+		
+		//! insertion of particles into bubble
+		if( !(_simstep%_bubbleInsertionTimeStep) ){
+		  std::vector<Component>& components = _domain->getComponents();
+		  unsigned long id = ensemble.N() + 1;
+		  double r0[3];
+		  double v[3];
+		  for(unsigned i = 0; i<3; i++){
+		    r0[i] = _bubble.getCentre(i) + (0.5 - _rand.rnd());
+		    v[i] = _rand.rnd();
+		  }
+		  Molecule m1 = Molecule(id, 0, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
+		  _moleculeContainer->addParticle(m1);
 		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
@@ -1616,7 +1634,7 @@ void Simulation::initialize() {
 	_initGrandCanonical = 10000000;
 	_initStatistics = 20000;
 	h = 0.0;
-	
+		
 	_thermostatType = VELSCALE_THERMOSTAT;
 	_nuAndersen = 0.0;
 	_rand.init(8624);
@@ -1628,6 +1646,7 @@ void Simulation::initialize() {
 	_momentumInterval = 1000;
 	_applyWallFun = false;
 	_applyBubbleFun = false;
+	_bubbleInsertionTimeStep = 0;
 
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;
