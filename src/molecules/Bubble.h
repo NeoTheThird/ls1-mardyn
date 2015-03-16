@@ -47,6 +47,7 @@ public:
  ~Bubble();
   void initialize(double in_A, double in_B, double in_C, double in_D, double in_rc, double* in_BubbleCentre);
   void calcBubbleForce( ParticleContainer* partContainer, Domain* domain );
+  double getCentre(unsigned direction);
 
   
  	
@@ -57,9 +58,6 @@ private:
   double _D;
   double _rc2;
   double _bubbleCentre[3];
-  double _xCenter;
-  double _yCenter;
-  double _zCenter;  
 };
 
 
