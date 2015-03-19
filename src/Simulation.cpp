@@ -968,6 +968,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		}
 		else if (token == "BubbleFreq"){
 		  unsigned _bubbleInsertionTimeStep;
+		  _bubbleInsertion = true;
 		  inputfilestream  >>_bubbleInsertionTimeStep;
 		}
 		else if (token == "NumberOfFluidComponents"){
@@ -1243,18 +1244,21 @@ void Simulation::simulate() {
 		
 		/*! insertion of particles into bubble
 		 * by Stefan Becker <stefan.becker@mv.uni-kl.de> */
-		if( !(_simstep%_bubbleInsertionTimeStep) ){
+		if( !(_simstep%_bubbleInsertionTimeStep) && _bubbleInsertion){
 		  if(!(_domainDecomposition->getRank()) ){
 		    std::vector<Component>& components = _domain->getComponents();
 		    unsigned long id = ensemble.N() + 1;
 		    double r0[3];
 		    double v[3];
+		    unsigned cid = 0;
 		    for(unsigned i = 0; i<3; i++){
 		      r0[i] = _bubble.getCentre(i) + (0.5 - _rand.rnd());
 		      v[i] = _rand.rnd();
 		    }
-		    Molecule m1 = Molecule(id, 0, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
+		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
 		    _moleculeContainer->addParticle(m1);
+		    components[cid].incNumMolecules();
+		    m1.clearFM();
 		  }
 		}
 
@@ -1649,7 +1653,8 @@ void Simulation::initialize() {
 	_momentumInterval = 1000;
 	_applyWallFun = false;
 	_applyBubbleFun = false;
-	_bubbleInsertionTimeStep = 0;
+	_bubbleInsertion = false;
+	_bubbleInsertionTimeStep = 1000000000;
 
 	_pressureGradient = new PressureGradient(ownrank);
 	global_log->info() << "Constructing domain ..." << endl;
