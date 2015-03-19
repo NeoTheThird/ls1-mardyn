@@ -428,6 +428,7 @@ private:
 	
 	//! applying a field representing the bubble
 	bool _applyBubbleFun;
+	bool _bubbleInsertion;
 	
 	Bubble _bubble;
 	
