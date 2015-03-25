@@ -1255,7 +1255,9 @@ void Simulation::simulate() {
 		      r0[i] = _bubble.getCentre(i) + (0.5 - _rand.rnd());
 		      v[i] = _rand.rnd();
 		    }
-		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
+//		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
+		    // Nikola: first entry of quaternion needs to be 1.0:
+		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		    _moleculeContainer->addParticle(m1);
 		    components[cid].incNumMolecules();
 		    m1.clearFM();
