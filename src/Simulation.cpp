@@ -967,7 +967,6 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		  _bubble.initialize(a, b, c, d, bubbleCutOff, centre);
 		}
 		else if (token == "BubbleFreq"){
-		  unsigned _bubbleInsertionTimeStep;
 		  _bubbleInsertion = true;
 		  inputfilestream  >>_bubbleInsertionTimeStep;
 		}
@@ -1245,23 +1244,29 @@ void Simulation::simulate() {
 		/*! insertion of particles into bubble
 		 * by Stefan Becker <stefan.becker@mv.uni-kl.de> */
 		if( !(_simstep%_bubbleInsertionTimeStep) && _bubbleInsertion){
-		  if(!(_domainDecomposition->getRank()) ){
 		    std::vector<Component>& components = _domain->getComponents();
-		    unsigned long id = ensemble.N() + 1;
+		    unsigned long id = _domain->getglobalNumMolecules()+1;// ensemble.N() + 1;
+		    global_log->info() << "id = " << id<< endl;
 		    double r0[3];
 		    double v[3];
 		    unsigned cid = 0;
 		    for(unsigned i = 0; i<3; i++){
-		      r0[i] = _bubble.getCentre(i) + (0.5 - _rand.rnd());
+		      r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _rand.rnd());
 		      v[i] = _rand.rnd();
 		    }
-//		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 0., 0., 0., 0., 0., 0., 0., &components);
-		    // Nikola: first entry of quaternion needs to be 1.0:
-		    Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
-		    _moleculeContainer->addParticle(m1);
+		    if( (_moleculeContainer->getBoundingBoxMin(0) < r0[0]) && (_moleculeContainer->getBoundingBoxMax(0) > r0[0]) && 
+			(_moleculeContainer->getBoundingBoxMin(1) < r0[1]) && (_moleculeContainer->getBoundingBoxMax(1) > r0[1]) && 
+			(_moleculeContainer->getBoundingBoxMin(2) < r0[2]) && (_moleculeContainer->getBoundingBoxMax(2) > r0[2])		      
+		    ){
+		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
+		      _moleculeContainer->addParticle(m1);
+		      m1.clearFM();
+		    }
+		    global_log->info() << "particle added" << endl;
 		    components[cid].incNumMolecules();
-		    m1.clearFM();
-		  }
+		    _moleculeContainer->update();
+		    _domain->setglobalNumMolecules(id);
+		      //_domain->setglobalNumMolecules(id);
 		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
