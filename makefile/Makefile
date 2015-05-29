@@ -13,7 +13,7 @@ endif
 
 # compiler configuration
 # Show list of all available configurations with make cfg_list
-CFG ?= gcc
+CFG ?= icc-impi
 
 # parallelization type
 # Show list of all available parallelization types for the current config with cfg_help

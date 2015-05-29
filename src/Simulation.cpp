@@ -954,7 +954,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 	global_log->info() << "xx quadrupole present: " << quadrupole_present << endl;
 	global_log->info() << "xx tersoff present: " << tersoff_present << endl;
 
-#if 1
+#if 0
 	_cellProcessor = new LegacyCellProcessor( _cutoffRadius, _LJCutoffRadius, _tersoffCutoffRadius, _particlePairsHandler);
 #else
 	if (dipole_present || quadrupole_present || tersoff_present) {
@@ -1141,6 +1141,7 @@ void Simulation::simulate() {
 	Timer decompositionTimer;
 	Timer perStepIoTimer;
 	Timer ioTimer;
+  Timer forceTimer;
 
 #if defined(STEEREO) && defined(STEEREO_COUPLING)
 	_simstep = _initSimulation;
@@ -1188,7 +1189,9 @@ void Simulation::simulate() {
 		global_log->debug() << "Traversing pairs" << endl;
 		//cout<<"here somehow"<<endl;
 		//_moleculeContainer->traversePairs(_particlePairsHandler);
+    forceTimer.start();
 		_moleculeContainer->traverseCells(*_cellProcessor);
+    forceTimer.stop();
 
 		// test deletions and insertions
 		if (_simstep >= _initGrandCanonical) {
@@ -1363,12 +1366,21 @@ void Simulation::simulate() {
 			<< perStepIoTimer.get_etime() << " sec" << endl;
 	global_log->info() << "Final IO took:                 "
 			<< ioTimer.get_etime() << " sec" << endl;
+	global_log->info() << "Force calculation took:           "
+			<< forceTimer.get_etime() << " sec" << endl
+			<< forceTimer.get_etime() << endl;
 
 	unsigned long numTimeSteps = _numberOfTimesteps - _initSimulation + 1; // +1 because of <= in loop
-	double elapsed_time = loopTimer.get_etime() + decompositionTimer.get_etime();
-	double flop_rate = _ljFlopCounter->getTotalFlopCount() * numTimeSteps / elapsed_time / (1024*1024);
+	double peak_time = forceTimer.get_etime();
+	double peak_flop_rate = _ljFlopCounter->getTotalFlopCount() * numTimeSteps / peak_time / (1024*1024*1024);
+	double sustained_time = loopTimer.get_etime() + decompositionTimer.get_etime();
+	double sustained_flop_rate = _ljFlopCounter->getTotalFlopCount() * numTimeSteps / sustained_time / (1024*1024*1024);
+
 	global_log->info() << "LJ-FLOP-Count per Iteration: " << _ljFlopCounter->getTotalFlopCount() << " FLOPs" <<endl;
-	global_log->info() << "FLOP-rate: " << flop_rate << " MFLOPS" << endl;
+	global_log->info() << "peak      FLOP-rate: " << peak_flop_rate << " GFLOPS" << endl
+	                                              << peak_flop_rate <<              endl;
+	global_log->info() << "sustained FLOP-rate: " << sustained_flop_rate << " GFLOPS" << endl
+	                                              << sustained_flop_rate <<              endl;
 }
 
 void Simulation::output(unsigned long simstep) {

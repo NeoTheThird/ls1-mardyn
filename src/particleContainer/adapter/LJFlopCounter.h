@@ -174,7 +174,7 @@ private:
 	 * \brief The calculation of Virial and UPot for charges.
 	 * \details 0 for upot, 5 for virial.
 	 */
-	static const size_t _flops_ChargesMacroValues = 57;
+	static const size_t _flops_ChargesMacroValues = 57; // TODO check
 	/**
 	 * \brief Summing up Virial and UPot.
 	 * \details 2 additions.

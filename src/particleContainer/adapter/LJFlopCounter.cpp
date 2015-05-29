@@ -46,7 +46,7 @@ void LJFlopCounter::endTraversal() {
 	const double cflMolDist = _currentCounts.calc_molDist * _flops_MolDist;
 	const double cflCenterDist = (_currentCounts.calc_LJ + _currentCounts.calc_Charges) * _flops_CenterDist;
 	const double cflLJKernel = _currentCounts.calc_LJ * _flops_LJKernel;
-	const double cflChargesKernel = _currentCounts.calc_LJ * _flops_ChargesKernel;
+	const double cflChargesKernel = _currentCounts.calc_Charges * _flops_ChargesKernel;
 	const double cflSum = (_currentCounts.calc_LJ + _currentCounts.calc_Charges) * _flops_ForcesSum;
 	const double cflMacro = _currentCounts.calc_Macro * _flops_LJMacroValues;
 	const double cflMacroSum = _currentCounts.calc_Macro * _flops_MacroSum;
@@ -64,7 +64,7 @@ void LJFlopCounter::endTraversal() {
 	const double flMolDist = _totalCounts.calc_molDist * _flops_MolDist;
 	const double flCenterDist = (_totalCounts.calc_LJ + _totalCounts.calc_Charges) * _flops_CenterDist;
 	const double flLJKernel = _totalCounts.calc_LJ * _flops_LJKernel;
-	const double flChargesKernel = _totalCounts.calc_LJ * _flops_ChargesKernel;
+	const double flChargesKernel = _totalCounts.calc_Charges * _flops_ChargesKernel;
 	const double flSum = (_totalCounts.calc_LJ + _totalCounts.calc_Charges) * _flops_ForcesSum;
 	const double flMacro = _totalCounts.calc_Macro * _flops_LJMacroValues;
 	const double flMacroSum = _totalCounts.calc_Macro * _flops_MacroSum;
@@ -88,6 +88,8 @@ void LJFlopCounter::postprocessCell(ParticleCell & c) {
 }
 
 void LJFlopCounter::processCell(ParticleCell & c) {
+  if(c.isHaloCell()) return; // don't count Halo cells
+
 	const MoleculeList & molecules = c.getParticlePointers();
 	if (molecules.size() > 1) {
 		const MoleculeList::const_iterator end_i = --(molecules.end());
@@ -153,6 +155,8 @@ void LJFlopCounter::processCell(ParticleCell & c) {
 }
 
 void LJFlopCounter::processCellPair(ParticleCell & c1, ParticleCell & c2) {
+  if(c1.isHaloCell() and c2.isHaloCell()) return; // don't count Halo cells
+
 	const MoleculeList & molecules1 = c1.getParticlePointers();
 	const MoleculeList & molecules2 = c2.getParticlePointers();
 	if ((molecules1.size() > 0) && (molecules2.size() > 0)) {
