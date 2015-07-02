@@ -1251,18 +1251,32 @@ void Simulation::simulate() {
 		    double v[3];
 		    unsigned cid = 0;
 		    for(unsigned i = 0; i<3; i++){
-		      r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _rand.rnd());
-		      v[i] = _rand.rnd();
+		      r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _randbubble.rnd());
+		      v[i] = _randbubble.rnd();
 		    }
+                    int ownrank = 0;
+#ifdef ENABLE_MPI
+                    MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
+#endif
+		    /*
 		    if( (_moleculeContainer->getBoundingBoxMin(0) < r0[0]) && (_moleculeContainer->getBoundingBoxMax(0) > r0[0]) && 
 			(_moleculeContainer->getBoundingBoxMin(1) < r0[1]) && (_moleculeContainer->getBoundingBoxMax(1) > r0[1]) && 
 			(_moleculeContainer->getBoundingBoxMin(2) < r0[2]) && (_moleculeContainer->getBoundingBoxMax(2) > r0[2])		      
 		    ){
+		    */
+                    /*
+                    cout << "Bounding box from (" << _moleculeContainer->getBoundingBoxMin(0) << " / " << _moleculeContainer->getBoundingBoxMin(1) << " / " << _moleculeContainer->getBoundingBoxMin(2) << ") to (" << _moleculeContainer->getBoundingBoxMax(0) << " / " << _moleculeContainer->getBoundingBoxMax(1) << " / " << _moleculeContainer->getBoundingBoxMax(2) << ") for rank " << ownrank << ".\n";
+                    cout << "Bounding box from (" << _domainDecomposition->getBoundingBoxMin(0, _domain) << " / " << _domainDecomposition->getBoundingBoxMin(1, _domain) << " / " << _domainDecomposition->getBoundingBoxMin(2, _domain) << ") to (" << _domainDecomposition->getBoundingBoxMax(0, _domain) << " / " << _domainDecomposition->getBoundingBoxMax(1, _domain) << " / " << _domainDecomposition->getBoundingBoxMax(2, _domain) << ") for rank " << ownrank << ".\n";
+                    */
+                    if( (_domainDecomposition->getBoundingBoxMin(0, _domain) < r0[0]) && (_domainDecomposition->getBoundingBoxMax(0, _domain) > r0[0]) && 
+                        (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
+                        (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
+                    ){
 		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		      _moleculeContainer->addParticle(m1);
 		      m1.clearFM();
+                      // cout << "particle (ID " << id << ") added by rank " << ownrank << " at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
 		    }
-		    global_log->info() << "particle added" << endl;
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
 		    _domain->setglobalNumMolecules(id);
@@ -1652,6 +1666,7 @@ void Simulation::initialize() {
 	_thermostatType = VELSCALE_THERMOSTAT;
 	_nuAndersen = 0.0;
 	_rand.init(8624);
+        _randbubble.init(8625);
 
 	_doAlignCentre = false;
 	_componentSpecificAlignment = false;

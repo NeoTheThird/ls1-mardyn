@@ -440,7 +440,7 @@ private:
 	unsigned _momentumInterval;
 	
 	//! random number generator
-	Random _rand;
+	Random _rand, _randbubble;
 
 	
 public:	
