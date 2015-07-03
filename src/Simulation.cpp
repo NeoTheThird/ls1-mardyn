@@ -1265,7 +1265,7 @@ void Simulation::simulate() {
 		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		      _moleculeContainer->addParticle(m1);
 		      m1.clearFM();
-                      gloabl_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
+                      global_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
 		    }
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
