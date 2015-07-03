@@ -94,8 +94,8 @@ void Wall::calcTSLJ_9_3( ParticleContainer* partContainer, Domain* domain)
 	f[1] = 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/5.0/y9 - _sig3_wi[cid]/2.0/y3 ) / y;
 	_uPot_9_3[cid] += 4.0*M_PI* _rhoW * _eps_wi[cid] * _sig3_wi[cid] * ( sig9_wi/45.0/y9 - _sig3_wi[cid]/6.0/y3 ) + _uShift_9_3[cid];
 	(*particlePtrIter)->Fljcenteradd(0, f);
-      } // end if()
-    }
+      } 
+    }// end if()
   }
   
   double u_pot;

@@ -1262,10 +1262,41 @@ void Simulation::simulate() {
                         (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
                         (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
                     ){
-		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
-		      _moleculeContainer->addParticle(m1);
-		      m1.clearFM();
-                      global_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
+		      
+		      //! deciding wheter or not a particle is inserted, criterion: no neighboring particle closer than 1.0 sigma 
+		      bool insertionDecision = true;
+		      double regionLowCorner[3], regionHighCorner[3];
+		      list<Molecule*> particlePtrsForRegion;
+		      
+		      for(unsigned d = 0; d < 3; d++){
+			regionLowCorner[d] = _moleculeContainer->getBoundingBoxMin(d);
+			regionHighCorner[d] = _moleculeContainer->getBoundingBoxMax(d);
+		      }
+		      _moleculeContainer->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
+		      
+		      std::list<Molecule*>::iterator particlePtrIter;
+		      for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
+			//! so far for 1CLJ only
+			double dist[3];
+			double dist2;
+			for(int i = 0; i<3; i++){
+			  dist[i] = (*particlePtrIter)->r(i) - r0[i];
+			}
+			dist2 = dist[0]*dist[0] +dist[1]*dist[1] + dist[2]*dist[2];
+			if(dist2 < 1.0){
+			  insertionDecision = false;
+			}
+		      }
+		      //! end of decison
+		      
+		      
+		      //! actual insertion
+		      if(insertionDecision){
+			Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
+			_moleculeContainer->addParticle(m1);
+			m1.clearFM();
+			global_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
+		      }
 		    }
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
