@@ -1254,20 +1254,10 @@ void Simulation::simulate() {
 		      r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _randbubble.rnd());
 		      v[i] = _randbubble.rnd();
 		    }
-                    int ownrank = 0;
-#ifdef ENABLE_MPI
-                    MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
-#endif
-		    /*
-		    if( (_moleculeContainer->getBoundingBoxMin(0) < r0[0]) && (_moleculeContainer->getBoundingBoxMax(0) > r0[0]) && 
-			(_moleculeContainer->getBoundingBoxMin(1) < r0[1]) && (_moleculeContainer->getBoundingBoxMax(1) > r0[1]) && 
-			(_moleculeContainer->getBoundingBoxMin(2) < r0[2]) && (_moleculeContainer->getBoundingBoxMax(2) > r0[2])		      
-		    ){
-		    */
-                    /*
-                    cout << "Bounding box from (" << _moleculeContainer->getBoundingBoxMin(0) << " / " << _moleculeContainer->getBoundingBoxMin(1) << " / " << _moleculeContainer->getBoundingBoxMin(2) << ") to (" << _moleculeContainer->getBoundingBoxMax(0) << " / " << _moleculeContainer->getBoundingBoxMax(1) << " / " << _moleculeContainer->getBoundingBoxMax(2) << ") for rank " << ownrank << ".\n";
-                    cout << "Bounding box from (" << _domainDecomposition->getBoundingBoxMin(0, _domain) << " / " << _domainDecomposition->getBoundingBoxMin(1, _domain) << " / " << _domainDecomposition->getBoundingBoxMin(2, _domain) << ") to (" << _domainDecomposition->getBoundingBoxMax(0, _domain) << " / " << _domainDecomposition->getBoundingBoxMax(1, _domain) << " / " << _domainDecomposition->getBoundingBoxMax(2, _domain) << ") for rank " << ownrank << ".\n";
-                    */
+//                    int ownrank = 0;
+// #ifdef ENABLE_MPI
+//                     MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
+// #endif
                     if( (_domainDecomposition->getBoundingBoxMin(0, _domain) < r0[0]) && (_domainDecomposition->getBoundingBoxMax(0, _domain) > r0[0]) && 
                         (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
                         (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
@@ -1275,12 +1265,11 @@ void Simulation::simulate() {
 		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		      _moleculeContainer->addParticle(m1);
 		      m1.clearFM();
-                      // cout << "particle (ID " << id << ") added by rank " << ownrank << " at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
+                      gloabl_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
 		    }
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
 		    _domain->setglobalNumMolecules(id);
-		      //_domain->setglobalNumMolecules(id);
 		}
 
 		// ensure that all Particles are in the right cells and exchange Particles
@@ -1433,9 +1422,9 @@ void Simulation::simulate() {
 			}
 		  }
 		  else if(_thermostatType == ANDERSEN_THERMOSTAT){ //! the Andersen Thermostat
-		    global_log->info() << "Andersen Thermostat" << endl;
+//		    global_log->info() << "Andersen Thermostat" << endl;
 		    double nuDt = _nuAndersen * _integrator->getTimestepLength();
-		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
+//		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
 		    unsigned numPartThermo = 0; // for testing reasons
 		    double tTarget;
 		    double stdDevTrans, stdDevRot;
@@ -1469,7 +1458,7 @@ void Simulation::simulate() {
 			}
 		      }
 		    }
-		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
+//		    global_log->info() << "Andersen Thermostat: n = " << numPartThermo ++ << " particles thermostated\n";
 		  }
 		}
 
