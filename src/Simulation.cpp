@@ -1244,58 +1244,57 @@ void Simulation::simulate() {
 		/*! insertion of particles into bubble
 		 * by Stefan Becker <stefan.becker@mv.uni-kl.de> */
 		if( !(_simstep%_bubbleInsertionTimeStep) && _bubbleInsertion){
-		    std::vector<Component>& components = _domain->getComponents();
-		    unsigned long id = _domain->getglobalNumMolecules()+1;// ensemble.N() + 1;
-		    global_log->info() << "id = " << id<< endl;
-		    double r0[3];
-		    double v[3];
-		    unsigned cid = 0;
-		    for(unsigned i = 0; i<3; i++){
-		      r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _randbubble.rnd());
-		      v[i] = _randbubble.rnd();
+		  bool insertionDecision = true;
+		  std::vector<Component>& components = _domain->getComponents();
+		  unsigned long id = _domain->getglobalNumMolecules()+1;// ensemble.N() + 1;
+		  //global_log->info() << "id = " << id<< endl;
+		  double r0[3];
+		  double v[3];
+		  unsigned cid = 0;
+		  for(unsigned i = 0; i<3; i++){
+		    r0[i] = _bubble.getCentre(i) + 3.0*(0.5 - _randbubble.rnd());
+		    v[i] = _randbubble.rnd();
+		  } 
+                  int ownrank = 0;
+#ifdef ENABLE_MPI
+                  MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
+#endif
+		  if( (_domainDecomposition->getBoundingBoxMin(0, _domain) < r0[0]) && (_domainDecomposition->getBoundingBoxMax(0, _domain) > r0[0]) && 
+		      (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
+		      (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
+		  ){
+		    
+		    //! deciding wheter or not a particle is inserted, criterion: no neighboring particle closer than 1.0 sigma 
+		    double regionLowCorner[3], regionHighCorner[3];
+		    list<Molecule*> particlePtrsForRegion;
+		    
+		    for(unsigned d = 0; d < 3; d++){
+		      regionLowCorner[d] = _moleculeContainer->getBoundingBoxMin(d);
+		      regionHighCorner[d] = _moleculeContainer->getBoundingBoxMax(d);
 		    }
-//                    int ownrank = 0;
-// #ifdef ENABLE_MPI
-//                     MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
-// #endif
-                    if( (_domainDecomposition->getBoundingBoxMin(0, _domain) < r0[0]) && (_domainDecomposition->getBoundingBoxMax(0, _domain) > r0[0]) && 
-                        (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
-                        (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
-                    ){
-		      
-		      //! deciding wheter or not a particle is inserted, criterion: no neighboring particle closer than 1.0 sigma 
-		      bool insertionDecision = true;
-		      double regionLowCorner[3], regionHighCorner[3];
-		      list<Molecule*> particlePtrsForRegion;
-		      
-		      for(unsigned d = 0; d < 3; d++){
-			regionLowCorner[d] = _moleculeContainer->getBoundingBoxMin(d);
-			regionHighCorner[d] = _moleculeContainer->getBoundingBoxMax(d);
-		      }
-		      _moleculeContainer->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
-		      
-		      std::list<Molecule*>::iterator particlePtrIter;
-		      for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
-			//! so far for 1CLJ only
-			double dist[3];
-			double dist2;
-			for(int i = 0; i<3; i++){
-			  dist[i] = (*particlePtrIter)->r(i) - r0[i];
+		    _moleculeContainer->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
+		    
+		    std::list<Molecule*>::iterator particlePtrIter;
+		    for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
+		      //! so far for 1CLJ only
+		      double dist[3];
+		      double dist2;
+		      for(int i = 0; i<3; i++){
+			dist[i] = (*particlePtrIter)->r(i) - r0[i];
 			}
-			dist2 = dist[0]*dist[0] +dist[1]*dist[1] + dist[2]*dist[2];
-			if(dist2 < 1.0){
-			  insertionDecision = false;
+		    dist2 = dist[0]*dist[0] +dist[1]*dist[1] + dist[2]*dist[2];
+		    if(dist2 < 1.0){
+		      insertionDecision = false;
 			}
 		      }
-		      //! end of decison
-		      
-		      
-		      //! actual insertion
-		      if(insertionDecision){
-			Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
-			_moleculeContainer->addParticle(m1);
-			m1.clearFM();
-			global_log->info() << "particle (ID " << id << ") added at (" << r0[0] << " / " << r0[1] << " / " << r0[2] << ")." << endl;
+		    //! end of decison
+		    
+		    //! actual insertion
+		    if(insertionDecision){
+		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
+		      _moleculeContainer->addParticle(m1);
+		      m1.clearFM();
+		      cout << "particle added by rank " << ownrank << ", id = " << id <<", at r0 = ("<< r0[0] << "/" << r0[1] << "/" << r0[2] << ")." << endl;
 		      }
 		    }
 		    components[cid].incNumMolecules();
