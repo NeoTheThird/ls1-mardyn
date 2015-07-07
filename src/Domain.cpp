@@ -1669,16 +1669,25 @@ unsigned long Domain::getNumFluidMolecules(){
 int Domain::checkInsertion(DomainDecompBase* domainDecomp, int insertionRejection){
   
   int decision = 0;
+  int test = 0;
   /* checking over all processes, if the insertion can be performed, i.e. if insertionRejection == false
    *  false == 0 --> summation over values of insertionRejection yields 0 == false, if there insertion can be performed
    * --> not false == true
    */
-  cout << "Domain, insertionRejection= " << insertionRejection << endl; 
+  domainDecomp->collCommInit(1);
+  domainDecomp->collCommAppendInt(2);
+  domainDecomp->collCommAllreduceSum();
+  test = domainDecomp->collCommGetInt();
+  cout << "Domain, test= " << test<< endl; 
+  domainDecomp->collCommFinalize();
+  
+  
+  //cout << "Domain, insertionRejection= " << insertionRejection << endl; 
   domainDecomp->collCommInit(1);
   domainDecomp->collCommAppendInt(insertionRejection);
   domainDecomp->collCommAllreduceSum();
   decision = domainDecomp->collCommGetInt();
-  cout << "Domain, decision = " << decision << endl; 
+  //cout << "Domain, decision = " << decision << endl; 
   domainDecomp->collCommFinalize();
   return decision;
 }
