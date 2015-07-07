@@ -414,6 +414,9 @@ public:
 	double getSigma(unsigned cid, unsigned nthSigma);
 	// needed for the MmspdWriter (MegaMol)
 	unsigned getNumberOfComponents();
+	
+	// method for adding all bool values, deciding wheter an insertion of a particle into the bubble is performed 
+	int checkInsertion(DomainDecompBase* domainDecomp, int insertionRejection);
 
 	unsigned long N() {return _globalNumMolecules;}
 	unsigned long N(unsigned cid) { return _components[cid].getNumMolecules(); }

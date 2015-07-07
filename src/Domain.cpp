@@ -1427,6 +1427,7 @@ void Domain::cancelMomentum(
    domainDecomp->collCommAllreduceSum();
    for(unsigned short d = 0; d < 3; d++) globalMomentum[d]  = domainDecomp->collCommGetDouble();
    for(unsigned short d = 0; d < 3; d++) globalMomentum[d] /= _globalNumMolecules;
+   domainDecomp->collCommFinalize();
    if(!this->_localRank)
       global_log->info() << "Average momentum: (" << globalMomentum[0] << ", " << globalMomentum[1] << ", " << globalMomentum[2] << ") => removing.\n";
    for(Molecule* tm = molCont->begin(); tm != molCont->end(); tm = molCont->next())
@@ -1663,4 +1664,21 @@ unsigned long Domain::getNumFluidMolecules(){
     numFluidMolecules+=ci.getNumMolecules();
   }
   return numFluidMolecules;
+}
+
+int Domain::checkInsertion(DomainDecompBase* domainDecomp, int insertionRejection){
+  
+  int decision = 0;
+  /* checking over all processes, if the insertion can be performed, i.e. if insertionRejection == false
+   *  false == 0 --> summation over values of insertionRejection yields 0 == false, if there insertion can be performed
+   * --> not false == true
+   */
+  cout << "Domain, insertionRejection= " << insertionRejection << endl; 
+  domainDecomp->collCommInit(1);
+  domainDecomp->collCommAppendInt(insertionRejection);
+  domainDecomp->collCommAllreduceSum();
+  decision = domainDecomp->collCommGetInt();
+  cout << "Domain, decision = " << decision << endl; 
+  domainDecomp->collCommFinalize();
+  return decision;
 }

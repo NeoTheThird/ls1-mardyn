@@ -1241,10 +1241,23 @@ void Simulation::simulate() {
 #endif
 		}
 		
+
+
+		// ensure that all Particles are in the right cells and exchange Particles
+		global_log->debug() << "Updating container and decomposition" << endl;
+		loopTimer.stop();
+		decompositionTimer.start();
+		updateParticleContainerAndDecomposition(); // includes the creation of the halo
+		decompositionTimer.stop();
+		loopTimer.start();
+		
+		
+		
 		/*! insertion of particles into bubble
-		 * by Stefan Becker <stefan.becker@mv.uni-kl.de> */
+		 * by Stefan Becker <stefan.becker@mv.uni-kl.de>
+		 * the halo should be present */
 		if( !(_simstep%_bubbleInsertionTimeStep) && _bubbleInsertion){
-		  bool insertionDecision = true;
+		  bool insertionRejection = false;
 		  std::vector<Component>& components = _domain->getComponents();
 		  unsigned long id = _domain->getglobalNumMolecules()+1;// ensemble.N() + 1;
 		  //global_log->info() << "id = " << id<< endl;
@@ -1284,31 +1297,33 @@ void Simulation::simulate() {
 			}
 		    dist2 = dist[0]*dist[0] +dist[1]*dist[1] + dist[2]*dist[2];
 		    if(dist2 < 1.0){
-		      insertionDecision = false;
+		      insertionRejection = true;
+		      cout << "Insertion rejected" << endl;
+		      cout << "bool Test: false = " << false << endl;
 			}
 		      }
 		    //! end of decison
 		    
 		    //! actual insertion
-		    if(insertionDecision){
+		    if(!insertionRejection){
 		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		      _moleculeContainer->addParticle(m1);
 		      m1.clearFM();
 		      cout << "particle added by rank " << ownrank << ", id = " << id <<", at r0 = ("<< r0[0] << "/" << r0[1] << "/" << r0[2] << ")." << endl;
 		      }
 		    }
+		    cout << "insertionRejection = " << insertionRejection << endl;
+		    global_log->info() << "Rueckgabe von _domain->checkInsertion(_domainDecomposition, insertionRejection) = " << _domain->checkInsertion(_domainDecomposition, insertionRejection) << endl;
+		    if(!_domain->checkInsertion(_domainDecomposition, insertionRejection)){
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
 		    _domain->setglobalNumMolecules(id);
+		    cout << "Number of molecules increased to " << id << endl;
+		    }
 		}
-
-		// ensure that all Particles are in the right cells and exchange Particles
-		global_log->debug() << "Updating container and decomposition" << endl;
-		loopTimer.stop();
-		decompositionTimer.start();
-		updateParticleContainerAndDecomposition(); // includes the creation of the halo
-		decompositionTimer.stop();
-		loopTimer.start();
+		
+		
+		
 		
 		// Force calculation
 		global_log->debug() << "Traversing pairs" << endl;
