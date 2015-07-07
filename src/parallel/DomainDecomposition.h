@@ -180,7 +180,7 @@ public:
 	}
 
 	float collCommGetFloat() {
-		return _collComm.getInt();
+		return _collComm.getFloat();
 	}
 
 	double collCommGetDouble() {
