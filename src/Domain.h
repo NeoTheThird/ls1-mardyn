@@ -24,6 +24,7 @@
 
 #include "molecules/Comp2Param.h"
 #include "molecules/Component.h"
+#include "utils/Random.h"
 
 
 
@@ -42,6 +43,7 @@ class DomainDecompBase;
 class PressureGradient;
 
 extern const float PI; // by Stefan Becker <stefan.becker@mv.uni-kl.de>
+const double LOCAL_THERMOSTAT_RANGE = 7.0; // by Stefan Becker <stefan.becker@mv.uni-kl.de>
 
 //! @brief This class is used to read in the phasespace and to handle macroscopic values
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2011)
@@ -417,6 +419,9 @@ public:
 	
 	// method for adding all bool values, deciding wheter an insertion of a particle into the bubble is performed 
 	int checkInsertion(DomainDecompBase* domainDecomp, int insertionRejection);
+	
+	//! Andersen thermostat, locally applied
+	void localAndersenThermo(ParticleContainer* molCont, double nuDt, double centre[3]);
 
 	unsigned long N() {return _globalNumMolecules;}
 	unsigned long N(unsigned cid) { return _components[cid].getNumMolecules(); }
@@ -576,6 +581,10 @@ private:
 	// The component responsible for the shift in y-direction
 	std::map<unsigned,bool> _componentForYShift;
 	//end
+	
+	//! by stefan Becker <stefan.becker@mv.uni-kl.de>
+	//! Andersen thermostat, locally applied 
+	Random _rand;
 
 
 	int _universalSelectiveThermostatCounter;

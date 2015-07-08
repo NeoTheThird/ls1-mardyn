@@ -36,6 +36,7 @@ using Log::global_log;
 using namespace std;
 
 
+
 Domain::Domain(int rank, PressureGradient* pg){
 	_localRank = rank;
 	_localUpot = 0;
@@ -103,6 +104,7 @@ Domain::Domain(int rank, PressureGradient* pg){
 	_localUpotCspecif = 0.0;
 	_globalUpotCspecif = 0.0;
 	_numFluidComponent = 1;
+	_rand.init(8624);
 }
 
 void Domain::setLocalUpot(double Upot) {_localUpot = Upot;}
@@ -1674,22 +1676,38 @@ int Domain::checkInsertion(DomainDecompBase* domainDecomp, int insertionRejectio
    *  false == 0 --> summation over values of insertionRejection yields 0 == false, if there insertion can be performed
    * --> not false == true
    */
-  /*
-  domainDecomp->collCommInit(1);
-  domainDecomp->collCommAppendUnsLong(2);
-  domainDecomp->collCommAllreduceSum();
-  test = domainDecomp->collCommGetUnsLong();
-  cout << "Domain, test= " << test<< endl; 
-  domainDecomp->collCommFinalize();
-  */
-  
-  // cout << "Domain, insertionRejection= " << insertionRejection << endl; 
   domainDecomp->collCommInit(1);
   domainDecomp->collCommAppendUnsLong((unsigned long)insertionRejection);
   domainDecomp->collCommAllreduceSum();
   decision = domainDecomp->collCommGetUnsLong();
-  // cout << "Domain, decision = " << decision << endl; 
   domainDecomp->collCommFinalize();
   return (int)decision;
 }
 
+void Domain::localAndersenThermo(ParticleContainer* molCont, double nuDt, double centre[3]){
+		  double tTarget;
+		  double stdDevTrans, stdDevRot;
+		  tTarget = this->_universalTargetTemperature[0];
+		  
+		  //! definition of the local range for application of the thermostat
+		  double regionLowCorner[3], regionHighCorner[3];
+		  list<Molecule*> particlePtrsForRegion;
+		  for(unsigned d = 0; d < 3; d++){
+		    regionLowCorner[d] = centre[d] - LOCAL_THERMOSTAT_RANGE;
+		    regionHighCorner[d] = centre[d] + LOCAL_THERMOSTAT_RANGE;
+		  }
+		  molCont->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
+		  std::list<Molecule*>::iterator particlePtrIter;
+		 
+		  for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
+		    if (_rand.rnd() < nuDt){
+		      // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
+		      stdDevTrans = sqrt(tTarget/(*particlePtrIter)->gMass());
+		      for(unsigned short d = 0; d < 3; d++){
+			stdDevRot = sqrt(tTarget*(*particlePtrIter)->getI(d));
+			(*particlePtrIter)->setv(d,_rand.gaussDeviate(stdDevTrans));
+			(*particlePtrIter)->setD(d,_rand.gaussDeviate(stdDevRot));
+		      }
+		    }
+		  }// end for particlePtrsForRegion
+}

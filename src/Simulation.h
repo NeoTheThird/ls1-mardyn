@@ -61,6 +61,7 @@ const int VELSCALE_THERMOSTAT = 1;
 const int ANDERSEN_THERMOSTAT = 2;
 
 
+
 //! @brief controls the whole simulation process
 //! @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
 //!
