@@ -28,12 +28,13 @@ public:
 
     double GetInterfaceMidLeft() {return _dInterfaceMidLeft;}
     double GetInterfaceMidRight() {return _dInterfaceMidRight;}
-    void SetDistanceParameters(double d1090Thickness, double dCVFactor, double dTZoneFactor, double dSZoneFactor)
+    void SetDistanceParameters(double d1090Thickness, double dCVFactor, double dTZoneFactor, double dSZoneFactor, double dCVWidth)
     {
         _d1090Thickness = d1090Thickness;
         _dCVFactor      = dCVFactor;
         _dTZoneFactor   = dTZoneFactor;
         _dSZoneFactor   = dSZoneFactor;
+        _dCVWidth   = dCVWidth;
     }
 
     // get positions
@@ -42,8 +43,10 @@ public:
     double GetCVRight() {return _dControlVolumeRight;}
     double GetTZoneLeft()  {return _dTZoneLeft;}
     double GetTZoneRight() {return _dTZoneRight;}
-    double GetSZoneLeft()  {return _dSZoneLeft;}
-    double GetSZoneRight() {return _dSZoneRight;}
+    double GetSZoneLeft_lc()  {return _dSZoneLeft_lc;}
+    double GetSZoneLeft_uc()  {return _dSZoneLeft_uc;}
+    double GetSZoneRight_lc() {return _dSZoneRight_lc;}
+    double GetSZoneRight_uc() {return _dSZoneRight_uc;}
 
     void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
     void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -85,14 +88,17 @@ private:
     double _dCVFactor;
     double _dTZoneFactor;
     double _dSZoneFactor;
+    double _dCVWidth;
 
     // positions
     double _dControlVolumeLeft;
     double _dControlVolumeRight;
     double _dTZoneLeft;
     double _dTZoneRight;
-    double _dSZoneLeft;
-    double _dSZoneRight;
+    double _dSZoneLeft_lc;
+    double _dSZoneLeft_uc;
+    double _dSZoneRight_lc;
+    double _dSZoneRight_uc;
 
     // write data
     string _strFilename;

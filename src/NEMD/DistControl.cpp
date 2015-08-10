@@ -335,8 +335,11 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 
     // sampling zone
-    _dSZoneLeft  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
-    _dSZoneRight = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
+    _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
+    _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
+
+    _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
+    _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
 }
 
 void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
@@ -360,8 +363,11 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
     _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 
     // sampling zone
-    _dSZoneLeft  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
-    _dSZoneRight = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
+    _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
+    _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
+
+    _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
+    _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
 
 
     // DEBUG
@@ -419,8 +425,10 @@ void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsi
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dControlVolumeRight;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneLeft;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneRight;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft_lc;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft_uc;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_lc;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_uc;
         outputstream << endl;
 
         ofstream fileout(_strFilename.c_str(), ios::out|ios::app);
@@ -444,10 +452,12 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
     {
 #endif
 
-    outputstream << "             simstep" << "         midLeft" << "        midRight";
+    outputstream << "             simstep";
+    outputstream << "         midLeft" << "        midRight";
     outputstream << "          cvLeft" << "         cvRight";
     outputstream << "          tzLeft" << "         tzRight";
-    outputstream << "          szLeft" << "         szRight";
+    outputstream << "       szLeft_lc" << "       szLeft_uc";
+    outputstream << "      szRight_lc" << "      szRight_uc";
     outputstream << endl;
 
     ofstream fileout(_strFilename.c_str(), ios::out);

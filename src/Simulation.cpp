@@ -1333,18 +1333,18 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
              unsigned long nUpdateFreq;
              unsigned int nNumShells;
              double dInterfaceMidLeft, dInterfaceMidRight;
-             double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor;
+             double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth;
 
              inputfilestream >> nUpdateFreq >> nNumShells;
              inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
-             inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor;
+             inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
 
              if(_distControl == NULL)
              {
                  _distControl = new DistControl(_domain, nUpdateFreq, nNumShells);
 
                  // set distances
-                 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor);
+                 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
                  _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
              }
              else
@@ -1782,10 +1782,12 @@ void Simulation::simulate() {
             if(_regionSampling != NULL)
             {
                 // left sampling region
-                _regionSampling->GetSampleRegion(1)->SetUpperCorner(1, _distControl->GetSZoneLeft() );
+                _regionSampling->GetSampleRegion(1)->SetLowerCorner(1, _distControl->GetSZoneLeft_lc() );
+                _regionSampling->GetSampleRegion(1)->SetUpperCorner(1, _distControl->GetSZoneLeft_uc() );
 
                 // right sampling region
-                _regionSampling->GetSampleRegion(2)->SetLowerCorner(1, _distControl->GetSZoneRight() );
+                _regionSampling->GetSampleRegion(2)->SetLowerCorner(1, _distControl->GetSZoneRight_lc() );
+                _regionSampling->GetSampleRegion(2)->SetUpperCorner(1, _distControl->GetSZoneRight_uc() );
             }
 
             // write data
