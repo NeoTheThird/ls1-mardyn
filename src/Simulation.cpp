@@ -1332,19 +1332,19 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
              unsigned long nUpdateFreq;
              unsigned int nNumShells;
-             double dDistMidToCV;
              double dInterfaceMidLeft, dInterfaceMidRight;
+             double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor;
 
              inputfilestream >> nUpdateFreq >> nNumShells;
-             inputfilestream >> dDistMidToCV;
              inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
+             inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor;
 
              if(_distControl == NULL)
              {
                  _distControl = new DistControl(_domain, nUpdateFreq, nNumShells);
 
                  // set distances
-                 _distControl->SetDistances(dDistMidToCV);
+                 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor);
                  _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
              }
              else
@@ -1763,25 +1763,29 @@ void Simulation::simulate() {
             // update thermostat positions
             if(_temperatureControl != NULL)
             {
-                // left thermostat region (inertgas)
-                _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetInterfaceMidLeft() );
-
-                // middle thermostat region (liquid film, non-volatile component)
-                _temperatureControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
-                _temperatureControl->GetControlRegion(2)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
-
-                // left thermostat region (inertgas)
-                _temperatureControl->GetControlRegion(3)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() );
+                // middle thermostat region (liquid film)
+                _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
+                _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
             }
 
             // update drift control positions
             if(_driftControl != NULL)
             {
                 // left
-                _driftControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
+                _driftControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
 
                 // right
-                _driftControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
+                _driftControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
+            }
+
+            // update region sampling positions
+            if(_regionSampling != NULL)
+            {
+                // left sampling region
+                _regionSampling->GetSampleRegion(1)->SetUpperCorner(1, _distControl->GetSZoneLeft() );
+
+                // right sampling region
+                _regionSampling->GetSampleRegion(2)->SetLowerCorner(1, _distControl->GetSZoneRight() );
             }
 
             // write data

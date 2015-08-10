@@ -28,15 +28,22 @@ public:
 
     double GetInterfaceMidLeft() {return _dInterfaceMidLeft;}
     double GetInterfaceMidRight() {return _dInterfaceMidRight;}
-    void SetDistances(double dDistMidToCV)
+    void SetDistanceParameters(double d1090Thickness, double dCVFactor, double dTZoneFactor, double dSZoneFactor)
     {
-        _dDistMidToCV = dDistMidToCV;
+        _d1090Thickness = d1090Thickness;
+        _dCVFactor      = dCVFactor;
+        _dTZoneFactor   = dTZoneFactor;
+        _dSZoneFactor   = dSZoneFactor;
     }
 
     // get positions
     // positions
     double GetCVLeft() {return _dControlVolumeLeft;}
     double GetCVRight() {return _dControlVolumeRight;}
+    double GetTZoneLeft()  {return _dTZoneLeft;}
+    double GetTZoneRight() {return _dTZoneRight;}
+    double GetSZoneLeft()  {return _dSZoneLeft;}
+    double GetSZoneRight() {return _dSZoneRight;}
 
     void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
     void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -72,12 +79,20 @@ private:
     unsigned int _nWriteFreq;
     unsigned int _nWriteFreqDensity;
 
-    // distances
-    double _dDistMidToCV;     // interface midpoint <--> control volume
+    // distance parameters
+    // all distances are related to the 10-90 thickness of the interface
+    double _d1090Thickness;
+    double _dCVFactor;
+    double _dTZoneFactor;
+    double _dSZoneFactor;
 
     // positions
     double _dControlVolumeLeft;
     double _dControlVolumeRight;
+    double _dTZoneLeft;
+    double _dTZoneRight;
+    double _dSZoneLeft;
+    double _dSZoneRight;
 
     // write data
     string _strFilename;

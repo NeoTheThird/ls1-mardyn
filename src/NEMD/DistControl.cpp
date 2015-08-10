@@ -327,8 +327,16 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     _dInterfaceMidRight = dInterfaceMidRight;
 
     // control volume (CV)
-    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dDistMidToCV;
-    _dControlVolumeRight = _dInterfaceMidRight + _dDistMidToCV;
+    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
+    _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
+
+    // thermostating zone
+    _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+    _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
+
+    // sampling zone
+    _dSZoneLeft  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
+    _dSZoneRight = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
 }
 
 void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
@@ -344,8 +352,16 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
     // update positions
 
     // control volume (CV)
-    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dDistMidToCV;
-    _dControlVolumeRight = _dInterfaceMidRight + _dDistMidToCV;
+    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
+    _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
+
+    // thermostating zone
+    _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+    _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
+
+    // sampling zone
+    _dSZoneLeft  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
+    _dSZoneRight = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
 
 
     // DEBUG
@@ -396,11 +412,15 @@ void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsi
     if (rank == 0)
     {
 #endif
-        outputstream << std::setw(16) << simstep;
-        outputstream << std::setw(12) << fixed << std::setprecision(3) << _dInterfaceMidLeft;
-        outputstream << std::setw(12) << fixed << std::setprecision(3) << _dInterfaceMidRight;
-        outputstream << std::setw(12) << fixed << std::setprecision(3) << _dControlVolumeLeft;
-        outputstream << std::setw(12) << fixed << std::setprecision(3) << _dControlVolumeRight;
+        outputstream << std::setw(20) << simstep;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidLeft;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidRight;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dControlVolumeLeft;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dControlVolumeRight;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneLeft;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneRight;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight;
         outputstream << endl;
 
         ofstream fileout(_strFilename.c_str(), ios::out|ios::app);
@@ -426,6 +446,8 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
 
     outputstream << "             simstep" << "         midLeft" << "        midRight";
     outputstream << "          cvLeft" << "         cvRight";
+    outputstream << "          tzLeft" << "         tzRight";
+    outputstream << "          szLeft" << "         szRight";
     outputstream << endl;
 
     ofstream fileout(_strFilename.c_str(), ios::out);
