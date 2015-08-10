@@ -244,64 +244,34 @@ void ControlRegionD::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mo
             return;
     }
 
-//    cout << "[" << nRank << "]: " << "id = " << mol->id() << ", y = " << dPosY;
-//    cout << ", lcY = " << this->GetLowerCorner()[1] << ", ucY = " << this->GetUpperCorner()[1] << endl;
-
-    // if(_dDensityGlobal <= _dTargetDensity)  // exchange identity, dapt velocity
-
-//    cout << "[" << nRank << "]: " << "id = " << mol->id() << ", cid = " << mol->componentid()+1 << endl;
-
-    if(mol->componentid()+1 != 3)  // program intern component ID starts with 0
-    {
-        // store old mass / velocity
-        double m1 = mol->mass();
-
-        // inertgas component
-        vector<Component>& vComponents = *(simulation->getEnsemble()->components());
-        vector<Component>::iterator cit;
-        Component* comp3;  // inertgas
-
-        cit = vComponents.begin();
-        cit += 2;
-        comp3 = &(*(cit));
-
-        mol->setComponent(comp3);
-
-        // calc new velocity
-        double m2 = mol->mass();
-        double frac_m1_m2 = m1 / m2;
-
-        mol->scale_v(frac_m1_m2);
-    }
-
-    /*
-    else  // remove molecule
+    if( 0. == _dTargetDensity)
     {
         bDeleteMolecule = true;
     }
-    */
-
-    /* initialize random seed: */
-    srand (time(NULL) + mol->id() );
-
-    /* generate secret number between 0 and 99999: */
-    int nRand = rand() % 100000;
-
-    double dRand = (double) (nRand / 100000.);
-
-//    cout << "dRand = " << dRand << endl;
-//
-//    cout << "_dDensityGlobal = " << _dDensityGlobal << endl;
-//    cout << "_dTargetDensity = " << _dTargetDensity << endl;
-
-    double dPercentToTakeOut = (_dDensityGlobal - _dTargetDensity) / _dDensityGlobal;
-
-//    cout << "dPercentToTakeOut = " << dPercentToTakeOut << endl;
-
-    if(dPercentToTakeOut > 0. && dRand < abs(dPercentToTakeOut) )
-        bDeleteMolecule = true;
     else
-        bDeleteMolecule = false;
+    {
+        /* initialize random seed: */
+        srand (time(NULL) + mol->id() );
+
+        /* generate secret number between 0 and 99999: */
+        int nRand = rand() % 100000;
+
+        double dRand = (double) (nRand / 100000.);
+
+    //    cout << "dRand = " << dRand << endl;
+    //
+    //    cout << "_dDensityGlobal = " << _dDensityGlobal << endl;
+    //    cout << "_dTargetDensity = " << _dTargetDensity << endl;
+
+        double dPercentToTakeOut = (_dDensityGlobal - _dTargetDensity) / _dDensityGlobal;
+
+    //    cout << "dPercentToTakeOut = " << dPercentToTakeOut << endl;
+
+        if(dPercentToTakeOut > 0. && dRand < abs(dPercentToTakeOut) )
+            bDeleteMolecule = true;
+        else
+            bDeleteMolecule = false;
+    }
 }
 
 void ControlRegionD::ResetLocalValues()
