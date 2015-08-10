@@ -1334,14 +1334,32 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
              unsigned int nNumShells;
              double dInterfaceMidLeft, dInterfaceMidRight;
              double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth;
+             string strSimType;
 
              inputfilestream >> nUpdateFreq >> nNumShells;
              inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
              inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
+             inputfilestream >> strSimType;
+
+             int nSimType = -1;
+
+             if (strSimType == "equilibrium" || strSimType == "Equilibrium" )
+             {
+                 nSimType = SIMTYPE_EQUILIBRIUM;
+             }
+             else if (strSimType == "evaporation" || strSimType == "Evaporation" )
+             {
+                 nSimType = SIMTYPE_EVAPORATION;
+             }
+             else
+             {
+                global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
+                exit(-1);
+             }
 
              if(_distControl == NULL)
              {
-                 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells);
+                 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType);
 
                  // set distances
                  _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
@@ -1410,7 +1428,6 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
              }
 
          // <-- REGION_SAMPLING
-
 
 		} else {
 			if (token != "")
@@ -1751,7 +1768,7 @@ void Simulation::simulate() {
 
 
             // update CV positions
-            if(_densityControl != NULL)
+            if(_densityControl != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
             {
               // left CV
               _densityControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetCVLeft() );
@@ -1761,7 +1778,7 @@ void Simulation::simulate() {
             }
 
             // update thermostat positions
-            if(_temperatureControl != NULL)
+            if(_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
             {
                 // middle thermostat region (liquid film)
                 _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
@@ -1771,15 +1788,13 @@ void Simulation::simulate() {
             // update drift control positions
             if(_driftControl != NULL)
             {
-                // left
-                _driftControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
-
-                // right
-                _driftControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
+                // middle drift control region (inside liquid film)
+                _driftControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetDriftControlLeft() );
+                _driftControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetDriftControlRight() );
             }
 
             // update region sampling positions
-            if(_regionSampling != NULL)
+            if(_regionSampling != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
             {
                 // left sampling region
                 _regionSampling->GetSampleRegion(1)->SetLowerCorner(1, _distControl->GetSZoneLeft_lc() );

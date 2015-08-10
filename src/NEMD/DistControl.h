@@ -17,10 +17,16 @@ class ParticleContainer;
 class DomainDecompBase;
 class Molecule;
 
+enum SimulationTypes
+{
+    SIMTYPE_EQUILIBRIUM = 1,
+    SIMTYPE_EVAPORATION = 2
+};
+
 class DistControl
 {
 public:
-    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells);
+    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType);
     ~DistControl();
 
     // init
@@ -47,6 +53,10 @@ public:
     double GetSZoneLeft_uc()  {return _dSZoneLeft_uc;}
     double GetSZoneRight_lc() {return _dSZoneRight_lc;}
     double GetSZoneRight_uc() {return _dSZoneRight_uc;}
+    double GetDriftControlLeft() {return _dDriftControlLeft;}
+    double GetDriftControlRight() {return _dDriftControlRight;}
+
+    int GetSimType() {return _nSimType;}
 
     void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
     void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -99,10 +109,15 @@ private:
     double _dSZoneLeft_uc;
     double _dSZoneRight_lc;
     double _dSZoneRight_uc;
+    double _dDriftControlLeft;
+    double _dDriftControlRight;
 
     // write data
     string _strFilename;
     string _strFilenameDensityPrefix;
+
+    // simtype
+    int _nSimType;
 
 };  // class DistControl
 

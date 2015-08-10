@@ -17,7 +17,7 @@
 using namespace std;
 
 
-DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells)
+DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype)
 {
     _nUpdateFreq = nUpdateFreq;
     _nNumShells = nNumShells;
@@ -45,6 +45,9 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
 
     _strFilename = "DistControl.dat";
     _strFilenameDensityPrefix = "DistControlDensity";
+
+    // simtype
+    _nSimType = nSimtype;
 }
 
 DistControl::~DistControl()
@@ -340,6 +343,10 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
 
     _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
     _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
+
+    // drift control region
+    _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+    _dDriftControlRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 }
 
 void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
@@ -354,21 +361,27 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
 
     // update positions
 
-    // control volume (CV)
-    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
-    _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
+    if(_nSimType == SIMTYPE_EVAPORATION)
+    {
+        // control volume (CV)
+        _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
+        _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
 
-    // thermostating zone
-    _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-    _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
+        // thermostating zone
+        _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+        _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 
-    // sampling zone
-    _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
-    _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
+        // sampling zone
+        _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
+        _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
 
-    _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
-    _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
+        _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
+        _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
+    }
 
+    // drift control region
+    _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+    _dDriftControlRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 
     // DEBUG
 #ifdef DEBUG
@@ -429,6 +442,8 @@ void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsi
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft_uc;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_lc;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_uc;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dDriftControlLeft;
+        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dDriftControlRight;
         outputstream << endl;
 
         ofstream fileout(_strFilename.c_str(), ios::out|ios::app);
@@ -458,6 +473,7 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
     outputstream << "          tzLeft" << "         tzRight";
     outputstream << "       szLeft_lc" << "       szLeft_uc";
     outputstream << "      szRight_lc" << "      szRight_uc";
+    outputstream << "          dcLeft" << "         dcRight";
     outputstream << endl;
 
     ofstream fileout(_strFilename.c_str(), ios::out);
