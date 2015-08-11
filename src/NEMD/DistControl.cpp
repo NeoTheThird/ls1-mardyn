@@ -341,8 +341,8 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
     _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
 
-    _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
-    _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
+    _dSZoneLeft_lc  = _dControlVolumeLeft  - _dCVWidth;
+    _dSZoneRight_uc = _dControlVolumeRight + _dCVWidth;
 
     // drift control region
     _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
@@ -375,8 +375,8 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
         _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
         _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
 
-        _dSZoneLeft_lc  = _dSZoneLeft_uc  - _dCVWidth;
-        _dSZoneRight_uc = _dSZoneRight_lc + _dCVWidth;
+        _dSZoneLeft_lc  = _dControlVolumeLeft  - _dCVWidth;
+        _dSZoneRight_uc = _dControlVolumeRight + _dCVWidth;
     }
 
     // drift control region
