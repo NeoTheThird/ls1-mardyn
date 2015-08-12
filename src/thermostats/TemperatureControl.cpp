@@ -41,7 +41,8 @@ ControlRegionT::ControlRegionT(double dLowerCorner[3], double dUpperCorner[3], u
     _nNumSlabs = nNumSlabs;
 
     // calc slab width
-    _dSlabWidth = this->GetWidth(1) / ( (double)(_nNumSlabs) );
+    _dSlabWidthInit = this->GetWidth(1) / ( (double)(_nNumSlabs) );
+    _dSlabWidth = _dSlabWidthInit;
 
     // init data structures
     this->Init();
@@ -285,6 +286,24 @@ void ControlRegionT::ResetLocalValues()
 
         _dBetaTransGlobal[s] = 1.;
         _dBetaRotGlobal[s] = 1.;
+    }
+}
+
+void ControlRegionT::UpdateSlabParameters()
+{
+    double dWidth = this->GetWidth(1);
+    unsigned int nNumSlabsOld = _nNumSlabs;
+
+    _nNumSlabs = round(dWidth / _dSlabWidthInit);
+    _dSlabWidth =  dWidth / ( (double)(_nNumSlabs) );
+
+    // number of slabs cannot increase, otherwise data structures have to be reallocated
+    if(_nNumSlabs > nNumSlabsOld)
+    {
+        _nNumSlabs = nNumSlabsOld;
+        _dSlabWidth =  dWidth / ( (double)(_nNumSlabs) );
+
+        cout << "WARNING! Temperature reason increased!" << endl;
     }
 }
 
