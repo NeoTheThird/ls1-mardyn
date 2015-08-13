@@ -23,8 +23,11 @@ using namespace std;
 
 // class ControlRegionT
 
-ControlRegionT::ControlRegionT(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
+ControlRegionT::ControlRegionT(TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
 {
+    // store parent pointer
+    _parent = parent;
+
     // region span
     for(unsigned short d=0; d<3; ++d)
     {
@@ -96,20 +99,30 @@ ControlRegionT::~ControlRegionT()
 
 void ControlRegionT::Init()
 {
-    _nNumMoleculesLocal  = new unsigned long[_nNumSlabs];
-    _nNumMoleculesGlobal = new unsigned long[_nNumSlabs];
-    _nRotDOFLocal  = new unsigned long[_nNumSlabs];
-    _nRotDOFGlobal = new unsigned long[_nNumSlabs];
+    // allocate more slabs as initially needed as a reserve for the case that the
+    // temperature control region grows during simulation
+    unsigned int nNumSlabsReserve;
+    double dBoxWidthY = _parent->GetDomain()->getGlobalLength(1);
+    nNumSlabsReserve = (unsigned int) ( ceil(dBoxWidthY / this->GetWidth(1) * _nNumSlabs) );
 
-    _d2EkinTransLocal  = new double[_nNumSlabs];
-    _d2EkinTransGlobal = new double[_nNumSlabs];
-    _d2EkinRotLocal  = new double[_nNumSlabs];
-    _d2EkinRotGlobal = new double[_nNumSlabs];
+#ifdef DEBUG
+    cout << "nNumSlabsReserve = " << nNumSlabsReserve << endl;
+#endif
 
-    _dBetaTransGlobal = new double[_nNumSlabs];
-    _dBetaRotGlobal   = new double[_nNumSlabs];
+    _nNumMoleculesLocal  = new unsigned long[nNumSlabsReserve];
+    _nNumMoleculesGlobal = new unsigned long[nNumSlabsReserve];
+    _nRotDOFLocal  = new unsigned long[nNumSlabsReserve];
+    _nRotDOFGlobal = new unsigned long[nNumSlabsReserve];
 
-    for(unsigned int s = 0; s<_nNumSlabs; ++s)
+    _d2EkinTransLocal  = new double[nNumSlabsReserve];
+    _d2EkinTransGlobal = new double[nNumSlabsReserve];
+    _d2EkinRotLocal  = new double[nNumSlabsReserve];
+    _d2EkinRotGlobal = new double[nNumSlabsReserve];
+
+    _dBetaTransGlobal = new double[nNumSlabsReserve];
+    _dBetaRotGlobal   = new double[nNumSlabsReserve];
+
+    for(unsigned int s = 0; s<nNumSlabsReserve; ++s)
     {
         _nNumMoleculesLocal[s]  = 0;
         _nNumMoleculesGlobal[s] = 0;
@@ -292,11 +305,12 @@ void ControlRegionT::ResetLocalValues()
 void ControlRegionT::UpdateSlabParameters()
 {
     double dWidth = this->GetWidth(1);
-    unsigned int nNumSlabsOld = _nNumSlabs;
+//    unsigned int nNumSlabsOld = _nNumSlabs;
 
     _nNumSlabs = round(dWidth / _dSlabWidthInit);
     _dSlabWidth =  dWidth / ( (double)(_nNumSlabs) );
 
+/*
     // number of slabs cannot increase, otherwise data structures have to be reallocated
     if(_nNumSlabs > nNumSlabsOld)
     {
@@ -305,14 +319,19 @@ void ControlRegionT::UpdateSlabParameters()
 
         cout << "WARNING! Temperature reason increased!" << endl;
     }
+*/
 }
 
 
 
 // class TemperatureControl
 
-TemperatureControl::TemperatureControl(unsigned long nControlFreq, unsigned long nStart, unsigned long nStop)
+TemperatureControl::TemperatureControl(Domain* domain, DomainDecompBase* domainDecomp, unsigned long nControlFreq, unsigned long nStart, unsigned long nStop)
 {
+    // store pointer to Domain and DomainDecomposition
+    _domain = domain;
+    _domainDecomp = domainDecomp;
+
     // control frequency
     _nControlFreq = nControlFreq;
 
@@ -328,7 +347,7 @@ TemperatureControl::~TemperatureControl()
 
 void TemperatureControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
 {
-    _vecControlRegions.push_back(ControlRegionT(dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections) );
+    _vecControlRegions.push_back(ControlRegionT(this, dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections) );
 }
 
 void TemperatureControl::MeasureKineticEnergy(Molecule* mol, DomainDecompBase* domainDecomp, unsigned long simstep)
