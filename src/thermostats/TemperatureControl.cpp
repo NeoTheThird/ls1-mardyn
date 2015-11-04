@@ -215,14 +215,14 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
 #ifdef ENABLE_MPI
 
     // ToDo: communicate _nNumSlabs is enough?? or have to communicate _nNumSlabsReserve (whole data structure)
-    MPI_Allreduce( _nNumMoleculesLocal, _nNumMoleculesGlobal, _nNumSlabs, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce( _nRotDOFLocal, _nRotDOFGlobal, _nNumSlabs, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce( _nNumMoleculesLocal, _nNumMoleculesGlobal, _nNumSlabsReserve, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce( _nRotDOFLocal, _nRotDOFGlobal, _nNumSlabsReserve, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
 
-    MPI_Allreduce( _d2EkinTransLocal, _d2EkinTransGlobal, _nNumSlabs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce( _d2EkinRotLocal, _d2EkinRotGlobal, _nNumSlabs, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce( _d2EkinTransLocal, _d2EkinTransGlobal, _nNumSlabsReserve, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce( _d2EkinRotLocal, _d2EkinRotGlobal, _nNumSlabsReserve, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
 #else
-    for(unsigned int s = 0; s<_nNumSlabs; ++s)
+    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
     {
         _nNumMoleculesGlobal[s] = _nNumMoleculesLocal[s];
         _nRotDOFGlobal[s] = _nRotDOFLocal[s];
@@ -233,7 +233,7 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
 #endif
 
     // calc betaTrans, betaRot
-    for(unsigned int s = 0; s<_nNumSlabs; ++s)
+    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
     {
         if( _nNumMoleculesGlobal[s] < 1 )
             _dBetaTransGlobal[s] = 1.;
