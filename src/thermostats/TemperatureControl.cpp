@@ -409,8 +409,8 @@ void ControlRegionT::CalcGlobalValuesDeltaEkin()
 
 #ifdef ENABLE_MPI
 
-    MPI_Allreduce( _nNumMoleculesSumLocal, _nNumMoleculesSumGlobal, _nNumSlabsDeltaEkin, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce( _dDelta2EkinTransSumLocal, _dDelta2EkinTransSumGlobal, _nNumSlabsDeltaEkin, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Reduce( _nNumMoleculesSumLocal,    _nNumMoleculesSumGlobal,    _nNumSlabsDeltaEkin, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce( _dDelta2EkinTransSumLocal, _dDelta2EkinTransSumGlobal, _nNumSlabsDeltaEkin, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
 
 #else
     for(unsigned int s = 0; s<_nNumSlabsDeltaEkin; ++s)
