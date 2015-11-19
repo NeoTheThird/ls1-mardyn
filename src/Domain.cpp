@@ -1686,7 +1686,7 @@ int Domain::checkInsertion(DomainDecompBase* domainDecomp, int insertionRejectio
 
 void Domain::localAndersenThermo(ParticleContainer* molCont, double nuDt, double centre[3]){
 		  double tTarget;
-		  double stdDevTrans, stdDevRot;
+		  double stdDevTrans;// stdDevRot;
 		  tTarget = this->_universalTargetTemperature[0];
 		  
 		  //! definition of the local range for application of the thermostat

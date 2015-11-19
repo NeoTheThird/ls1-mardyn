@@ -1470,7 +1470,7 @@ void Simulation::simulate() {
 //		    global_log->info() << "Timestep length = " << _integrator->getTimestepLength() << " nuDt = " << nuDt << "\n";
 		    unsigned numPartThermo = 0; // for testing reasons
 		    double tTarget;
-		    double stdDevTrans, stdDevRot;
+		    double stdDevTrans; // stdDevRot;
 		    if(_domain->severalThermostats()) {
 		      for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) {
 			if (_rand.rnd() < nuDt){
@@ -1479,7 +1479,7 @@ void Simulation::simulate() {
 			  tTarget = _domain->getTargetTemperature(thermostat);
 			  stdDevTrans = sqrt(tTarget/tM->gMass());
 			  for(unsigned short d = 0; d < 3; d++){
-			    stdDevRot = sqrt(tTarget*tM->getI(d));
+			    //stdDevRot = sqrt(tTarget*tM->getI(d));
 			    tM->setv(d,_rand.gaussDeviate(stdDevTrans));
 			    //tM->setD(d,_rand.gaussDeviate(stdDevRot));
 			  }
