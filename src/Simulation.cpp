@@ -1481,7 +1481,7 @@ void Simulation::simulate() {
 			  for(unsigned short d = 0; d < 3; d++){
 			    stdDevRot = sqrt(tTarget*tM->getI(d));
 			    tM->setv(d,_rand.gaussDeviate(stdDevTrans));
-			    tM->setD(d,_rand.gaussDeviate(stdDevRot));
+			    //tM->setD(d,_rand.gaussDeviate(stdDevRot));
 			  }
 			}
 		      }
@@ -1494,9 +1494,9 @@ void Simulation::simulate() {
 			  // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
 			  stdDevTrans = sqrt(tTarget/tM->gMass());
 			  for(unsigned short d = 0; d < 3; d++){
-			    stdDevRot = sqrt(tTarget*tM->getI(d));
+			    //stdDevRot = sqrt(tTarget*tM->getI(d));
 			    tM->setv(d,_rand.gaussDeviate(stdDevTrans));
-			    tM->setD(d,_rand.gaussDeviate(stdDevRot));
+			    //tM->setD(d,_rand.gaussDeviate(stdDevRot));
 			  }
 			}
 		      }

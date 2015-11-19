@@ -1704,9 +1704,9 @@ void Domain::localAndersenThermo(ParticleContainer* molCont, double nuDt, double
 		      // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
 		      stdDevTrans = sqrt(tTarget/(*particlePtrIter)->gMass());
 		      for(unsigned short d = 0; d < 3; d++){
-			stdDevRot = sqrt(tTarget*(*particlePtrIter)->getI(d));
+			//stdDevRot = sqrt(tTarget*(*particlePtrIter)->getI(d));
 			(*particlePtrIter)->setv(d,_rand.gaussDeviate(stdDevTrans));
-			(*particlePtrIter)->setD(d,_rand.gaussDeviate(stdDevRot));
+			//(*particlePtrIter)->setD(d,_rand.gaussDeviate(stdDevRot));
 		      }
 		    }
 		  }// end for particlePtrsForRegion
