@@ -1307,9 +1307,9 @@ void Simulation::simulate() {
 		    
 		    //! actual insertion
 		    if(!insertionRejection){
-		      Molecule m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
-		      _moleculeContainer->addParticle(m1);
-		      m1.clearFM();
+		      Molecule *m1 = Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
+		      _moleculeContainer->addParticle(*m1);
+		      m1->clearFM();
 //		      cout << "particle added by rank " << ownrank << ", id = " << id <<", at r0 = ("<< r0[0] << "/" << r0[1] << "/" << r0[2] << ")." << endl;
 		      }
 		    }
