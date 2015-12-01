@@ -1262,7 +1262,7 @@ void Simulation::simulate() {
 		  bool insertionRejection = false;
 		  std::vector<Component>& components = _domain->getComponents();
 		  unsigned long id = _domain->getglobalNumMolecules()+1;// ensemble.N() + 1;
-//		  global_log->info() << "id = " << id<< endl;
+		  //global_log->info() << "id = " << id<< endl;
 		  double r0[3];
 		  double v[3];
 		  unsigned cid = 0;
@@ -1270,10 +1270,13 @@ void Simulation::simulate() {
 		    r0[i] = _bubble.getCentre(i) + 10.0*(0.5 - _randbubble.rnd());
 		    v[i] = _randbubble.rnd();
 		  } 
-//                   int ownrank = 0;
-// #ifdef ENABLE_MPI
-//                   MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
-// #endif
+		  //cout << "test particle at r = ("<<r0[0] << ", " << r0[1] << ", " << r0[2]<< ")" <<endl;
+//                     int ownrank = 0;
+//   #ifdef ENABLE_MPI
+//                     MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
+//   #endif
+// 		    cout << "bounding box of rank " << ownrank << " at lowCorner = (" << _domainDecomposition->getBoundingBoxMin(0, _domain) << ", " << _domainDecomposition->getBoundingBoxMin(1, _domain) << ", " << _domainDecomposition->getBoundingBoxMin(2, _domain) << ")" << endl;
+// 		    cout << "high corner = (" << _domainDecomposition->getBoundingBoxMax(0, _domain) << ", " << _domainDecomposition->getBoundingBoxMax(1, _domain) << ", " << _domainDecomposition->getBoundingBoxMin(2, _domain) << ")" << endl;
 		  if( (_domainDecomposition->getBoundingBoxMin(0, _domain) < r0[0]) && (_domainDecomposition->getBoundingBoxMax(0, _domain) > r0[0]) && 
 		      (_domainDecomposition->getBoundingBoxMin(1, _domain) < r0[1]) && (_domainDecomposition->getBoundingBoxMax(1, _domain) > r0[1]) && 
 		      (_domainDecomposition->getBoundingBoxMin(2, _domain) < r0[2]) && (_domainDecomposition->getBoundingBoxMax(2, _domain) > r0[2])                      
@@ -1298,9 +1301,9 @@ void Simulation::simulate() {
 			dist[i] = (*particlePtrIter)->r(i) - r0[i];
 			}
 		    dist2 = dist[0]*dist[0] +dist[1]*dist[1] + dist[2]*dist[2];
-		    if(dist2 < 1.0){
+		    if(dist2 < 1.5){
 		      insertionRejection = true;
-		      //cout << "Insertion rejected" << endl;
+//		      cout << "Insertion rejected by rank " << ownrank << endl;
 			}
 		      }
 		    //! end of decison
@@ -1310,10 +1313,11 @@ void Simulation::simulate() {
 		      Molecule *m1 = new Molecule(id, cid, r0[0], r0[1], r0[2], v[0], v[1], v[2], 1., 0., 0., 0., 0., 0., 0., &components);
 		      _moleculeContainer->addParticle(*m1);
 		      m1->clearFM();
-//		      cout << "particle added by rank " << ownrank << ", id = " << id <<", at r0 = ("<< r0[0] << "/" << r0[1] << "/" << r0[2] << ")." << endl;
+//		      cout << "particle added by rank "<<ownrank<<", id = " << id <<", at r0 = ("<< r0[0] << "/" << r0[1] << "/" << r0[2] << "); velocity v0 = (" <<v[0]<< ", " <<v[1] << ", " <<v[2] << ")." << endl;
 		      }
 		    }
 		    if(!_domain->checkInsertion(_domainDecomposition, insertionRejection)){
+//		    cout << "rank " << ownrank << ": ! _domain->checkInsertion(_domainDecomposition, insertionRejection)) = " << !_domain->checkInsertion(_domainDecomposition, insertionRejection) << " " << endl;
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
 		    _domain->setglobalNumMolecules(id);
@@ -1505,9 +1509,13 @@ void Simulation::simulate() {
 		  }
 		}
 		
+// 		int ownrank = 0;
+// #ifdef ENABLE_MPI
+// 		MPI_CHECK( MPI_Comm_rank(MPI_COMM_WORLD, &ownrank) );
+// #endif
 		
 		//! Applying the local Andersen thermostat, in the massive collision version, every 200 time steps
-		if(_bubbleInsertion && !(_simstep%200)){
+		if(_applyBubbleFun&& !(_simstep%500)){
 		  global_log->info() << "Calling the local massive collision Andersen thermostat" << endl;
 		  //! nuDt = 1.0 means the massive collision version of the Andersen thermostat
 		  double nuDt = 1.0; // _nuAndersen * _integrator->getTimestepLength();
@@ -1520,6 +1528,7 @@ void Simulation::simulate() {
 		      (_domainDecomposition->getBoundingBoxMax(1, _domain) > bubbleCentre[1] - LOCAL_THERMOSTAT_RANGE) && (_domainDecomposition->getBoundingBoxMin(1, _domain) < bubbleCentre[1] + LOCAL_THERMOSTAT_RANGE) && 
 		      (_domainDecomposition->getBoundingBoxMax(2, _domain) > bubbleCentre[2] - LOCAL_THERMOSTAT_RANGE) && (_domainDecomposition->getBoundingBoxMin(2, _domain) < bubbleCentre[0] + LOCAL_THERMOSTAT_RANGE)
 		  ){
+//		    cout << "Local Andersen Thermostat applied by rank " << ownrank << endl;
 		    _domain->localAndersenThermo(_moleculeContainer, nuDt, bubbleCentre);
 		  }
 		}

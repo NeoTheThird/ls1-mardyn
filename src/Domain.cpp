@@ -1698,9 +1698,13 @@ void Domain::localAndersenThermo(ParticleContainer* molCont, double nuDt, double
 		  }
 		  molCont->getRegion(regionLowCorner, regionHighCorner, particlePtrsForRegion);
 		  std::list<Molecule*>::iterator particlePtrIter;
+//		  cout << "Application of the local Andersen thermostat in the Bounding Box lowCorner = (" << regionLowCorner[0] << ", " << regionLowCorner[1] << ", " << regionLowCorner[2] << ")" << endl;
+//		  cout << "HighCorner = (" << regionHighCorner[0] << ", " << regionHighCorner[1] << ", " << regionHighCorner[2] << ")" << endl;
 		 
+		  //unsigned numThermo = 0;
 		  for(particlePtrIter = particlePtrsForRegion.begin(); particlePtrIter != particlePtrsForRegion.end(); particlePtrIter++){
 		    if (_rand.rnd() < nuDt){
+		      //unsigned id = (*particlePtrIter) ->id();
 		      // action of the anderson thermostat: mimic a collision by assigning a maxwell distributed velocity
 		      stdDevTrans = sqrt(tTarget/(*particlePtrIter)->gMass());
 		      for(unsigned short d = 0; d < 3; d++){
@@ -1708,6 +1712,9 @@ void Domain::localAndersenThermo(ParticleContainer* molCont, double nuDt, double
 			(*particlePtrIter)->setv(d,_rand.gaussDeviate(stdDevTrans));
 			//(*particlePtrIter)->setD(d,_rand.gaussDeviate(stdDevRot));
 		      }
+		      //numThermo++;
+		      //cout << "Particle with ID = " << id << " thermostatted" << endl;
 		    }
 		  }// end for particlePtrsForRegion
+//		  cout << "N = " << numThermo << " particles thermostatted by the local Andersen" << endl;
 }
