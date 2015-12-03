@@ -1320,6 +1320,7 @@ void Simulation::simulate() {
 //		    cout << "rank " << ownrank << ": ! _domain->checkInsertion(_domainDecomposition, insertionRejection)) = " << !_domain->checkInsertion(_domainDecomposition, insertionRejection) << " " << endl;
 		    components[cid].incNumMolecules();
 		    _moleculeContainer->update();
+		    _moleculeContainer->updateMoleculeCaches();
 		    _domain->setglobalNumMolecules(id);
 		    }
 		}
