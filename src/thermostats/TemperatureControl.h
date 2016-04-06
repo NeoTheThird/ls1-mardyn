@@ -21,7 +21,7 @@ class ControlRegionT
 {
 public:
     ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
-                    double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin );
+                    double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin );
     ~ControlRegionT();
 
     void Init();
@@ -71,7 +71,8 @@ private:
     double* _dBetaTransGlobal;
     double* _dBetaRotGlobal;
 
-    double _dTargetTemperature;
+    double _dTargetTemperature[2];
+    double* _dTargetTemperatureVec;
     double _dTemperatureExponent;
     unsigned int _nTargetComponentID;
     unsigned short _nNumThermostatedTransDirections;
@@ -101,7 +102,7 @@ public:
     TemperatureControl(Domain* domain, DomainDecompBase* domainDecomp, unsigned long nControlFreq, unsigned long nStart, unsigned long nStop);
     ~TemperatureControl();
 
-    void AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections);
+    void AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections);
     int GetNumRegions() {return _vecControlRegions.size();}
     ControlRegionT* GetControlRegion(unsigned short nRegionID) {return &(_vecControlRegions.at(nRegionID-1) ); }  // vector index starts with 0, region index with 1
 

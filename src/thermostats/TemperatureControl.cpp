@@ -25,7 +25,7 @@ using namespace std;
 // class ControlRegionT
 
 ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
-                                double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin )
+                                double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin )
 {
     // store parent pointer
     _parent = parent;
@@ -41,7 +41,8 @@ ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[
     }
 
     _nTargetComponentID = nComp;
-    _dTargetTemperature = dTargetTemperature;
+    _dTargetTemperature[0] = dTargetTemperature[0];
+    _dTargetTemperature[1] = dTargetTemperature[1];
 
     _dTemperatureExponent = dTemperatureExponent;
 
@@ -208,6 +209,19 @@ void ControlRegionT::Init()
     this->WriteHeaderDeltaEkin(_parent->GetDomainDecomposition(), _parent->GetDomain() );
 
     // <-- CALC_HEAT_SUPPLY
+
+    // target temperature vector to maintain a temperature gradient
+    cout << "--------- T-grad ------------" << endl;
+    _dTargetTemperatureVec = new double[_nNumSlabsReserve];
+    double dT = _dTargetTemperature[1] - _dTargetTemperature[0];
+    double dSlabsMinusOne = (double)(_nNumSlabs-1);
+
+    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
+    {
+    	_dTargetTemperatureVec[s] = _dTargetTemperature[0] + dT/dSlabsMinusOne*s;
+    	cout << "[" << s << "]: " << _dTargetTemperatureVec[s] << endl;
+    }
+    cout << "--------- T-grad ------------" << endl;
 }
 
 void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
@@ -238,12 +252,12 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
         if( _nNumMoleculesGlobal[s] < 1 )
             _dBetaTransGlobal[s] = 1.;
         else
-            _dBetaTransGlobal[s] = pow(_nNumThermostatedTransDirections * _nNumMoleculesGlobal[s] * _dTargetTemperature / _d2EkinTransGlobal[s], _dTemperatureExponent);
+            _dBetaTransGlobal[s] = pow(_nNumThermostatedTransDirections * _nNumMoleculesGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinTransGlobal[s], _dTemperatureExponent);
 
         if( _nRotDOFGlobal[s] < 1 )
             _dBetaRotGlobal[s] = 1.;
         else
-            _dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * _dTargetTemperature / _d2EkinRotGlobal[s], _dTemperatureExponent);
+            _dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinRotGlobal[s], _dTemperatureExponent);
     }
 
 //    cout << "_nNumMoleculesGlobal[0] = " << _nNumMoleculesGlobal[0] << endl;
@@ -401,6 +415,15 @@ void ControlRegionT::UpdateSlabParameters()
         cout << "WARNING! Temperature reason increased!" << endl;
     }
 */
+
+    // target temperature vector to maintain a temperature gradient
+    double dT = _dTargetTemperature[1] - _dTargetTemperature[0];
+    double dSlabsMinusOne = (double)(_nNumSlabs-1);
+
+    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
+    {
+    	_dTargetTemperatureVec[s] = _dTargetTemperature[0] + dT/dSlabsMinusOne*s;
+    }
 }
 
 
@@ -557,7 +580,7 @@ TemperatureControl::~TemperatureControl()
 
 }
 
-void TemperatureControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
+void TemperatureControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
 {
     _vecControlRegions.push_back(ControlRegionT(this, dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections, GetNumRegions()+1, _nNumSlabsDeltaEkin ) );
 }

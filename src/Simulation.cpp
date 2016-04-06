@@ -1147,7 +1147,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 double dUpperCorner[3];
                 unsigned int nNumSlabs;
                 unsigned int nComp;
-                double dTargetTemperature;
+                double dTargetTemperature[2];
                 double dTemperatureExponent;
                 string strTransDirections;
 
@@ -1166,8 +1166,20 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 // target component / temperature
                 inputfilestream >> nNumSlabs;
                 inputfilestream >> nComp;
-                inputfilestream >> dTargetTemperature;
-                inputfilestream >> dTemperatureExponent;
+                inputfilestream >> dTargetTemperature[0];
+                inputfilestream >> strToken;
+
+                if(strToken == "to")
+                {
+                	inputfilestream >> dTargetTemperature[1];
+                	inputfilestream >> dTemperatureExponent;
+                }
+                else
+                {
+                	dTargetTemperature[1] = dTargetTemperature[0];
+                	dTemperatureExponent = atof(strToken.c_str());
+                }
+
                 inputfilestream >> strTransDirections;
 
                 if( strTransDirections != "x"  && strTransDirections != "y"  && strTransDirections != "z"  &&
