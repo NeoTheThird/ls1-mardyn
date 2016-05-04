@@ -73,6 +73,7 @@ private:
 
     double _dTargetTemperature[2];
     double* _dTargetTemperatureVec;
+    bool _bTemperatureGradient;
     double _dTemperatureExponent;
     unsigned int _nTargetComponentID;
     unsigned short _nNumThermostatedTransDirections;
