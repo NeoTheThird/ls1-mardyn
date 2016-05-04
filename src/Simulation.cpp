@@ -1722,13 +1722,14 @@ void Simulation::simulate() {
             _densityControl->GetStart() < _simstep && _densityControl->GetStop() >= _simstep &&  // respect start/stop
             _simstep % _densityControl->GetControlFreq() == 0 )  // respect control frequency
         {
+        	/*
 			// init MPI
         	_densityControl->InitMPI();
 
         	// only relevant processes should do the following
             if( !_densityControl->ProcessIsRelevant() )
             	break;
-
+        	 */
             Molecule* tM;
 
             // init density control

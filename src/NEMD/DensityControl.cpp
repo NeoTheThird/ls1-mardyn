@@ -177,10 +177,10 @@ void ControlRegionD::InitMPI()
 void ControlRegionD::CalcGlobalValues(DomainDecompBase* domainDecomp)
 {
 #ifdef ENABLE_MPI
-    if (_newcomm == MPI_COMM_NULL)
-        return;
+//    if (_newcomm == MPI_COMM_NULL)
+//        return;
 
-    MPI_Allreduce( &_nNumMoleculesLocal, &_nNumMoleculesGlobal, 1, MPI_UNSIGNED_LONG, MPI_SUM, _newcomm);
+    MPI_Allreduce( &_nNumMoleculesLocal, &_nNumMoleculesGlobal, 1, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD); // _newcomm);
 
     _dDensityGlobal = _nNumMoleculesGlobal * _dInvertVolume;
 #else
