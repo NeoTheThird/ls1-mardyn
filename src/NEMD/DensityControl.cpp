@@ -64,6 +64,9 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
         cout << "ControlRegionD::ControlRegionD: Control region dimensions are outside of simulation volume! Programm exit..." << endl;
         exit(-1);
     }
+
+    // init rank array
+    _ranks = NULL;
 }
 
 
@@ -102,6 +105,9 @@ void ControlRegionD::InitMPI()
     // cout << "nNumRelevantGlobal = " << nNumRelevantGlobal << endl;
 
     // allocate rank array
+    if(_ranks != NULL)
+    	delete _ranks;
+
     _ranks = new int[nNumRelevantGlobal];
 
     int nUnregistered = 1;
@@ -137,7 +143,7 @@ void ControlRegionD::InitMPI()
     else
         _bProcessIsRelevant = false;
 
-    MPI_Group          group, newgroup;
+    MPI_Group group, newgroup;
 
     MPI_Comm_group(MPI_COMM_WORLD, &group);
 
