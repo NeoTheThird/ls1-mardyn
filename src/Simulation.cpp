@@ -1718,10 +1718,16 @@ void Simulation::simulate() {
         unsigned long nNumMoleculesDeletedLocal = 0;
         unsigned long nNumMoleculesDeletedGlobal = 0;
 
-        if( _densityControl != NULL && _densityControl->ProcessIsRelevant() &&
+        if( _densityControl != NULL  &&
             _densityControl->GetStart() < _simstep && _densityControl->GetStop() >= _simstep &&  // respect start/stop
             _simstep % _densityControl->GetControlFreq() == 0 )  // respect control frequency
         {
+			// init MPI
+        	_densityControl->InitMPI();
+
+        	// only relevant processes should do the following
+            if( !_densityControl->ProcessIsRelevant() )
+            	break;
 
             Molecule* tM;
 

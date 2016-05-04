@@ -64,9 +64,6 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
         cout << "ControlRegionD::ControlRegionD: Control region dimensions are outside of simulation volume! Programm exit..." << endl;
         exit(-1);
     }
-
-    // init MPI
-    this->InitMPI();
 }
 
 
