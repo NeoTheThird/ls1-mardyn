@@ -75,6 +75,7 @@ public:
     ControlRegionD* GetControlRegion(unsigned short nRegionID) {return &(_vecControlRegions.at(nRegionID-1) ); }  // vector index starts with 0, region index with 1
 
     void Init(unsigned long simstep);
+    void InitMPI();
     void MeasureDensity(Molecule* mol, DomainDecompBase* domainDecomp, unsigned long simstep);
     void CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned long simstep);
     void UpdateGlobalDensities(DomainDecompBase* domainDecomp, unsigned long simstep, bool bDeleteMolecule );

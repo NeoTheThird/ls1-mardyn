@@ -402,6 +402,15 @@ void DensityControl::Init(unsigned long simstep)
     }
 }
 
+void DensityControl::InitMPI()
+{
+    // reset local values
+    std::vector<ControlRegionD>::iterator it;
 
+    for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
+    {
+        (*it).InitMPI();
+    }
+}
 
 
