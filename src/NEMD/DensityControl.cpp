@@ -176,6 +176,10 @@ void ControlRegionD::InitMPI()
 
 void ControlRegionD::CalcGlobalValues(DomainDecompBase* domainDecomp)
 {
+	// In vacuum evaporation simulation global density of control region has not to be calculated
+	if( 0. == _dTargetDensity)
+		return;
+
 #ifdef ENABLE_MPI
 //    if (_newcomm == MPI_COMM_NULL)
 //        return;
@@ -215,6 +219,10 @@ void ControlRegionD::UpdateGlobalDensity(DomainDecompBase* domainDecomp, bool bD
 
 void ControlRegionD::MeasureDensity(Molecule* mol, DomainDecompBase* domainDecomp)
 {
+	// In vacuum evaporation simulation global density of control region has not to be calculated
+	if( 0. == _dTargetDensity)
+		return;
+
     // check if molecule inside control region
     for(unsigned short d = 0; d<3; ++d)
     {
