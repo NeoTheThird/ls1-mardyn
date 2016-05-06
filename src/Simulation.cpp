@@ -1368,6 +1368,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
              double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth;
              string strSimType;
              double dVaporDensity;
+             unsigned int nMethod;
 
         	 string strToken;
         	 inputfilestream >> strToken;
@@ -1392,6 +1393,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				 inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
 				 inputfilestream >> strSimType;
 				 inputfilestream >> dVaporDensity;
+				 inputfilestream >> nMethod;
 
 				 int nSimType = -1;
 
@@ -1411,7 +1413,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 				 if(_distControl == NULL)
 				 {
-					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity);
+					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity, nMethod);
 
 					 // set distances
 					 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);

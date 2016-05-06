@@ -17,7 +17,7 @@
 using namespace std;
 
 
-DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype, double dVaporDensity)
+DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype, double dVaporDensity, unsigned int nMethod)
 {
     _nUpdateFreq = nUpdateFreq;
     _nNumShells = nNumShells;
@@ -67,6 +67,9 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
 
     // vapor density
     _dVaporDensity = dVaporDensity;
+
+    // method of interface midpoint determination
+    _nMethod = nMethod;  // 1: old one, 2: new one (density derivation)
 }
 
 DistControl::~DistControl()
@@ -512,7 +515,15 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
 
     // TODO: check for initial timestep???
 
-    this->EstimateInterfaceMidpointsByForce();
+    if(_nMethod == 1)
+    	this->EstimateInterfaceMidpoint(domain);
+    else if (_nMethod == 2)
+    	this->EstimateInterfaceMidpointsByForce();
+    else
+    {
+    	cout << "DistControl::UpdatePositions: Corrupted code!!! Programm exit..." << endl;
+    	exit(-1);
+    }
 
     // update positions
 

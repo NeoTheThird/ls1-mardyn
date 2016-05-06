@@ -26,7 +26,7 @@ enum SimulationTypes
 class DistControl
 {
 public:
-    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType, double dVaporDensity);
+    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType, double dVaporDensity, unsigned int nMethod);
     ~DistControl();
 
     // init
@@ -101,6 +101,7 @@ private:
     unsigned int _nWriteFreq;
     unsigned int _nWriteFreqProfiles;
     double _dVaporDensity;
+    unsigned int _nMethod;
 
     // distance parameters
     // all distances are related to the 10-90 thickness of the interface
