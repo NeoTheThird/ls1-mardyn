@@ -1381,49 +1381,48 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
         			 _distControl->SetWriteFreqProfiles(nWriteFreqProfiles);
         		 }
-        		 break;
         	 }
         	 else
         	 {
         		 nUpdateFreq = atoi(strToken.c_str());
-        	 }
 
-             inputfilestream >> nNumShells;
-//             inputfilestream >> nUpdateFreq >> nNumShells;
-             inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
-             inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
-             inputfilestream >> strSimType;
-             inputfilestream >> dVaporDensity;
+				 inputfilestream >> nNumShells;
+	//             inputfilestream >> nUpdateFreq >> nNumShells;
+				 inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
+				 inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
+				 inputfilestream >> strSimType;
+				 inputfilestream >> dVaporDensity;
 
-             int nSimType = -1;
+				 int nSimType = -1;
 
-             if (strSimType == "equilibrium" || strSimType == "Equilibrium" )
-             {
-                 nSimType = SIMTYPE_EQUILIBRIUM;
-             }
-             else if (strSimType == "evaporation" || strSimType == "Evaporation" )
-             {
-                 nSimType = SIMTYPE_EVAPORATION;
-             }
-             else
-             {
-                global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
-                exit(-1);
-             }
+				 if (strSimType == "equilibrium" || strSimType == "Equilibrium" )
+				 {
+					 nSimType = SIMTYPE_EQUILIBRIUM;
+				 }
+				 else if (strSimType == "evaporation" || strSimType == "Evaporation" )
+				 {
+					 nSimType = SIMTYPE_EVAPORATION;
+				 }
+				 else
+				 {
+					global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
+					exit(-1);
+				 }
 
-             if(_distControl == NULL)
-             {
-                 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity);
+				 if(_distControl == NULL)
+				 {
+					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity);
 
-                 // set distances
-                 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
-                 _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
-             }
-             else
-             {
-               global_log->error() << "DistControl object allready exist, programm exit..." << endl;
-               exit(-1);
-             }
+					 // set distances
+					 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
+					 _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
+				 }
+				 else
+				 {
+				   global_log->error() << "DistControl object allready exist, programm exit..." << endl;
+				   exit(-1);
+				 }
+			 }
 
          // <-- DISTANCE_CONTROL
 
