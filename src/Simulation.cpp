@@ -1405,6 +1405,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				 {
 					 nSimType = SIMTYPE_EVAPORATION;
 				 }
+				 else if (strSimType == "equilibrium_trapezoid" || strSimType == "Equilibrium_trapezoid" )
+				 {
+					 nSimType = SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE;
+				 }
 				 else
 				 {
 					global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
@@ -1845,6 +1849,26 @@ void Simulation::simulate() {
                 // middle thermostat region (liquid film)
                 _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
                 _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
+            }
+            else if (_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE)
+            {
+				// middle thermostat region (liquid film)
+				_temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
+				_temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
+
+				// T-grad regions
+				_temperatureControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
+				_temperatureControl->GetControlRegion(2)->SetUpperCorner(1, _distControl->GetTZoneLeft() );
+
+				_temperatureControl->GetControlRegion(3)->SetLowerCorner(1, _distControl->GetTZoneRight() );
+				_temperatureControl->GetControlRegion(3)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
+
+				// vapor regions
+				_temperatureControl->GetControlRegion(4)->SetLowerCorner(1, 0. );
+				_temperatureControl->GetControlRegion(4)->SetUpperCorner(1, _distControl->GetInterfaceMidLeft() );
+
+				_temperatureControl->GetControlRegion(5)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() );
+				_temperatureControl->GetControlRegion(5)->SetUpperCorner(1, _domain->getGlobalLength(1) );
             }
 
             // update drift control positions

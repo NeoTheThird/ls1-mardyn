@@ -20,7 +20,8 @@ class Molecule;
 enum SimulationTypes
 {
     SIMTYPE_EQUILIBRIUM = 1,
-    SIMTYPE_EVAPORATION = 2
+    SIMTYPE_EVAPORATION = 2,
+    SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE = 3
 };
 
 class DistControl
