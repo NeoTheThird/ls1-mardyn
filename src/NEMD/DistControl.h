@@ -26,7 +26,7 @@ enum SimulationTypes
 class DistControl
 {
 public:
-    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType);
+    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType, double dVaporDensity);
     ~DistControl();
 
     // init
@@ -42,6 +42,7 @@ public:
         _dSZoneFactor   = dSZoneFactor;
         _dCVWidth   = dCVWidth;
     }
+    void SetWriteFreqProfiles(unsigned int nVal) {_nWriteFreqProfiles = nVal;}
 
     // get positions
     // positions
@@ -61,15 +62,16 @@ public:
     void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
     void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
     void WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
-    void WriteDataDensity(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
+    void WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
 
 
     // place method inside loop over molecule container
-    void SampleDensityProfile(Molecule* mol);
+    void SampleProfiles(Molecule* mol);
 
     // place methods after the loop
 private:
     void EstimateInterfaceMidpoint(Domain* domain);  // called by UpdatePositions
+    void EstimateInterfaceMidpointsByForce();
 public:
     void UpdatePositions(unsigned long simstep, Domain* domain);
     void AlignSystemCenterOfMass(Domain* domain, Molecule* mol, unsigned long simstep);
@@ -83,14 +85,21 @@ private:
 
     unsigned long* _nNumMoleculesLocal;
     unsigned long* _nNumMoleculesGlobal;
+    double* _dMidpointPositions;
+	double* _dForceSumLocal;
+	double* _dForceSumGlobal;
     double* _dDensityProfile;
+    double* _dDensityProfileSmoothed;
+	double* _dForceProfile;
+    double* _dForceProfileSmoothed;
     unsigned int _nNumShells;
     double _dShellWidth;
     double _dInvertShellWidth;
     double _dShellVolume;
     unsigned int _nUpdateFreq;
     unsigned int _nWriteFreq;
-    unsigned int _nWriteFreqDensity;
+    unsigned int _nWriteFreqProfiles;
+    double _dVaporDensity;
 
     // distance parameters
     // all distances are related to the 10-90 thickness of the interface
@@ -114,7 +123,7 @@ private:
 
     // write data
     string _strFilename;
-    string _strFilenameDensityPrefix;
+    string _strFilenameProfilesPrefix;
 
     // simtype
     int _nSimType;

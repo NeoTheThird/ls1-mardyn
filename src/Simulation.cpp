@@ -1362,16 +1362,38 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
          // mheinen 2015-03-16 --> DISTANCE_CONTROL
          } else if (token == "DistControl" || token == "distControl" ) {
 
-             unsigned long nUpdateFreq;
+             unsigned long nUpdateFreq = 1000;
              unsigned int nNumShells;
              double dInterfaceMidLeft, dInterfaceMidRight;
              double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth;
              string strSimType;
+             double dVaporDensity;
 
-             inputfilestream >> nUpdateFreq >> nNumShells;
+        	 string strToken;
+        	 inputfilestream >> strToken;
+
+        	 if(strToken == "WriteFreqProfiles")
+        	 {
+        		 if(_distControl != NULL)
+        		 {
+        			 unsigned int nWriteFreqProfiles;
+        			 inputfilestream >> nWriteFreqProfiles;
+
+        			 _distControl->SetWriteFreqProfiles(nWriteFreqProfiles);
+        		 }
+        		 break;
+        	 }
+        	 else
+        	 {
+        		 nUpdateFreq = atoi(strToken.c_str());
+        	 }
+
+             inputfilestream >> nNumShells;
+//             inputfilestream >> nUpdateFreq >> nNumShells;
              inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
              inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
              inputfilestream >> strSimType;
+             inputfilestream >> dVaporDensity;
 
              int nSimType = -1;
 
@@ -1391,7 +1413,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
              if(_distControl == NULL)
              {
-                 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType);
+                 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity);
 
                  // set distances
                  _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
@@ -1799,7 +1821,7 @@ void Simulation::simulate() {
                  tM  = _moleculeContainer->next() )
             {
                 // sample density profile
-                _distControl->SampleDensityProfile(tM);
+                _distControl->SampleProfiles(tM);
             }
 
             // determine interface midpoints and update region positions
@@ -1846,7 +1868,7 @@ void Simulation::simulate() {
 
             // write data
             _distControl->WriteData(_domainDecomposition, _domain, _simstep);
-            _distControl->WriteDataDensity(_domainDecomposition, _domain, _simstep);
+            _distControl->WriteDataProfiles(_domainDecomposition, _domain, _simstep);
 
 
             // align system center of mass

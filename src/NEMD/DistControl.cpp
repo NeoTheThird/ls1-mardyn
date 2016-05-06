@@ -17,7 +17,7 @@
 using namespace std;
 
 
-DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype)
+DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype, double dVaporDensity)
 {
     _nUpdateFreq = nUpdateFreq;
     _nNumShells = nNumShells;
@@ -28,6 +28,13 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
 
     // density profile
     _dDensityProfile = new double[_nNumShells];
+    _dDensityProfileSmoothed = new double[_nNumShells];
+
+    // force profile
+    _dForceSumLocal  = new double [_nNumShells];
+    _dForceSumGlobal = new double [_nNumShells];
+    _dForceProfile   = new double [_nNumShells];
+    _dForceProfileSmoothed   = new double [_nNumShells];
 
     // reset local values
     this->ResetLocalValues();
@@ -39,15 +46,26 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
     _dInvertShellWidth = 1. / _dShellWidth;
     _dShellVolume = _dShellWidth * domain->getGlobalLength(0) * domain->getGlobalLength(2);
 
+    // profile midpoint positions
+    _dMidpointPositions = new double[_nNumShells];
+
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        _dMidpointPositions[s] = (0.5 + s)*_dShellWidth;
+    }
+
     // write data
     _nWriteFreq = _nUpdateFreq / 10;
-    _nWriteFreqDensity = 100000;
+    _nWriteFreqProfiles = 100000;
 
     _strFilename = "DistControl.dat";
-    _strFilenameDensityPrefix = "DistControlDensity";
+    _strFilenameProfilesPrefix = "DistControlProfiles";
 
     // simtype
     _nSimType = nSimtype;
+
+    // vapor density
+    _dVaporDensity = dVaporDensity;
 }
 
 DistControl::~DistControl()
@@ -56,7 +74,7 @@ DistControl::~DistControl()
 }
 
 
-void DistControl::SampleDensityProfile(Molecule* mol)
+void DistControl::SampleProfiles(Molecule* mol)
 {
     unsigned int nPosIndex;
     unsigned int nIndexMax = _nNumShells - 1;
@@ -71,8 +89,94 @@ void DistControl::SampleDensityProfile(Molecule* mol)
         return;
 
     _nNumMoleculesLocal[nPosIndex]++;
+    _dForceSumLocal[nPosIndex] += mol->F(1);
 }
 
+void DistControl::EstimateInterfaceMidpointsByForce()
+{
+#ifdef ENABLE_MPI
+
+    MPI_Allreduce( _nNumMoleculesLocal, _nNumMoleculesGlobal, _nNumShells, MPI_UNSIGNED_LONG, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce( _dForceSumLocal, _dForceSumGlobal, _nNumShells, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+#else
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        _nNumMoleculesGlobal[s] = _nNumMoleculesLocal[s];
+        _dForceSumGlobal[s] = _dForceSumLocal[s];
+    }
+#endif
+
+    // calc profiles
+    double dInvertShellVolume = 1. / _dShellVolume;
+    double dInvertSampleTimesteps = 1. / ( (double)(_nUpdateFreq) );
+
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        _dDensityProfile[s] = _nNumMoleculesGlobal[s] * dInvertSampleTimesteps * dInvertShellVolume;
+
+        if(_nNumMoleculesGlobal[s] > 0) 
+            _dForceProfile[s] = _dForceSumGlobal[s] / (double)(_nNumMoleculesGlobal[s]);
+        else
+            _dForceProfile[s] = 0.;
+    }
+
+    // smooth profiles
+    unsigned int nNumNeighbourVals = 20;
+    double dNumSmoothedVals = (double)(2.*nNumNeighbourVals+1);
+    
+    unsigned int l = 0;
+    unsigned int r = nNumNeighbourVals;
+
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        double dDensitySum = 0.;
+        double dForceSum   = 0.;
+
+        for(unsigned int t = s-l; t <= s+r; ++t)
+        {
+            dDensitySum += _dDensityProfile[t];
+            dForceSum   += _dForceProfile[t];
+        }
+        _dDensityProfileSmoothed[s] = dDensitySum / dNumSmoothedVals;
+        _dForceProfileSmoothed[s]   = dForceSum   / dNumSmoothedVals;
+
+        if(l < nNumNeighbourVals)
+            l++;
+
+        if(s >= (_nNumShells-1 - nNumNeighbourVals) )
+            r--;
+    }
+
+    // find min/max in force profile
+    double dFmin = 0;
+    double dFmax = 0;
+    unsigned int nIndexMin = 0;
+    unsigned int nIndexMax = 0;
+
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        if(_dDensityProfileSmoothed[s] > _dVaporDensity)
+        {
+            double dF = _dForceProfileSmoothed[s];
+
+            if(dF > dFmax)
+            {
+                dFmax = dF;
+                nIndexMax = s;
+            }
+
+            if(dF < dFmin)
+            {
+                dFmin = dF;
+                nIndexMin = s;
+            }
+        }
+    }
+
+    _dInterfaceMidLeft  = _dMidpointPositions[nIndexMax];
+    _dInterfaceMidRight = _dMidpointPositions[nIndexMin];
+}
 
 void DistControl::EstimateInterfaceMidpoint(Domain* domain)
 {
@@ -357,7 +461,7 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
 
     // TODO: check for initial timestep???
 
-    this->EstimateInterfaceMidpoint(domain);
+    this->EstimateInterfaceMidpointsByForce();
 
     // update positions
 
@@ -411,6 +515,7 @@ void DistControl::ResetLocalValues()
     for(unsigned int s = 0; s < _nNumShells; ++s)
     {
         _nNumMoleculesLocal[s] = 0;
+        _dForceSumLocal[s] = 0.;
     }
 }
 
@@ -486,20 +591,20 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
 }
 
 
-void DistControl::WriteDataDensity(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
+void DistControl::WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
 {
     // write out data
     stringstream outputstream;
     stringstream filenamestream;
 
-    filenamestream << _strFilenameDensityPrefix << "_TS";
+    filenamestream << _strFilenameProfilesPrefix << "_TS";
     filenamestream.fill('0');
     filenamestream.width(9);
     filenamestream << right << simstep;
     filenamestream << ".dat";
 
     // write data
-    if(simstep % _nWriteFreqDensity == 0)
+    if(simstep % _nWriteFreqProfiles == 0)
     {
         // calc global values
 //        this->CalcGlobalValues(domainDecomp);
@@ -512,13 +617,15 @@ void DistControl::WriteDataDensity(DomainDecompBase* domainDecomp, Domain* domai
 #endif
 
         // write header
-        outputstream << "           y" << "         rho" << endl;
+        outputstream << "           y" << "         rho" << "  rho_smooth" << "          Fy" << "   Fy_smooth" << endl;
 
         for(unsigned int s=0; s<_nNumShells; s++)
         {
-            double dDensity = _dDensityProfile[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << (s + 0.5) * _dShellWidth;
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << dDensity;
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dMidpointPositions[s];
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfile[s];
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfileSmoothed[s];
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfile[s];
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfileSmoothed[s];
             outputstream << endl;
         }
 
