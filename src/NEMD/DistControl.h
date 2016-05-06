@@ -90,6 +90,7 @@ private:
 	double* _dForceSumGlobal;
     double* _dDensityProfile;
     double* _dDensityProfileSmoothed;
+    double* _dDensityProfileSmoothedDerivation;
 	double* _dForceProfile;
     double* _dForceProfileSmoothed;
     unsigned int _nNumShells;

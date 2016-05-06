@@ -29,6 +29,7 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
     // density profile
     _dDensityProfile = new double[_nNumShells];
     _dDensityProfileSmoothed = new double[_nNumShells];
+    _dDensityProfileSmoothedDerivation = new double[_nNumShells];
 
     // force profile
     _dForceSumLocal  = new double [_nNumShells];
@@ -121,25 +122,47 @@ void DistControl::EstimateInterfaceMidpointsByForce()
             _dForceProfile[s] = 0.;
     }
 
-    // smooth profiles
-    unsigned int nNumNeighbourVals = 20;
-    double dNumSmoothedVals = (double)(2.*nNumNeighbourVals+1);
+    {
+		// smooth profiles
+		unsigned int nNumNeighbourVals = 20;
+		double dNumSmoothedVals = (double)(2.*nNumNeighbourVals+1);
+
+		unsigned int l = 0;
+		unsigned int r = nNumNeighbourVals;
+
+		for(unsigned int s = 0; s < _nNumShells; ++s)
+		{
+			double dDensitySum = 0.;
+			double dForceSum   = 0.;
+
+			for(unsigned int t = s-l; t <= s+r; ++t)
+			{
+				dDensitySum += _dDensityProfile[t];
+				dForceSum   += _dForceProfile[t];
+			}
+			_dDensityProfileSmoothed[s] = dDensitySum / dNumSmoothedVals;
+			_dForceProfileSmoothed[s]   = dForceSum   / dNumSmoothedVals;
+
+			if(l < nNumNeighbourVals)
+				l++;
+
+			if(s >= (_nNumShells-1 - nNumNeighbourVals) )
+				r--;
+		}
+    }
+
+    // density derivation
+    unsigned int nNumNeighbourVals = 3;
     
     unsigned int l = 0;
     unsigned int r = nNumNeighbourVals;
 
     for(unsigned int s = 0; s < _nNumShells; ++s)
     {
-        double dDensitySum = 0.;
-        double dForceSum   = 0.;
+        double dy = _dDensityProfileSmoothed[s+r] - _dDensityProfileSmoothed[s-l];
+        double dx = (r+l)*_dShellWidth;
 
-        for(unsigned int t = s-l; t <= s+r; ++t)
-        {
-            dDensitySum += _dDensityProfile[t];
-            dForceSum   += _dForceProfile[t];
-        }
-        _dDensityProfileSmoothed[s] = dDensitySum / dNumSmoothedVals;
-        _dForceProfileSmoothed[s]   = dForceSum   / dNumSmoothedVals;
+        _dDensityProfileSmoothedDerivation[s] = dy / dx;
 
         if(l < nNumNeighbourVals)
             l++;
@@ -148,6 +171,33 @@ void DistControl::EstimateInterfaceMidpointsByForce()
             r--;
     }
 
+    // find min/max in drho/dy profile
+    double dMin = 0;
+    double dMax = 0;
+    unsigned int nIndexMin = 0;
+    unsigned int nIndexMax = 0;
+
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+        if(_dDensityProfileSmoothed[s] > _dVaporDensity)
+        {
+            double drhody = _dDensityProfileSmoothedDerivation[s];
+
+            if(drhody > dMax)
+            {
+                dMax = drhody;
+                nIndexMax = s;
+            }
+
+            if(drhody < dMin)
+            {
+                dMin = drhody;
+                nIndexMin = s;
+            }
+        }
+    }
+
+/*
     // find min/max in force profile
     double dFmin = 0;
     double dFmax = 0;
@@ -173,6 +223,7 @@ void DistControl::EstimateInterfaceMidpointsByForce()
             }
         }
     }
+*/
 
     _dInterfaceMidLeft  = _dMidpointPositions[nIndexMax];
     _dInterfaceMidRight = _dMidpointPositions[nIndexMin];
@@ -617,13 +668,14 @@ void DistControl::WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* doma
 #endif
 
         // write header
-        outputstream << "           y" << "         rho" << "  rho_smooth" << "          Fy" << "   Fy_smooth" << endl;
+        outputstream << "           y" << "         rho" << "  rho_smooth" << "     drho/dy" << "          Fy" << "   Fy_smooth" << endl;
 
         for(unsigned int s=0; s<_nNumShells; s++)
         {
             outputstream << std::setw(12) << fixed << std::setprecision(3) << _dMidpointPositions[s];
             outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfile[s];
             outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfileSmoothed[s];
+            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfileSmoothedDerivation[s];
             outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfile[s];
             outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfileSmoothed[s];
             outputstream << endl;
