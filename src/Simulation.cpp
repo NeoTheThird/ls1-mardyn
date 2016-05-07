@@ -1802,7 +1802,8 @@ void Simulation::simulate() {
                 }
 
             }
-
+            // write out deleted molecules data
+            _densityControl->WriteDataDeletedMolecules(_domainDecomposition, _simstep);
         }
 
         // update global number of particles

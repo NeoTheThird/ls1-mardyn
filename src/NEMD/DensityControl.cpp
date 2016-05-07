@@ -67,6 +67,18 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
 
     // init rank array
     _ranks = NULL;
+
+    // region ID
+    _nRegionID = _parent->GetNumRegions()+1;
+
+    // reset local values
+    _nDeletedNumMoleculesLocal = 0;
+    _dDeletedEkinLocal = 0.;
+
+    for(unsigned int d=0; d<3; ++d)
+        _dDeletedVelocityLocal[d] = 0.;
+
+    this->WriteHeaderDeletedMolecules(_parent->GetDomainDecomposition() );
 }
 
 
@@ -267,6 +279,13 @@ void ControlRegionD::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mo
     if( 0. == _dTargetDensity)
     {
         bDeleteMolecule = true;
+
+        // sample deleted molecules data
+        _nDeletedNumMoleculesLocal++;
+        _dDeletedEkinLocal += mol->U_kin();
+
+        for(unsigned short d = 0; d<3; ++d)
+            _dDeletedVelocityLocal[d] += mol->v(d);
     }
     else
     {
@@ -299,8 +318,83 @@ void ControlRegionD::ResetLocalValues()
     _nNumMoleculesLocal = 0;
 }
 
+void ControlRegionD::WriteHeaderDeletedMolecules(DomainDecompBase* domainDecomp)
+{
+    // write header
+    stringstream outputstream;
+    stringstream sstrFilename;    
+    sstrFilename << "DensityControl_del-mol-data_region" << _nRegionID << ".dat";
 
+    #ifdef ENABLE_MPI
+    int rank = domainDecomp->getRank();
+    // int numprocs = domainDecomp->getNumProcs();
+    if (rank != 0)
+        return;
+    #endif
+    
+    outputstream << "             simstep";
+    outputstream << "         numMols";
+    outputstream << "           U_kin";
+    outputstream << "              vx";
+    outputstream << "              vy";
+    outputstream << "              vz";
+    outputstream << endl;
 
+    ofstream fileout(sstrFilename.str().c_str(), ios::out);
+    fileout << outputstream.str();
+    fileout.close();
+}
+
+void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep)
+{
+    // calc global values 
+#ifdef ENABLE_MPI
+
+    MPI_Reduce( &_nDeletedNumMoleculesLocal, &_nDeletedNumMoleculesGlobal, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce( &_dDeletedEkinLocal,            &_dDeletedEkinGlobal,      1, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(  _dDeletedVelocityLocal,         _dDeletedVelocityGlobal,  3, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
+
+#else
+    _nDeletedNumMoleculesGlobal = _nDeletedNumMoleculesLocal;
+    _dDeletedEkinGlobal = _dDeletedEkinLocal;
+
+    for(unsigned int d=0; d<3; ++d)
+        _dDeletedVelocityGlobal[d] = _dDeletedVelocityLocal[d];
+#endif
+
+    // reset local values
+    _nDeletedNumMoleculesLocal = 0;
+    _dDeletedEkinLocal = 0.;
+
+    for(unsigned int d=0; d<3; ++d)
+        _dDeletedVelocityLocal[d] = 0.;
+
+    // write out data
+    #ifdef ENABLE_MPI
+    int rank = domainDecomp->getRank();
+    // int numprocs = domainDecomp->getNumProcs();
+    if (rank != 0)
+        return;
+    #endif
+
+    stringstream outputstream;
+    stringstream sstrFilename;
+    sstrFilename << "DensityControl_del-mol-data_region" << _nRegionID << ".dat";
+
+    outputstream << std::setw(20) << simstep;
+    outputstream << std::setw(16) << _nDeletedNumMoleculesGlobal;
+    outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedEkinGlobal;
+
+    for(unsigned int d=0; d<3; ++d)
+        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedVelocityGlobal[d];
+
+    outputstream << endl;
+
+    ofstream fileout(sstrFilename.str().c_str(), ios::app);
+    fileout << outputstream.str();
+    fileout.close();
+}
+        
 // class DensityControl
 
 DensityControl::DensityControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned long nControlFreq, unsigned long nStart, unsigned long nStop)
@@ -315,6 +409,9 @@ DensityControl::DensityControl(DomainDecompBase* domainDecomp, Domain* domain, u
     // store domain / domainDecomp pointer
     _domain = domain;
     _domainDecomp = domainDecomp;
+
+    // deleted molecules data
+    _nWriteFreqDeleted = 1000;
 }
 
 DensityControl::~DensityControl()
@@ -427,4 +524,16 @@ void DensityControl::InitMPI()
     }
 }
 
+void DensityControl::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep)
+{
+    if(simstep % _nWriteFreqDeleted != 0)
+        return;
+
+    std::vector<ControlRegionD>::iterator it;
+
+    for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
+    {
+        (*it).WriteDataDeletedMolecules(domainDecomp, simstep);
+    }
+}
 

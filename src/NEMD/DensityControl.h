@@ -44,6 +44,9 @@ public:
     void ResetLocalValues();
     void UpdateVolume() {_dInvertVolume = 1. / (this->GetWidth(0) * this->GetWidth(1) * this->GetWidth(2) );}
 
+    void WriteHeaderDeletedMolecules(DomainDecompBase* domainDecomp);
+    void WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep);
+
 private:
     double _dLowerCorner[3];
     double _dUpperCorner[3];
@@ -61,6 +64,14 @@ private:
     int* _ranks;
     bool _bProcessIsRelevant;
     MPI_Comm _newcomm;
+
+    // deleted molecules data
+    unsigned long _nDeletedNumMoleculesLocal;
+    unsigned long _nDeletedNumMoleculesGlobal;
+    double _dDeletedEkinLocal;
+    double _dDeletedEkinGlobal;
+    double _dDeletedVelocityLocal[3];
+    double _dDeletedVelocityGlobal[3];
 };
 
 
@@ -90,6 +101,9 @@ public:
 
     bool ProcessIsRelevant() {return _bProcessIsRelevant;}
 
+    void WriteHeaderDeletedMolecules(DomainDecompBase* domainDecomp);
+    void WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep);
+
 private:
     std::vector<ControlRegionD> _vecControlRegions;
     unsigned long _nControlFreq;
@@ -100,6 +114,8 @@ private:
     DomainDecompBase* _domainDecomp;
 
     bool _bProcessIsRelevant;
+
+    unsigned int _nWriteFreqDeleted;
 };
 
 
