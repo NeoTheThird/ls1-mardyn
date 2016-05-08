@@ -544,6 +544,12 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
         _dSZoneLeft_lc  = _dControlVolumeLeft  - _dCVWidth;
         _dSZoneRight_uc = _dControlVolumeRight + _dCVWidth;
     }
+    else if(_nSimType == SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE)
+    {
+        // thermostating zone
+        _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
+        _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
+    }
 
     // drift control region
     _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
