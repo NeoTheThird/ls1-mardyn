@@ -13,6 +13,13 @@
 
 #include "molecules/Molecule.h"
 
+enum TemperatureControlTypes
+{
+	TCT_CONSTANT_TEMPERATURE = 1,
+	TCT_TEMPERATURE_GRADIENT = 2,
+	TCT_TEMPERATURE_ADJUST = 3,
+};
+
 class DomainDecompBase;
 class ParticleContainer;
 class AccumulatorBase;
@@ -21,7 +28,8 @@ class ControlRegionT
 {
 public:
     ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
-                    double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin );
+                    double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin,
+                    unsigned int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq );
     ~ControlRegionT();
 
     void Init();
@@ -32,7 +40,7 @@ public:
     void SetUpperCorner(unsigned short nDim, double dVal) {_dUpperCorner[nDim] = dVal; this->UpdateSlabParameters();}
     double GetWidth(unsigned short nDim) {return _dUpperCorner[nDim] - _dLowerCorner[nDim];}
     void GetRange(unsigned short nDim, double& dRangeBegin, double& dRangeEnd) {dRangeBegin = _dLowerCorner[nDim]; dRangeEnd = _dUpperCorner[nDim];}
-    void CalcGlobalValues(DomainDecompBase* domainDecomp);
+    void CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned long simstep);
     void MeasureKineticEnergy(Molecule* mol, DomainDecompBase* domainDecomp);
 
     void ControlTemperature(Molecule* mol);
@@ -46,6 +54,15 @@ public:
     void ResetValuesDeltaEkin();
     void WriteHeaderDeltaEkin(DomainDecompBase* domainDecomp, Domain* domain);
     void WriteDataDeltaEkin(DomainDecompBase* domainDecomp, unsigned long simstep);
+
+    // set adjust parameters
+    void SetTemperatureControlAdjustParameters(unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq)
+    {
+    	_nStartAdjust = nStartAdjust;
+    	_nStopAdjust  = nStopAdjust;
+    	_nAdjustFreq  = nAdjustFreq;
+    }
+
 
 private:
     TemperatureControl* _parent;
@@ -73,10 +90,16 @@ private:
 
     double _dTargetTemperature[2];
     double* _dTargetTemperatureVec;
-    bool _bTemperatureGradient;
     double _dTemperatureExponent;
     unsigned int _nTargetComponentID;
     unsigned short _nNumThermostatedTransDirections;
+
+    double _dTargetTemperatureActual;
+    double _dDeltaTemperatureAdjust;
+    unsigned long _nStartAdjust;
+    unsigned long _nStopAdjust;
+    unsigned long _nAdjustFreq;
+    unsigned int _nTemperatureControlType;
 
     unsigned short _nRegionID;
 
@@ -103,7 +126,9 @@ public:
     TemperatureControl(Domain* domain, DomainDecompBase* domainDecomp, unsigned long nControlFreq, unsigned long nStart, unsigned long nStop);
     ~TemperatureControl();
 
-    void AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections);
+    void AddRegion( double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature,
+    		        double dTemperatureExponent, std::string strTransDirections, unsigned int nTemperatureControlType,
+    		        unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq );
     int GetNumRegions() {return _vecControlRegions.size();}
     ControlRegionT* GetControlRegion(unsigned short nRegionID) {return &(_vecControlRegions.at(nRegionID-1) ); }  // vector index starts with 0, region index with 1
 

@@ -25,7 +25,8 @@ using namespace std;
 // class ControlRegionT
 
 ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
-                                double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin )
+                                double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin,
+                                unsigned int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq)
 {
     // store parent pointer
     _parent = parent;
@@ -46,8 +47,26 @@ ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[
 
     _dTemperatureExponent = dTemperatureExponent;
 
-    // const temperature or temperature gradient?
-    _bTemperatureGradient = _dTargetTemperature[0] != _dTargetTemperature[1];
+    // type of temperature control constant/gradient/adjust
+    _nTemperatureControlType = nTemperatureControlType;
+
+    // temperature control adjust
+	_nStartAdjust = nStartAdjust;
+	_nStopAdjust  = nStopAdjust;
+	_nAdjustFreq  = nAdjustFreq;
+
+    if(_nTemperatureControlType == TCT_TEMPERATURE_ADJUST)
+    {
+		double dAdjustFreq = (double) (_nAdjustFreq);
+		double dSteps = (_nStopAdjust - _nStartAdjust) / dAdjustFreq;
+		_dDeltaTemperatureAdjust = (dTargetTemperature[1] - dTargetTemperature[0]) / dSteps;
+		_dTargetTemperatureActual = _dTargetTemperature[0];
+    }
+    else
+    {
+		_dDeltaTemperatureAdjust = 0.;
+		_dTargetTemperatureActual = _dTargetTemperature[0];
+    }
 
     // number of slabs
     _nNumSlabs = nNumSlabs;
@@ -227,7 +246,7 @@ void ControlRegionT::Init()
     //cout << "--------- T-grad ------------" << endl;
 }
 
-void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
+void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned long simstep)
 {
 #ifdef ENABLE_MPI
 
@@ -250,24 +269,12 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
 #endif
 
     // calc betaTrans, betaRot
-    if(true == _bTemperatureGradient)
-    {
-		for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
-		{
-			if( _nNumMoleculesGlobal[s] < 1 )
-				_dBetaTransGlobal[s] = 1.;
-			else
-				_dBetaTransGlobal[s] = pow(_nNumThermostatedTransDirections * _nNumMoleculesGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinTransGlobal[s], _dTemperatureExponent);
+    double dTargetTemperature = _dTargetTemperature[0];
 
-			if( _nRotDOFGlobal[s] < 1 )
-				_dBetaRotGlobal[s] = 1.;
-			else
-				_dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinRotGlobal[s], _dTemperatureExponent);
-		}
-    }
-    else
+    switch(_nTemperatureControlType)
     {
-    	double dTargetTemperature = _dTargetTemperatureVec[0];
+
+    case TCT_CONSTANT_TEMPERATURE:
 
 		for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
 		{
@@ -281,6 +288,51 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp)
 			else
 				_dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * dTargetTemperature / _d2EkinRotGlobal[s], _dTemperatureExponent);
 		}
+		break;
+
+    case TCT_TEMPERATURE_GRADIENT:
+
+		for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
+		{
+			if( _nNumMoleculesGlobal[s] < 1 )
+				_dBetaTransGlobal[s] = 1.;
+			else
+				_dBetaTransGlobal[s] = pow(_nNumThermostatedTransDirections * _nNumMoleculesGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinTransGlobal[s], _dTemperatureExponent);
+
+			if( _nRotDOFGlobal[s] < 1 )
+				_dBetaRotGlobal[s] = 1.;
+			else
+				_dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * _dTargetTemperatureVec[s] / _d2EkinRotGlobal[s], _dTemperatureExponent);
+		}
+		break;
+
+    case TCT_TEMPERATURE_ADJUST:
+
+    	if( _nStartAdjust < simstep && _nStopAdjust >= simstep &&
+    	    0 == simstep % _nAdjustFreq)
+    	{
+    		_dTargetTemperatureActual += _dDeltaTemperatureAdjust;
+//    		cout << "_dTargetTemperatureActual = " << _dTargetTemperatureActual << endl;
+    	}
+
+		for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
+		{
+			if( _nNumMoleculesGlobal[s] < 1 )
+				_dBetaTransGlobal[s] = 1.;
+			else
+				_dBetaTransGlobal[s] = pow(_nNumThermostatedTransDirections * _nNumMoleculesGlobal[s] * _dTargetTemperatureActual / _d2EkinTransGlobal[s], _dTemperatureExponent);
+
+			if( _nRotDOFGlobal[s] < 1 )
+				_dBetaRotGlobal[s] = 1.;
+			else
+				_dBetaRotGlobal[s] = pow( _nRotDOFGlobal[s] * _dTargetTemperatureActual / _d2EkinRotGlobal[s], _dTemperatureExponent);
+		}
+		break;
+
+    default:
+
+    	cout << "No valid TemperatureControl type! Programm exit...";
+    	exit(-1);
     }
 
 
@@ -604,9 +656,12 @@ TemperatureControl::~TemperatureControl()
 
 }
 
-void TemperatureControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections)
+void TemperatureControl::AddRegion( double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature,
+        							double dTemperatureExponent, std::string strTransDirections, unsigned int nTemperatureControlType,
+        							unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq )
 {
-    _vecControlRegions.push_back(ControlRegionT(this, dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections, GetNumRegions()+1, _nNumSlabsDeltaEkin ) );
+    _vecControlRegions.push_back( ControlRegionT(this, dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections,
+    							  GetNumRegions()+1, _nNumSlabsDeltaEkin, nTemperatureControlType, nStartAdjust, nStopAdjust, nAdjustFreq  ) );
 }
 
 void TemperatureControl::MeasureKineticEnergy(Molecule* mol, DomainDecompBase* domainDecomp, unsigned long simstep)
@@ -633,7 +688,7 @@ void TemperatureControl::CalcGlobalValues(DomainDecompBase* domainDecomp, unsign
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).CalcGlobalValues(domainDecomp);
+        (*it).CalcGlobalValues(domainDecomp, simstep);
     }
 }
 

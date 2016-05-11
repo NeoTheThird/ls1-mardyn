@@ -21,7 +21,8 @@ enum SimulationTypes
 {
     SIMTYPE_EQUILIBRIUM = 1,
     SIMTYPE_EVAPORATION = 2,
-    SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE = 3
+    SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE = 3,
+    SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST = 4
 };
 
 class DistControl
@@ -43,6 +44,7 @@ public:
         _dSZoneFactor   = dSZoneFactor;
         _dCVWidth   = dCVWidth;
     }
+    double Get1090Thickness() {return _d1090Thickness;}
     void SetWriteFreqProfiles(unsigned int nVal) {_nWriteFreqProfiles = nVal;}
 
     // get positions

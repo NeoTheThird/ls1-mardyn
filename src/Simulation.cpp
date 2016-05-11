@@ -1147,40 +1147,104 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 double dUpperCorner[3];
                 unsigned int nNumSlabs;
                 unsigned int nComp;
-                double dTargetTemperature[2];
-                double dTemperatureExponent;
-                string strTransDirections;
 
                 // read lower corner
                 for(unsigned short d=0; d<3; d++)
-                {
                     inputfilestream >> dLowerCorner[d];
-                }
 
                 // read upper corner
                 for(unsigned short d=0; d<3; d++)
-                {
                     inputfilestream >> dUpperCorner[d];
-                }
 
                 // target component / temperature
                 inputfilestream >> nNumSlabs;
                 inputfilestream >> nComp;
-                inputfilestream >> dTargetTemperature[0];
-                inputfilestream >> strToken;
 
-                if(strToken == "to")
-                {
-                	inputfilestream >> dTargetTemperature[1];
-                	inputfilestream >> dTemperatureExponent;
-                }
-                else
-                {
-                	dTargetTemperature[1] = dTargetTemperature[0];
-                	dTemperatureExponent = atof(strToken.c_str());
-                }
+            	string strToken;
+            	unsigned int nTemperatureControlType;
+                double dTargetTemperature[2];
+                double dTemperatureExponent;
+                string strTransDirections;
 
-                inputfilestream >> strTransDirections;
+                unsigned long nStartAdjust = 0;
+                unsigned long nStopAdjust  = 0;
+                unsigned long nAdjustFreq  = 0;
+
+            	inputfilestream >> strToken;
+
+            	if (strToken == "constant")
+            	{
+                    inputfilestream >> dTargetTemperature[0];
+                    inputfilestream >> dTemperatureExponent;
+                    inputfilestream >> strTransDirections;
+
+                    nTemperatureControlType = TCT_CONSTANT_TEMPERATURE;
+                    dTargetTemperature[1] = dTargetTemperature[0];
+            	}
+            	else if(strToken == "gradient")
+            	{
+            		string strToken;
+
+                    inputfilestream >> dTargetTemperature[0];
+                    inputfilestream >> strToken;
+                    inputfilestream >> dTargetTemperature[1];
+                    inputfilestream >> dTemperatureExponent;
+                    inputfilestream >> strTransDirections;
+
+                    nTemperatureControlType = TCT_TEMPERATURE_GRADIENT;
+
+                    if(strToken != "to")
+                    {
+                    	cout << "TemperatureControl: Wrong statement in cfg-file, expected 'to'! Program exit...  ";
+                    	exit(-1);
+                    }
+            	}
+            	else if(strToken == "adjust")
+            	{
+            		string strToken;
+            		string strTokenstring;
+
+                    inputfilestream >> dTargetTemperature[0];
+                    inputfilestream >> strToken;
+                    inputfilestream >> dTargetTemperature[1];
+                    inputfilestream >> strTokenstring;
+                    inputfilestream >> dTemperatureExponent;
+                    inputfilestream >> strTransDirections;
+
+                    nTemperatureControlType = TCT_TEMPERATURE_ADJUST;
+
+                    if(strToken != "to")
+                    {
+                    	cout << "TemperatureControl: Wrong statement in cfg-file, expected 'to'! Program exit...  ";
+                    	exit(-1);
+                    }
+
+                    char * cstr = new char [strTokenstring.length()+1];
+                    std::strcpy (cstr, strTokenstring.c_str());
+                    char* pch;
+
+                    pch = strtok(cstr, ":");
+                    nStartAdjust = atoi(pch);
+//                    cout << "nStartAdjust = " << nStartAdjust << endl;
+
+                    pch = strtok (NULL, ":");
+                    nAdjustFreq = atoi(pch);
+//                    cout << "nAdjustFreq = " << nAdjustFreq << endl;
+
+                    pch = strtok (NULL, ":");
+                    nStopAdjust = atoi(pch);
+//                    cout << "nStopAdjust = " << nStopAdjust << endl;
+
+                    delete[] cstr;
+            	}
+            	else
+            	{
+            		nTemperatureControlType = TCT_CONSTANT_TEMPERATURE;
+
+                	cout << "TemperatureControl: No valid TemperatureControl type! Program exit...  ";
+                	exit(-1);
+            	}
+
 
                 if( strTransDirections != "x"  && strTransDirections != "y"  && strTransDirections != "z"  &&
                     strTransDirections != "xy" && strTransDirections != "xz" && strTransDirections != "yz" &&
@@ -1198,7 +1262,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 else
                 {
                     // add regions
-                    _temperatureControl->AddRegion(dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections);
+                	_temperatureControl->AddRegion( dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections, nTemperatureControlType,
+                									nStartAdjust, nStopAdjust, nAdjustFreq );
                 }
             }
             else
@@ -1409,6 +1474,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				 {
 					 nSimType = SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE;
 				 }
+                 else if (strSimType == "equilibrium_temperature_adjust" || strSimType == "Equilibrium_temperature_adjust" )
+                 {
+                     nSimType = SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST;
+                 }
 				 else
 				 {
 					global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
@@ -1870,6 +1939,19 @@ void Simulation::simulate() {
 
 				_temperatureControl->GetControlRegion(5)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() );
 				_temperatureControl->GetControlRegion(5)->SetUpperCorner(1, _domain->getGlobalLength(1) );
+            }
+            else if (_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST)
+            {
+                // middle thermostat region (liquid film)
+                _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
+                _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
+
+                // Interface regions
+                _temperatureControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
+                _temperatureControl->GetControlRegion(2)->SetUpperCorner(1, _distControl->GetInterfaceMidLeft() + _distControl->Get1090Thickness() );
+
+                _temperatureControl->GetControlRegion(3)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() - _distControl->Get1090Thickness() );
+                _temperatureControl->GetControlRegion(3)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
             }
 
             // update drift control positions
