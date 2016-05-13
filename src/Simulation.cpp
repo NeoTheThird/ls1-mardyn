@@ -1161,7 +1161,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 inputfilestream >> nComp;
 
             	string strToken;
-            	unsigned int nTemperatureControlType;
+            	int nTemperatureControlType = TCT_UNKNOWN;
                 double dTargetTemperature[2];
                 double dTemperatureExponent;
                 string strTransDirections;
@@ -1173,78 +1173,64 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
             	inputfilestream >> strToken;
 
             	if (strToken == "constant")
-            	{
-                    inputfilestream >> dTargetTemperature[0];
-                    inputfilestream >> dTemperatureExponent;
-                    inputfilestream >> strTransDirections;
-
-                    nTemperatureControlType = TCT_CONSTANT_TEMPERATURE;
-                    dTargetTemperature[1] = dTargetTemperature[0];
-            	}
-            	else if(strToken == "gradient")
-            	{
-            		string strToken;
-
-                    inputfilestream >> dTargetTemperature[0];
-                    inputfilestream >> strToken;
-                    inputfilestream >> dTargetTemperature[1];
-                    inputfilestream >> dTemperatureExponent;
-                    inputfilestream >> strTransDirections;
-
-                    nTemperatureControlType = TCT_TEMPERATURE_GRADIENT;
-
-                    if(strToken != "to")
-                    {
-                    	cout << "TemperatureControl: Wrong statement in cfg-file, expected 'to'! Program exit...  ";
-                    	exit(-1);
-                    }
-            	}
+            		nTemperatureControlType = TCT_CONSTANT_TEMPERATURE;
+            	else if (strToken == "gradient")
+            		nTemperatureControlType = TCT_TEMPERATURE_GRADIENT;
+            	else if (strToken == "gradient_raise")
+            		nTemperatureControlType = TCT_TEMPERATURE_GRADIENT_RAISE;
+            	else if (strToken == "gradient_lower")
+            		nTemperatureControlType = TCT_TEMPERATURE_GRADIENT_LOWER;
             	else if(strToken == "adjust")
-            	{
-            		string strToken;
-            		string strTokenstring;
+            		nTemperatureControlType = TCT_TEMPERATURE_ADJUST;
+            	else
+				{
+					cout << "TemperatureControl: No valid TemperatureControl type! Program exit...  ";
+					exit(-1);
+				}
 
-                    inputfilestream >> dTargetTemperature[0];
-                    inputfilestream >> strToken;
-                    inputfilestream >> dTargetTemperature[1];
-                    inputfilestream >> strTokenstring;
-                    inputfilestream >> dTemperatureExponent;
-                    inputfilestream >> strTransDirections;
+				inputfilestream >> dTargetTemperature[0];
 
-                    nTemperatureControlType = TCT_TEMPERATURE_ADJUST;
+				if( TCT_TEMPERATURE_GRADIENT       == nTemperatureControlType ||
+					TCT_TEMPERATURE_GRADIENT_LOWER == nTemperatureControlType ||
+					TCT_TEMPERATURE_GRADIENT_RAISE == nTemperatureControlType ||
+					TCT_TEMPERATURE_ADJUST         == nTemperatureControlType )
+				{
+					inputfilestream >> strToken;
+					if(strToken != "to")
+					{
+						cout << "TemperatureControl: Wrong statement in cfg-file, expected 'to'! Program exit...  ";
+						exit(-1);
+					}
+					inputfilestream >> dTargetTemperature[1];
+				}
 
-                    if(strToken != "to")
-                    {
-                    	cout << "TemperatureControl: Wrong statement in cfg-file, expected 'to'! Program exit...  ";
-                    	exit(-1);
-                    }
+				if( TCT_TEMPERATURE_GRADIENT_LOWER == nTemperatureControlType ||
+					TCT_TEMPERATURE_GRADIENT_RAISE == nTemperatureControlType ||
+					TCT_TEMPERATURE_ADJUST         == nTemperatureControlType )
+				{
+					inputfilestream >> strToken;
 
-                    char * cstr = new char [strTokenstring.length()+1];
-                    std::strcpy (cstr, strTokenstring.c_str());
-                    char* pch;
+					char * cstr = new char [strToken.length()+1];
+					std::strcpy (cstr, strToken.c_str());
+					char* pch;
 
-                    pch = strtok(cstr, ":");
-                    nStartAdjust = atoi(pch);
+					pch = strtok(cstr, ":");
+					nStartAdjust = atoi(pch);
 //                    cout << "nStartAdjust = " << nStartAdjust << endl;
 
-                    pch = strtok (NULL, ":");
-                    nAdjustFreq = atoi(pch);
+					pch = strtok (NULL, ":");
+					nAdjustFreq = atoi(pch);
 //                    cout << "nAdjustFreq = " << nAdjustFreq << endl;
 
-                    pch = strtok (NULL, ":");
-                    nStopAdjust = atoi(pch);
+					pch = strtok (NULL, ":");
+					nStopAdjust = atoi(pch);
 //                    cout << "nStopAdjust = " << nStopAdjust << endl;
 
-                    delete[] cstr;
-            	}
-            	else
-            	{
-            		nTemperatureControlType = TCT_CONSTANT_TEMPERATURE;
+					delete[] cstr;
+				}
 
-                	cout << "TemperatureControl: No valid TemperatureControl type! Program exit...  ";
-                	exit(-1);
-            	}
-
+				inputfilestream >> dTemperatureExponent;
+				inputfilestream >> strTransDirections;
 
                 if( strTransDirections != "x"  && strTransDirections != "y"  && strTransDirections != "z"  &&
                     strTransDirections != "xy" && strTransDirections != "xz" && strTransDirections != "yz" &&
@@ -1265,7 +1251,8 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 	_temperatureControl->AddRegion( dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections, nTemperatureControlType,
                 									nStartAdjust, nStopAdjust, nAdjustFreq );
                 }
-            }
+
+            }  // if (strToken == "region")
             else
             {
                 global_log->error() << "TemperatureControl: Wrong statement in cfg, programm exit..." << endl;

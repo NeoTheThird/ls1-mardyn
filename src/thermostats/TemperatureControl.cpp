@@ -26,7 +26,7 @@ using namespace std;
 
 ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
                                 double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin,
-                                unsigned int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq)
+                                int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq)
 {
     // store parent pointer
     _parent = parent;
@@ -55,12 +55,34 @@ ControlRegionT::ControlRegionT( TemperatureControl* parent, double dLowerCorner[
 	_nStopAdjust  = nStopAdjust;
 	_nAdjustFreq  = nAdjustFreq;
 
-    if(_nTemperatureControlType == TCT_TEMPERATURE_ADJUST)
+    if(TCT_TEMPERATURE_ADJUST == _nTemperatureControlType)
     {
 		double dAdjustFreq = (double) (_nAdjustFreq);
 		double dSteps = (_nStopAdjust - _nStartAdjust) / dAdjustFreq;
 		_dDeltaTemperatureAdjust = (dTargetTemperature[1] - dTargetTemperature[0]) / dSteps;
 		_dTargetTemperatureActual = _dTargetTemperature[0];
+    }
+    else if(TCT_TEMPERATURE_GRADIENT_LOWER == _nTemperatureControlType)
+    {
+		double dAdjustFreq = (double) (_nAdjustFreq);
+		double dSteps = (_nStopAdjust - _nStartAdjust) / dAdjustFreq;
+
+		double dT_lower = min(dTargetTemperature[0], dTargetTemperature[1]);
+		double dT_upper = max(dTargetTemperature[0], dTargetTemperature[1]);
+
+		_dDeltaTemperatureAdjust = (dT_lower - dT_upper) / dSteps;
+		_dTargetTemperatureActual = dT_upper;
+    }
+    else if(TCT_TEMPERATURE_GRADIENT_RAISE == _nTemperatureControlType)
+    {
+		double dAdjustFreq = (double) (_nAdjustFreq);
+		double dSteps = (_nStopAdjust - _nStartAdjust) / dAdjustFreq;
+
+		double dT_lower = min(dTargetTemperature[0], dTargetTemperature[1]);
+		double dT_upper = max(dTargetTemperature[0], dTargetTemperature[1]);
+
+		_dDeltaTemperatureAdjust = (dT_upper - dT_lower) / dSteps;
+		_dTargetTemperatureActual = dT_lower;
     }
     else
     {
@@ -233,17 +255,12 @@ void ControlRegionT::Init()
     // <-- CALC_HEAT_SUPPLY
 
     // target temperature vector to maintain a temperature gradient
-    //cout << "--------- T-grad ------------" << endl;
     _dTargetTemperatureVec = new double[_nNumSlabsReserve];
-    double dT = _dTargetTemperature[1] - _dTargetTemperature[0];
-    double dSlabsMinusOne = (double)(_nNumSlabs-1);
 
-    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
-    {
-    	_dTargetTemperatureVec[s] = _dTargetTemperature[0] + dT/dSlabsMinusOne*s;
-    	//cout << "[" << s << "]: " << _dTargetTemperatureVec[s] << endl;
-    }
-    //cout << "--------- T-grad ------------" << endl;
+    if( TCT_TEMPERATURE_GRADIENT       == _nTemperatureControlType ||
+    	TCT_TEMPERATURE_GRADIENT_LOWER == _nTemperatureControlType ||
+    	TCT_TEMPERATURE_GRADIENT_RAISE == _nTemperatureControlType )
+    	this->AdjustTemperatureGradient();
 }
 
 void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned long simstep)
@@ -290,7 +307,17 @@ void ControlRegionT::CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned l
 		}
 		break;
 
+
     case TCT_TEMPERATURE_GRADIENT:
+    case TCT_TEMPERATURE_GRADIENT_LOWER:
+    case TCT_TEMPERATURE_GRADIENT_RAISE:
+
+    	if( _nStartAdjust < simstep && _nStopAdjust >= simstep &&
+    	    0 == simstep % _nAdjustFreq && TCT_TEMPERATURE_GRADIENT != _nTemperatureControlType)
+    	{
+    		_dTargetTemperatureActual += _dDeltaTemperatureAdjust;
+    		this->AdjustTemperatureGradient();
+    	}
 
 		for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
 		{
@@ -493,13 +520,10 @@ void ControlRegionT::UpdateSlabParameters()
 */
 
     // target temperature vector to maintain a temperature gradient
-    double dT = _dTargetTemperature[1] - _dTargetTemperature[0];
-    double dSlabsMinusOne = (double)(_nNumSlabs-1);
-
-    for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
-    {
-    	_dTargetTemperatureVec[s] = _dTargetTemperature[0] + dT/dSlabsMinusOne*s;
-    }
+    if( TCT_TEMPERATURE_GRADIENT       == _nTemperatureControlType ||
+        TCT_TEMPERATURE_GRADIENT_LOWER == _nTemperatureControlType ||
+        TCT_TEMPERATURE_GRADIENT_RAISE == _nTemperatureControlType )
+        	this->AdjustTemperatureGradient();
 }
 
 
@@ -633,6 +657,40 @@ void ControlRegionT::WriteDataDeltaEkin(DomainDecompBase* domainDecomp, unsigned
     #endif
 }
 
+void ControlRegionT::AdjustTemperatureGradient()
+{
+	double T[2];
+	T[0] = _dTargetTemperature[0];
+	T[1] = _dTargetTemperature[1];
+
+    if(TCT_TEMPERATURE_GRADIENT_RAISE == _nTemperatureControlType)
+    {
+    	if(T[1] > T[0])
+    		T[1] = _dTargetTemperatureActual;
+    	else
+    		T[0] = _dTargetTemperatureActual;
+    }
+    else if(TCT_TEMPERATURE_GRADIENT_LOWER == _nTemperatureControlType)
+    {
+    	if(T[1] > T[0])
+    		T[0] = _dTargetTemperatureActual;
+    	else
+    		T[1] = _dTargetTemperatureActual;
+    }
+
+	double dT = T[1] - T[0];
+	double dSlabsMinusOne = (double)(_nNumSlabs-1);
+
+//	cout << "--------------------------" << endl;
+//	cout << "region: " << this->GetID() << endl;
+	for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)
+	{
+		_dTargetTemperatureVec[s] = T[0] + dT/dSlabsMinusOne*s;
+//		cout << "[" << s << "]: " << dT << " | " << dT/dSlabsMinusOne*s << " | " << T[0] << " | " << _dTargetTemperatureVec[s] << "" << endl;
+
+	}
+//	cout << "--------------------------" << endl;
+}
 
 
 // class TemperatureControl
@@ -657,7 +715,7 @@ TemperatureControl::~TemperatureControl()
 }
 
 void TemperatureControl::AddRegion( double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature,
-        							double dTemperatureExponent, std::string strTransDirections, unsigned int nTemperatureControlType,
+        							double dTemperatureExponent, std::string strTransDirections, int nTemperatureControlType,
         							unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq )
 {
     _vecControlRegions.push_back( ControlRegionT(this, dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections,
