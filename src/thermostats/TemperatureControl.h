@@ -15,9 +15,12 @@
 
 enum TemperatureControlTypes
 {
+	TCT_UNKNOWN = 0,
 	TCT_CONSTANT_TEMPERATURE = 1,
-	TCT_TEMPERATURE_GRADIENT = 2,
-	TCT_TEMPERATURE_ADJUST = 3,
+	TCT_TEMPERATURE_ADJUST = 2,
+	TCT_TEMPERATURE_GRADIENT = 3,
+	TCT_TEMPERATURE_GRADIENT_LOWER = 4,
+	TCT_TEMPERATURE_GRADIENT_RAISE = 5
 };
 
 class DomainDecompBase;
@@ -29,7 +32,7 @@ class ControlRegionT
 public:
     ControlRegionT( TemperatureControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp,
                     double* dTargetTemperature, double dTemperatureExponent, std::string strTransDirections, unsigned short nRegionID, unsigned int nNumSlabsDeltaEkin,
-                    unsigned int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq );
+                    int nTemperatureControlType, unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq );
     ~ControlRegionT();
 
     void Init();
@@ -62,6 +65,9 @@ public:
     	_nStopAdjust  = nStopAdjust;
     	_nAdjustFreq  = nAdjustFreq;
     }
+
+private:
+    void AdjustTemperatureGradient();
 
 
 private:
@@ -127,7 +133,7 @@ public:
     ~TemperatureControl();
 
     void AddRegion( double dLowerCorner[3], double dUpperCorner[3], unsigned int nNumSlabs, unsigned int nComp, double* dTargetTemperature,
-    		        double dTemperatureExponent, std::string strTransDirections, unsigned int nTemperatureControlType,
+    		        double dTemperatureExponent, std::string strTransDirections, int nTemperatureControlType,
     		        unsigned long nStartAdjust, unsigned long nStopAdjust, unsigned long nAdjustFreq );
     int GetNumRegions() {return _vecControlRegions.size();}
     ControlRegionT* GetControlRegion(unsigned short nRegionID) {return &(_vecControlRegions.at(nRegionID-1) ); }  // vector index starts with 0, region index with 1
