@@ -13,6 +13,7 @@
 //#include "CutoffCorrections.h"
 #include "Simulation.h"
 #include "ensemble/EnsembleBase.h"
+#include "LustigFormalism.h"
 
 #include "utils/Logger.h"
 using Log::global_log;
@@ -83,6 +84,9 @@ Domain::Domain(int rank, PressureGradient* pg){
 
     // explosion heuristics, NOTE: turn off when using slab thermostat
     _bDoExplosionHeuristics = true;
+
+    // Lustig formalism
+    _lustigFormalism = new LustigFormalism();
 }
 
 void Domain::readXML(XMLfileUnits& xmlconfig) {
@@ -199,6 +203,8 @@ void Domain::calculateGlobalValues(
 
 	// Process 0 has to add the dipole correction:
 	// m_UpotCorr and m_VirialCorr already contain constant (internal) dipole correction
+//	cout << "_UpotCorr = " << _UpotCorr << endl;
+//	cout << "_VirialCorr = " << _VirialCorr << endl;
 	_globalUpot = Upot + _UpotCorr;
 	_globalVirial = Virial + _VirialCorr;
 
@@ -1796,5 +1802,11 @@ unsigned long Domain::getNumFluidMolecules(){
   return numFluidMolecules;
 }
 
+void Domain::InitLustigFormalism(const double& dU6, const double& dUdVsum, const double& d2UdV2sum)
+{
+	if(NULL == _lustigFormalism)
+		return;
 
+	_lustigFormalism->Init(dU6, dUdVsum, d2UdV2sum);
+}
 

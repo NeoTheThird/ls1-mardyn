@@ -35,6 +35,8 @@ public:
 	void init() {
 		_virial = 0;
 		_upot6LJ = 0;
+		_dUdV   = 0.;
+		_d2UdV2 = 0.;
 		_upotXpoles = 0;
 		_myRF = 0;
 	}
@@ -46,6 +48,7 @@ public:
 	void finish() {
 		_domain.setLocalUpot(_upot6LJ / 6. + _upotXpoles + _myRF);
 		_domain.setLocalVirial(_virial + 3.0 * _myRF);
+		_domain.InitLustigFormalism(_upot6LJ, _dUdV, _d2UdV2);
 	}
 
     /** calculate force between pairs and collect macroscopic contribution
@@ -69,23 +72,32 @@ public:
 
 		switch (pairType) {
 
-            double dummy1, dummy2, dummy3, dummy4[3], Virial3[3];
+            double dummy1, dummy2, dummy3, dummy4[3], Virial3[3], dummy5, dummy6;
+            dummy5 = 0.0;
+            dummy6 = 0.0;
             
             case MOLECULE_MOLECULE : 
                 if ( _rdf != NULL )
                     _rdf->observeRDF(molecule1, molecule2, dd, distanceVector);
 
-                PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, Virial3, calculateLJ );
+//                PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, Virial3, calculateLJ );
+                PotForce( molecule1, molecule2, params, distanceVector, _upot6LJ, _upotXpoles, _myRF, Virial3, calculateLJ, _dUdV, _d2UdV2);
                 _virial += 2*(Virial3[0]+Virial3[1]+Virial3[2]);
                 return _upot6LJ + _upotXpoles;
             case MOLECULE_HALOMOLECULE : 
 
-                PotForce(molecule1, molecule2, params, distanceVector, dummy1, dummy2, dummy3, dummy4, calculateLJ);
+                dummy5 = 0.0;
+                dummy6 = 0.0;
+
+//            	PotForce(molecule1, molecule2, params, distanceVector, dummy1, dummy2, dummy3, dummy4, calculateLJ);
+                PotForce(molecule1, molecule2, params, distanceVector, dummy1, dummy2, dummy3, dummy4, calculateLJ, dummy5, dummy6);
                 return 0.0;
             case MOLECULE_MOLECULE_FLUID : 
                 dummy1 = 0.0; // 6*U_LJ
                 dummy2 = 0.0; // U_polarity
                 dummy3 = 0.0; // U_dipole_reaction_field
+                dummy5 = 0.0;
+                dummy6 = 0.0;
 
                 FluidPot(molecule1, molecule2, params, distanceVector, dummy1, dummy2, dummy3, calculateLJ);
                 return dummy1 / 6.0 + dummy2 + dummy3;
@@ -108,6 +120,8 @@ private:
 	double _virial;
 	//! @brief variable used to sum the Upot6LJ contribution of all pairs
 	double _upot6LJ;
+	double _dUdV;
+	double _d2UdV2;
 	//! @brief variable used to sum the UpotXpoles contribution of all pairs
 	double _upotXpoles;
 	//! @brief variable used to sum the MyRF contribution of all pairs

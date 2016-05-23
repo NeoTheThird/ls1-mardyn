@@ -9,6 +9,7 @@
 #include "molecules/Component.h"
 #include "ensemble/EnsembleBase.h"
 #include "Simulation.h"
+#include "LustigFormalism.h"
 
 /* 
  * TODO add comments for variables 
@@ -414,6 +415,10 @@ public:
     // explosion heuristics, NOTE: turn off when using slab thermostat
     void SetExplosionHeuristics(bool bVal) { _bDoExplosionHeuristics = bVal; }
 
+    // Lustig formalism
+    void InitLustigFormalism(const double& dU6, const double& dUdVsum, const double& d2UdV2sum);
+    LustigFormalism* GetLustig() {return _lustigFormalism;}
+
 private:
 
 	//! rank of the local process
@@ -604,6 +609,9 @@ private:
 
     // explosion heuristics, NOTE: turn off when using slab thermostat
     bool _bDoExplosionHeuristics;
+
+    // Lustig formalism
+    LustigFormalism* _lustigFormalism;
 };
 
 

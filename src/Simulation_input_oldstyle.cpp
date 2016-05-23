@@ -762,6 +762,31 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
         // <-- TEMPERATURE_CONTROL
 
+		} else if (token == "LustigFormalism") {
+
+			string strToken;
+			unsigned long nStart = 0;
+			unsigned long nStop  = 0;
+			unsigned long nWriteFreq = 0;
+			inputfilestream >> strToken;
+
+			char * cstr = new char [strToken.length()+1];
+			std::strcpy (cstr, strToken.c_str());
+			char* pch;
+
+			pch = strtok(cstr, ":");
+			nStart = atoi(pch);
+
+			pch = strtok (NULL, ":");
+			nWriteFreq = atoi(pch);
+
+			pch = strtok (NULL, ":");
+			nStop = atoi(pch);
+
+			delete[] cstr;
+
+			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop);
+
 		} else {
 			if (token != "")
 				global_log->warning() << "Did not process unknown token " << token << endl;

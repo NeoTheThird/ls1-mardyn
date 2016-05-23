@@ -694,7 +694,6 @@ void Simulation::prepare_start() {
         _longRangeCorrection = new Homogeneous(_cutoffRadius, _LJCutoffRadius,_domain,global_simulation);
     }
 
-
     _longRangeCorrection->calculateLongRange();
 
 	// here we have to call calcFM() manually, otherwise force and moment are not
@@ -755,7 +754,9 @@ void Simulation::prepare_start() {
 	global_log->info() << "System contains "
 			<< _domain->getglobalNumMolecules() << " molecules." << endl;
 
-
+    // Lustig formalism
+	_domain->GetLustig()->InitNVT(_domain, _domain->getglobalNumMolecules(), _domain->getGlobalVolume(), _domain->getTargetTemperature(0), _LJCutoffRadius);
+    _domain->GetLustig()->WriteHeader(_domainDecomposition, _domain);
 }
 
 void Simulation::simulate() {
@@ -910,11 +911,6 @@ void Simulation::simulate() {
 			_FMM->computeElectrostatics(_moleculeContainer);
 		}
 
-
-
-
-
-
 		if(_wall && _applyWallFun){
 		  _wall->calcTSLJ_9_3(_moleculeContainer, _domain);
 		}
@@ -1025,6 +1021,13 @@ void Simulation::simulate() {
 				_moleculeContainer, (!(_simstep % _collectThermostatDirectedVelocity)), Tfactor(
 								_simstep));//*/  //TODO: uncomment !!!!!
 		
+		// Lustig formalism
+		if(NULL != _domain->GetLustig() && _domain->GetLustig()->GetStart() < _simstep && _domain->GetLustig()->GetStop() >= _simstep)
+		{
+			_domain->GetLustig()->CalcGlobalValues(_domainDecomposition);
+			_domain->GetLustig()->WriteData(_domainDecomposition, _simstep);
+		}
+
 		// scale velocity and angular momentum
 		if ( !_domain->NVE() && _temperatureControl == NULL){
 		if (_thermostatType ==VELSCALE_THERMOSTAT){
