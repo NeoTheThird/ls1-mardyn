@@ -10,6 +10,7 @@
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <string>
 
 #include "Domain.h"
 #include "parallel/DomainDecompBase.h"
@@ -20,9 +21,76 @@ using namespace std;
 LustigFormalism::LustigFormalism()
 {
 	_nWriteFreq = 1000;
+	_nWriteFreqSums = 100000;
 
 	// reset sums
 	this->ResetSums();
+}
+
+void LustigFormalism::InitSums(string strFilename)
+{
+	ifstream filein(strFilename.c_str(), ios::in);
+
+	string zeile1, zeile2;
+	while (getline (filein, zeile1)) {
+	  zeile2.swap (zeile1);
+	}
+
+	if (filein.bad () || !filein.eof ()) {
+	  // Datei konnte nicht gelesen werden o. sonst. Fehler
+		cout << "Couldnt read file!" << endl;
+	} else {
+	  // Variable zeile2 enthält hier die letzte Zeile der Datei.
+		char * cstr = new char [zeile2.length()+1];
+		std::strcpy (cstr, zeile2.c_str());
+		char* pch;
+		string str[20];
+
+		pch = strtok(cstr, " ");
+		str[0] = pch;
+
+		int i=0;
+		while (pch != NULL)
+		{
+			str[i] = string(pch);
+#ifdef DEBUG
+			cout << "str[" << i << "] = " << str[i] << endl;
+			cout << "i = " << i << endl;
+#endif
+			i++;
+			pch = strtok (NULL, " ");
+		}
+
+		delete[] cstr;
+
+		_nNumConfigs      = atoi(str[0].c_str());
+		_UGlobalSum       = atof(str[1].c_str());
+		_U2GlobalSum      = atof(str[2].c_str());
+		_U3GlobalSum      = atof(str[3].c_str());
+		_dUdVGlobalSum    = atof(str[4].c_str());
+		_d2UdV2GlobalSum  = atof(str[5].c_str());
+		_dUdV2GlobalSum   = atof(str[6].c_str());
+		_UdUdVGlobalSum   = atof(str[7].c_str());
+		_U2dUdVGlobalSum  = atof(str[8].c_str());
+		_UdUdV2GlobalSum  = atof(str[9].c_str());
+		_Ud2UdV2GlobalSum = atof(str[10].c_str());
+
+#ifdef DEBUG
+		cout << "_nNumConfigs      = " << _nNumConfigs << endl;
+		cout << "_UGlobalSum       = " << _UGlobalSum << endl;
+		cout << "_U2GlobalSum      = " << _U2GlobalSum << endl;
+		cout << "_U3GlobalSum      = " << _U3GlobalSum << endl;
+		cout << "_dUdVGlobalSum    = " << _dUdVGlobalSum << endl;
+		cout << "_d2UdV2GlobalSum  = " << _d2UdV2GlobalSum << endl;
+		cout << "_dUdV2GlobalSum   = " << _dUdV2GlobalSum << endl;
+		cout << "_UdUdVGlobalSum   = " << _UdUdVGlobalSum << endl;
+		cout << "_U2dUdVGlobalSum  = " << _U2dUdVGlobalSum << endl;
+		cout << "_UdUdV2GlobalSum  = " << _UdUdV2GlobalSum << endl;
+		cout << "_Ud2UdV2GlobalSum = " << _Ud2UdV2GlobalSum << endl;
+#endif
+	}
+
+	filein.close();
 }
 
 void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ)
@@ -30,10 +98,13 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
 	_N = N;
 	_V = V;
 	_T = T;
+
+#ifdef DEBUG
 	cout << ">>> Lustig formalism <<<" << endl;
 	cout << "N = " << N << endl;
 	cout << "V = " << V << endl;
 	cout << "T = " << T << endl;
+#endif
 
     // temperature
 	_beta = 1./_T;
@@ -45,9 +116,11 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
 	_v   = 1./_rho;
 	_v2  = _v*_v;
 
+#ifdef DEBUG
 	cout << "_rho = " << _rho << endl;
 	cout << "_v = " << _v << endl;
 	cout << "_beta = " << _beta << endl;
+#endif
 
 	_InvN = 1./(double)(_N);
 
@@ -71,9 +144,11 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
     double rc = cutoffRadiusLJ;
     double eps = eps24 / 24.;
 
+#ifdef DEBUG
     cout << "cutoffRadiusLJ = " << cutoffRadiusLJ << endl;
     cout << "eps24 = " << eps24 << endl;
     cout << "sig2 = " << sig2 << endl;
+#endif
 
     double rc2 = rc*rc;
     double rc3 = rc*rc2;
@@ -81,8 +156,6 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
     double lj6 = sig2 * invrc2; lj6 = lj6 * lj6 * lj6;
     double lj12 = lj6 * lj6;
     
-    cout << "rc3 = " << rc3 << endl;
-
     const double PI = 3.14159265358979323846;
 	if(uLJshift6 == 0.)
 		_U_LRC = PI*_rho*eps24*rc3*(1./3.*lj12 - lj6) * _N/9.;
@@ -91,9 +164,11 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
     _dUdV_LRC   = -8.*PI/9.*_InvV *(_N-1.)*_rho*rc3*eps*( 4.*lj12 -  6.*lj6);
     _d2UdV2_LRC =  8.*PI/9.*_InvV2*(_N-1.)*_rho*rc3*eps*(20.*lj12 - 18.*lj6);
 
+#ifdef DEBUG
     cout << "_U_LRC = " << _U_LRC << endl;
     cout << "_dUdV_LRC = " << _dUdV_LRC << endl;
     cout << "_d2UdV2_LRC = " << _d2UdV2_LRC << endl;
+#endif
 }
 
 void LustigFormalism::Init(const double& U6, const double& dUdV, const double& d2UdV2)
@@ -236,15 +311,15 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "         simstep";
-		outputstream << "       _A00r";
-		outputstream << "       _A10r";
-		outputstream << "       _A01r";
-		outputstream << "       _A20r";
-		outputstream << "       _A11r";
-		outputstream << "       _A02r";
-		outputstream << "       _A30r";
-		outputstream << "       _A21r";
-		outputstream << "       _A12r";
+		outputstream << "                                   _A00r";
+		outputstream << "                                   _A10r";
+		outputstream << "                                   _A01r";
+		outputstream << "                                   _A20r";
+		outputstream << "                                   _A11r";
+		outputstream << "                                   _A02r";
+		outputstream << "                                   _A30r";
+		outputstream << "                                   _A21r";
+		outputstream << "                                   _A12r";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -261,14 +336,40 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "         simstep";
-		outputstream << "        dUdV";
-		outputstream << "     dUdVavg";
-		outputstream << "       dUdV2";
-		outputstream << "    dUdV2avg";
-		outputstream << "      d2UdV2";
-		outputstream << "   d2UdV2avg";
-		outputstream << "       UdUdV";
-		outputstream << "    UdUdVavg";
+		outputstream << "                                    dUdV";
+		outputstream << "                                 dUdVavg";
+		outputstream << "                                   dUdV2";
+		outputstream << "                                dUdV2avg";
+		outputstream << "                                  d2UdV2";
+		outputstream << "                               d2UdV2avg";
+		outputstream << "                                   UdUdV";
+		outputstream << "                                UdUdVavg";
+		outputstream << endl;
+
+		ofstream fileout(strFilename.c_str(), ios::out);
+		fileout << outputstream.str();
+		fileout.close();
+    }
+
+    {
+		// write header
+		stringstream outputstream;
+		std::stringstream filenamestream;
+
+		filenamestream << "LustigFormalism_sums" << ".dat";
+		string strFilename = filenamestream.str();
+
+		outputstream << "      numConfigs";
+		outputstream << "                                       U";
+		outputstream << "                                      U2";
+		outputstream << "                                      U3";
+		outputstream << "                                    dUdV";
+		outputstream << "                                  d2UdV2";
+		outputstream << "                                   dUdV2";
+		outputstream << "                                   UdUdV";
+		outputstream << "                                  U2dUdV";
+		outputstream << "                                  UdUdV2";
+		outputstream << "                                 Ud2UdV2";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -286,69 +387,100 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
     	return;
 #endif
 
-	if(simstep % _nWriteFreq != 0)
+	if(simstep % _nWriteFreq == 0)
+	{
+		// calc global values
+		this->CalcDerivatives();
+
+		{
+			// writing .dat-files
+			std::stringstream outputstream;
+			std::stringstream filenamestream;
+
+			filenamestream << "LustigFormalism" << ".dat";
+			string strFilename = filenamestream.str();
+
+			// simstep
+			outputstream << std::setw(16) << simstep;
+
+			// data
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A00r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A10r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A01r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A20r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A11r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A02r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A30r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A21r;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A20r;
+			outputstream << endl;
+
+			ofstream fileout(strFilename.c_str(), ios::app);
+			fileout << outputstream.str();
+			fileout.close();
+		}
+
+		{
+			// writing .dat-files
+			std::stringstream outputstream;
+			std::stringstream filenamestream;
+
+			filenamestream << "LustigFormalism_dUdV" << ".dat";
+			string strFilename = filenamestream.str();
+
+			// simstep
+			outputstream << std::setw(16) << simstep;
+
+			// data
+			double InvNumConfigs = 1. / (double)(_nNumConfigs);
+
+			double dUdV    = _dUdVGlobalSum    * InvNumConfigs;
+			double d2UdV2  = _d2UdV2GlobalSum  * InvNumConfigs;
+			double dUdV2   = _dUdV2GlobalSum   * InvNumConfigs;
+			double UdUdV   = _UdUdVGlobalSum   * InvNumConfigs;
+
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdVGlobal;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << dUdV;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdV2Global;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << dUdV2;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _d2UdV2Global;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << d2UdV2;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdVGlobal;
+			outputstream << std::setw(40) << fixed << std::setprecision(16) << UdUdV;
+			outputstream << endl;
+
+			ofstream fileout(strFilename.c_str(), ios::app);
+			fileout << outputstream.str();
+			fileout.close();
+		}
+
+	} // if(simstep % _nWriteFreq == 0)
+
+	if(simstep % _nWriteFreqSums != 0)
 		return;
 
-    // calc global values
-    this->CalcDerivatives();
-
-    // reset sums
-//    this->ResetSums();  <-- do not reset because values wont get better with time!!
     {
 		// writing .dat-files
 		std::stringstream outputstream;
 		std::stringstream filenamestream;
 
-		filenamestream << "LustigFormalism" << ".dat";
+		filenamestream << "LustigFormalism_sums" << ".dat";
 		string strFilename = filenamestream.str();
 
-		// simstep
-		outputstream << std::setw(16) << simstep;
+		// number of configurations
+		outputstream << std::setw(16) << _nNumConfigs;
 
 		// data
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A00r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A10r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A01r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A20r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A11r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A02r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A30r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A21r;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _A12r;
-		outputstream << endl;
-
-		ofstream fileout(strFilename.c_str(), ios::app);
-		fileout << outputstream.str();
-		fileout.close();
-    }
-
-    {
-		// writing .dat-files
-		std::stringstream outputstream;
-		std::stringstream filenamestream;
-
-		filenamestream << "LustigFormalism_dUdV" << ".dat";
-		string strFilename = filenamestream.str();
-
-		// simstep
-		outputstream << std::setw(16) << simstep;
-
-		// data
-		double InvNumConfigs = 1. / (double)(_nNumConfigs);
-
-		double dUdV    = _dUdVGlobalSum    * InvNumConfigs;
-		double d2UdV2  = _d2UdV2GlobalSum  * InvNumConfigs;
-	    double dUdV2   = _dUdV2GlobalSum   * InvNumConfigs;
-	    double UdUdV   = _UdUdVGlobalSum   * InvNumConfigs;
-
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _dUdVGlobal;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << dUdV;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _dUdV2Global;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << dUdV2;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _d2UdV2Global;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << d2UdV2;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << _UdUdVGlobal;
-		outputstream << std::setw(12) << fixed << std::setprecision(3) << UdUdV;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UGlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U2GlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U3GlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdVGlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _d2UdV2GlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdV2GlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdVGlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U2dUdVGlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdV2GlobalSum;
+		outputstream << std::setw(40) << fixed << std::setprecision(16) << _Ud2UdV2GlobalSum;
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::app);

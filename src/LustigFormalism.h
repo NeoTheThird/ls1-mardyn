@@ -9,6 +9,7 @@
 #define LUSTIGFORMALISM_H_
 
 #include "molecules/Comp2Param.h"
+#include <string>
 
 class Domain;
 class DomainDecompBase;
@@ -19,7 +20,9 @@ public:
 	LustigFormalism();
 	~LustigFormalism() {}
 
-	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop) {_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop;}
+	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop, unsigned long nWriteFreqSums)
+	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums;}
+	void InitSums(std::string strFilename);
 	unsigned long GetStart() {return _nStart;}
 	unsigned long GetStop()  {return _nStop;}
 	void InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ);
@@ -43,6 +46,7 @@ private:
 	double _InvV2;
 	double _T;
 	unsigned long _nWriteFreq;
+	unsigned long _nWriteFreqSums;
 	unsigned long _nStart;
 	unsigned long _nStop;
 	unsigned long _nNumConfigs;

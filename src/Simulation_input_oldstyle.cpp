@@ -765,9 +765,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 		} else if (token == "LustigFormalism") {
 
 			string strToken;
+			unsigned long nWriteFreq = 0;
 			unsigned long nStart = 0;
 			unsigned long nStop  = 0;
-			unsigned long nWriteFreq = 0;
+			unsigned long nWriteFreqSums = 0;
 			inputfilestream >> strToken;
 
 			char * cstr = new char [strToken.length()+1];
@@ -785,7 +786,13 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 			delete[] cstr;
 
-			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop);
+			inputfilestream >> nWriteFreqSums;
+			string str;
+			inputfilestream >> str;
+			if(str != "start")
+				_domain->GetLustig()->InitSums(str);
+
+			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop, nWriteFreqSums);
 
 		} else {
 			if (token != "")
