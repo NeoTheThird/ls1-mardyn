@@ -73,10 +73,13 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
 
     // reset local values
     _nDeletedNumMoleculesLocal = 0;
-    _dDeletedEkinLocal = 0.;
 
     for(unsigned int d=0; d<3; ++d)
+    {
         _dDeletedVelocityLocal[d] = 0.;
+        _dDeletedVelocitySquaredLocal[d] = 0.;
+        _dDeletedEkinLocal[d] = 0.;
+    }
 
     this->WriteHeaderDeletedMolecules(_parent->GetDomainDecomposition() );
 }
@@ -282,10 +285,16 @@ void ControlRegionD::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mo
 
         // sample deleted molecules data
         _nDeletedNumMoleculesLocal++;
-        _dDeletedEkinLocal += mol->U_kin();
+        _dDeletedEkinLocal[0] += mol->U_kin();
+        _dDeletedEkinLocal[1] += mol->U_trans();
+        _dDeletedEkinLocal[2] += mol->U_rot();
 
         for(unsigned short d = 0; d<3; ++d)
-            _dDeletedVelocityLocal[d] += mol->v(d);
+        {
+        	double v = mol->v(d);
+            _dDeletedVelocityLocal[d] += v;
+            _dDeletedVelocitySquaredLocal[d] += v*v;
+        }
     }
     else
     {
@@ -320,24 +329,29 @@ void ControlRegionD::ResetLocalValues()
 
 void ControlRegionD::WriteHeaderDeletedMolecules(DomainDecompBase* domainDecomp)
 {
+#ifdef ENABLE_MPI
+int rank = domainDecomp->getRank();
+// int numprocs = domainDecomp->getNumProcs();
+if (rank != 0)
+    return;
+#endif
+
     // write header
     stringstream outputstream;
     stringstream sstrFilename;    
     sstrFilename << "DensityControl_del-mol-data_region" << _nRegionID << ".dat";
 
-    #ifdef ENABLE_MPI
-    int rank = domainDecomp->getRank();
-    // int numprocs = domainDecomp->getNumProcs();
-    if (rank != 0)
-        return;
-    #endif
-    
     outputstream << "             simstep";
     outputstream << "         numMols";
     outputstream << "           U_kin";
+    outputstream << "         U_trans";
+    outputstream << "           U_rot";
     outputstream << "              vx";
     outputstream << "              vy";
     outputstream << "              vz";
+    outputstream << "             vx2";
+    outputstream << "             vy2";
+    outputstream << "             vz2";
     outputstream << endl;
 
     ofstream fileout(sstrFilename.str().c_str(), ios::out);
@@ -350,24 +364,31 @@ void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, u
     // calc global values 
 #ifdef ENABLE_MPI
 
-    MPI_Reduce( &_nDeletedNumMoleculesLocal, &_nDeletedNumMoleculesGlobal, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce( &_dDeletedEkinLocal,            &_dDeletedEkinGlobal,      1, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
-    MPI_Reduce(  _dDeletedVelocityLocal,         _dDeletedVelocityGlobal,  3, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce( &_nDeletedNumMoleculesLocal,    &_nDeletedNumMoleculesGlobal,    1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(  _dDeletedEkinLocal,             _dDeletedEkinGlobal,            3, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(  _dDeletedVelocityLocal,         _dDeletedVelocityGlobal,        3, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(  _dDeletedVelocitySquaredLocal,  _dDeletedVelocitySquaredGlobal, 3, MPI_DOUBLE,        MPI_SUM, 0, MPI_COMM_WORLD);
 
 #else
     _nDeletedNumMoleculesGlobal = _nDeletedNumMoleculesLocal;
-    _dDeletedEkinGlobal = _dDeletedEkinLocal;
 
     for(unsigned int d=0; d<3; ++d)
+    {
+    	_dDeletedEkinGlobal[d] = _dDeletedEkinLocal[d];
         _dDeletedVelocityGlobal[d] = _dDeletedVelocityLocal[d];
+        _dDeletedVelocitySquaredGlobal[d] = _dDeletedVelocitySquaredLocal[d];
+    }
 #endif
 
     // reset local values
     _nDeletedNumMoleculesLocal = 0;
-    _dDeletedEkinLocal = 0.;
 
     for(unsigned int d=0; d<3; ++d)
+    {
+        _dDeletedEkinLocal[d] = 0.;
         _dDeletedVelocityLocal[d] = 0.;
+        _dDeletedVelocitySquaredLocal[d] = 0.;
+    }
 
     // write out data
     #ifdef ENABLE_MPI
@@ -383,10 +404,15 @@ void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, u
 
     outputstream << std::setw(20) << simstep;
     outputstream << std::setw(16) << _nDeletedNumMoleculesGlobal;
-    outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedEkinGlobal;
+
+    for(unsigned int d=0; d<3; ++d)
+        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedEkinGlobal[d];
 
     for(unsigned int d=0; d<3; ++d)
         outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedVelocityGlobal[d];
+
+    for(unsigned int d=0; d<3; ++d)
+        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedVelocitySquaredGlobal[d];
 
     outputstream << endl;
 

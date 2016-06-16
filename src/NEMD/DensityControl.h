@@ -68,10 +68,12 @@ private:
     // deleted molecules data
     unsigned long _nDeletedNumMoleculesLocal;
     unsigned long _nDeletedNumMoleculesGlobal;
-    double _dDeletedEkinLocal;
-    double _dDeletedEkinGlobal;
+    double _dDeletedEkinLocal[3];
+    double _dDeletedEkinGlobal[3];
     double _dDeletedVelocityLocal[3];
     double _dDeletedVelocityGlobal[3];
+    double _dDeletedVelocitySquaredLocal[3];
+    double _dDeletedVelocitySquaredGlobal[3];
 };
 
 
