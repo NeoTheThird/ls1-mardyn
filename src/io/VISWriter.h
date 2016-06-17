@@ -28,7 +28,7 @@ public:
 	//! @param domainDecomp In the parallel version, the file has to be written by more than one process.
 	//!                     Methods to achieve this are available in domainDecomp
 	//! @param writeFrequency Controls the frequency of writing out the data (every timestep, every 10th, 100th, ... timestep)
-	VISWriter(unsigned long writeFrequency, std::string outputPrefix);
+	VISWriter(unsigned long writeFrequency, unsigned long writeFrequencyFile, std::string outputPrefix);
 	~VISWriter();
 
 	void readXML(XMLfileUnits& xmlconfig);
@@ -49,6 +49,7 @@ public:
 private:
 	std::string _outputPrefix;
 	unsigned long _writeFrequency;
+	unsigned long _writeFrequencyFile;
 	bool _appendTimestamp;
 	bool _wroteVIS;
 };

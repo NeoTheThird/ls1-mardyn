@@ -288,6 +288,12 @@ void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
     _dForceCompGlobal_py = new double**[nNumComponents];
     _dForceCompGlobal_ny = new double**[nNumComponents];
 
+    // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+    _nNumMoleculesCompForceLocal  = new unsigned long**[nNumComponents];
+    _nNumMoleculesCompForceGlobal = new unsigned long**[nNumComponents];
+
+    _dForceCompLocal  = new double**[nNumComponents];
+    _dForceCompGlobal = new double**[nNumComponents];
 
     for(unsigned short c=0; c < nNumComponents; ++c)
     {
@@ -312,6 +318,13 @@ void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
         _dForceCompLocal_ny[c]  = new double*[3];
         _dForceCompGlobal_py[c] = new double*[3];
         _dForceCompGlobal_ny[c] = new double*[3];
+
+        // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+        _nNumMoleculesCompForceLocal[c]  = new unsigned long*[9];
+        _nNumMoleculesCompForceGlobal[c] = new unsigned long*[9];
+
+        _dForceCompLocal[c]  = new double*[9];
+        _dForceCompGlobal[c] = new double*[9];
     }
 
     for(unsigned short c=0; c < nNumComponents; ++c)
@@ -329,6 +342,21 @@ void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
             _dForceCompLocal_ny[c][d]  = new double[_nNumShellsProfiles];
             _dForceCompGlobal_py[c][d] = new double[_nNumShellsProfiles];
             _dForceCompGlobal_ny[c][d] = new double[_nNumShellsProfiles];
+
+            // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+            _nNumMoleculesCompForceLocal [c][d]   = new unsigned long[_nNumShellsProfiles];
+            _nNumMoleculesCompForceGlobal[c][d]   = new unsigned long[_nNumShellsProfiles];
+            _nNumMoleculesCompForceLocal [c][3+d] = new unsigned long[_nNumShellsProfiles];
+            _nNumMoleculesCompForceGlobal[c][3+d] = new unsigned long[_nNumShellsProfiles];
+            _nNumMoleculesCompForceLocal [c][6+d] = new unsigned long[_nNumShellsProfiles];
+            _nNumMoleculesCompForceGlobal[c][6+d] = new unsigned long[_nNumShellsProfiles];
+
+            _dForceCompLocal [c][d]   = new double[_nNumShellsProfiles];
+            _dForceCompGlobal[c][d]   = new double[_nNumShellsProfiles];
+            _dForceCompLocal [c][3+d] = new double[_nNumShellsProfiles];
+            _dForceCompGlobal[c][3+d] = new double[_nNumShellsProfiles];
+            _dForceCompLocal [c][6+d] = new double[_nNumShellsProfiles];
+            _dForceCompGlobal[c][6+d] = new double[_nNumShellsProfiles];
         }
     }
 
@@ -365,12 +393,30 @@ void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
                 _dForceCompLocal_ny[c][d][s]  = 0.;
                 _dForceCompGlobal_py[c][d][s] = 0.;
                 _dForceCompGlobal_ny[c][d][s] = 0.;
+
+                // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+                _nNumMoleculesCompForceLocal [c][d][s]   = 0;
+                _nNumMoleculesCompForceGlobal[c][d][s]   = 0;
+                _nNumMoleculesCompForceLocal [c][3+d][s] = 0;
+                _nNumMoleculesCompForceGlobal[c][3+d][s] = 0;
+				_nNumMoleculesCompForceLocal [c][6+d][s] = 0;
+				_nNumMoleculesCompForceGlobal[c][6+d][s] = 0;
+
+				_dForceCompLocal [c][d][s]   = 0.;
+				_dForceCompGlobal[c][d][s]   = 0.;
+				_dForceCompLocal [c][3+d][s] = 0.;
+				_dForceCompGlobal[c][3+d][s] = 0.;
+				_dForceCompLocal [c][6+d][s] = 0.;
+				_dForceCompGlobal[c][6+d][s] = 0.;
             }
         }
     }
 
     // discretisation
     this->DoDiscretisationProfiles(RS_DIMENSION_Y);
+
+    // write headers of Force-profile files
+    this->WriteDataProfilesForceHeader(_parent->GetDomainDecomposition(), _parent->GetDomain() );
 }
 
 
@@ -702,6 +748,59 @@ void SampleRegion::SampleProfiles(Molecule* molecule, int nDimension)
     _dForceCompLocal_ny[cid][0][nPosIndex]  += !bVelocityIsPlus * f[0];
     _dForceCompLocal_ny[cid][1][nPosIndex]  += !bVelocityIsPlus * f[1];
     _dForceCompLocal_ny[cid][2][nPosIndex]  += !bVelocityIsPlus * f[2];
+
+
+    // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+    _nNumMoleculesCompForceLocal[0][0][nPosIndex]++;
+    _nNumMoleculesCompForceLocal[0][1][nPosIndex]++;
+    _nNumMoleculesCompForceLocal[0][2][nPosIndex]++;
+
+    _nNumMoleculesCompForceLocal[0][3][nPosIndex] += (unsigned long)(f[0] > 0.);
+    _nNumMoleculesCompForceLocal[0][4][nPosIndex] += (unsigned long)(f[1] > 0.);
+    _nNumMoleculesCompForceLocal[0][5][nPosIndex] += (unsigned long)(f[2] > 0.);
+
+    _nNumMoleculesCompForceLocal[0][6][nPosIndex] += (unsigned long)(f[0] < 0.);
+    _nNumMoleculesCompForceLocal[0][7][nPosIndex] += (unsigned long)(f[1] < 0.);
+    _nNumMoleculesCompForceLocal[0][8][nPosIndex] += (unsigned long)(f[2] < 0.);
+
+
+    _dForceCompLocal[0][0][nPosIndex] += f[0];
+    _dForceCompLocal[0][1][nPosIndex] += f[1];
+    _dForceCompLocal[0][2][nPosIndex] += f[2];
+
+    _dForceCompLocal[0][3][nPosIndex] += f[0] * (unsigned long)(f[0] > 0.);
+    _dForceCompLocal[0][4][nPosIndex] += f[1] * (unsigned long)(f[1] > 0.);
+    _dForceCompLocal[0][5][nPosIndex] += f[2] * (unsigned long)(f[2] > 0.);
+
+    _dForceCompLocal[0][6][nPosIndex] += f[0] * (unsigned long)(f[0] < 0.);
+    _dForceCompLocal[0][7][nPosIndex] += f[1] * (unsigned long)(f[1] < 0.);
+    _dForceCompLocal[0][8][nPosIndex] += f[2] * (unsigned long)(f[2] < 0.);
+
+
+    _nNumMoleculesCompForceLocal[cid][0][nPosIndex]++;
+    _nNumMoleculesCompForceLocal[cid][1][nPosIndex]++;
+    _nNumMoleculesCompForceLocal[cid][2][nPosIndex]++;
+
+    _nNumMoleculesCompForceLocal[cid][3][nPosIndex] += (unsigned long)(f[0] > 0.);
+    _nNumMoleculesCompForceLocal[cid][4][nPosIndex] += (unsigned long)(f[1] > 0.);
+    _nNumMoleculesCompForceLocal[cid][5][nPosIndex] += (unsigned long)(f[2] > 0.);
+
+    _nNumMoleculesCompForceLocal[cid][6][nPosIndex] += (unsigned long)(f[0] < 0.);
+    _nNumMoleculesCompForceLocal[cid][7][nPosIndex] += (unsigned long)(f[1] < 0.);
+    _nNumMoleculesCompForceLocal[cid][8][nPosIndex] += (unsigned long)(f[2] < 0.);
+
+
+    _dForceCompLocal[cid][0][nPosIndex] += f[0];
+    _dForceCompLocal[cid][1][nPosIndex] += f[1];
+    _dForceCompLocal[cid][2][nPosIndex] += f[2];
+
+    _dForceCompLocal[cid][3][nPosIndex] += f[0] * (unsigned long)(f[0] > 0.);
+    _dForceCompLocal[cid][4][nPosIndex] += f[1] * (unsigned long)(f[1] > 0.);
+    _dForceCompLocal[cid][5][nPosIndex] += f[2] * (unsigned long)(f[2] > 0.);
+
+    _dForceCompLocal[cid][6][nPosIndex] += f[0] * (unsigned long)(f[0] < 0.);
+    _dForceCompLocal[cid][7][nPosIndex] += f[1] * (unsigned long)(f[1] < 0.);
+    _dForceCompLocal[cid][8][nPosIndex] += f[2] * (unsigned long)(f[2] < 0.);
 }
 
 
@@ -855,6 +954,8 @@ void SampleRegion::CalcGlobalValuesProfiles(DomainDecompBase* domainDecomp, Doma
 
     #endif
 
+        // TODO: Das kann sicher besser gelöst werden! 1) Schleife lieber über die 3 Dimensionen, als über Anzahl der Bins
+        // 2) Unschön mit der continue Anweisung
         if(ownRank != 0)
             continue;
 
@@ -962,6 +1063,15 @@ void SampleRegion::CalcGlobalValuesProfiles(DomainDecompBase* domainDecomp, Doma
 
             MPI_Reduce( _dForceCompLocal_py[c][d], _dForceCompGlobal_py[c][d], _nNumShellsProfiles, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
             MPI_Reduce( _dForceCompLocal_ny[c][d], _dForceCompGlobal_ny[c][d], _nNumShellsProfiles, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+            // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+            MPI_Reduce( _nNumMoleculesCompForceLocal[c][d],   _nNumMoleculesCompForceGlobal[c][d],   _nNumShellsProfiles, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce( _nNumMoleculesCompForceLocal[c][3+d], _nNumMoleculesCompForceGlobal[c][3+d], _nNumShellsProfiles, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce( _nNumMoleculesCompForceLocal[c][6+d], _nNumMoleculesCompForceGlobal[c][6+d], _nNumShellsProfiles, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+            MPI_Reduce( _dForceCompLocal[c][d],   _dForceCompGlobal[c][d],   _nNumShellsProfiles, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce( _dForceCompLocal[c][3+d], _dForceCompGlobal[c][3+d], _nNumShellsProfiles, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+            MPI_Reduce( _dForceCompLocal[c][6+d], _dForceCompGlobal[c][6+d], _nNumShellsProfiles, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
         }
     }
 #endif
@@ -1000,6 +1110,15 @@ void SampleRegion::CalcGlobalValuesProfiles(DomainDecompBase* domainDecomp, Doma
                 // [component][fx,fy,fz][position]
                 _dForceCompGlobal_py[c][d][s] *= dInvertDOF_py;
                 _dForceCompGlobal_ny[c][d][s] *= dInvertDOF_ny;
+
+                // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+                for(unsigned int i = 0; i < 3; ++i)
+                {
+					dInvertDOF = (double) (_nNumMoleculesCompForceGlobal[c][3*d+i][s]);
+					dInvertDOF = 1. / dInvertDOF;
+
+					_dForceCompGlobal[c][3*d+i][s] *= dInvertDOF;
+                }
             }
         }
     }
@@ -1088,6 +1207,8 @@ void SampleRegion::WriteDataProfiles(DomainDecompBase* domainDecomp, unsigned lo
     // reset local values
     this->ResetLocalValuesProfiles();
 
+    // write out force profiles
+    this->WriteDataProfilesForce(domainDecomp, domain, simstep);
 
     // writing .dat-files
     std::stringstream outputstream;
@@ -1509,8 +1630,108 @@ void SampleRegion::WriteDataProfiles(DomainDecompBase* domainDecomp, unsigned lo
 }
 
 
+void SampleRegion::WriteDataProfilesForceHeader(DomainDecompBase* domainDecomp, Domain* domain)
+{
+	#ifdef ENABLE_MPI
+		int rank = domainDecomp->getRank();
+		// int numprocs = domainDecomp->getNumProcs();
+		if (rank != 0)
+			return;
+	#endif
+
+	unsigned int nNumComponents;
+	nNumComponents = domain->getNumberOfComponents();
+	nNumComponents += (unsigned int)(nNumComponents > 1);  // + 1 because component 0 stands for all components
+
+    // writing .dat-files
+    std::stringstream outputstream[nNumComponents*9];
+    std::stringstream filenamestream[nNumComponents*9];
+
+    string strForceDir[9] = { "fx__", "fy__", "fz__", "fx+_", "fy+_", "fz+_", "fx-_", "fy-_", "fz-_"};
+
+    unsigned int index = 0;
+
+    for(unsigned short c = 0; c < nNumComponents; ++c)
+    {
+        for(unsigned short si = 0; si < 3; ++si)
+        {
+        	for(unsigned short d = 0; d < 3; ++d)
+            {
+				// filename
+				filenamestream[index] << "Force-profile_region" << this->GetID() << "_c-" << c << "_" << strForceDir[3*si+d] << ".dat";
+
+				// header line
+	            outputstream[index] << "   simstep/pos";
+
+	            for(unsigned short s = 0; s < _nNumShellsProfiles; ++s)
+	            {
+	            	outputstream[index] << std::setw(14) << std::setprecision(6) << _dShellMidpointsProfiles[s];
+	            }
+
+	            outputstream[index] << endl;
+
+	            // Datei zum schreiben öffnen, daten schreiben
+	            ofstream fileout(filenamestream[index].str().c_str(), ios::out);
+	            fileout << outputstream[index].str();
+	            fileout.close();
+
+	            index++;
+            }
+        }
+    }
+}
 
 
+void SampleRegion::WriteDataProfilesForce(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
+{
+	#ifdef ENABLE_MPI
+		int rank = domainDecomp->getRank();
+		// int numprocs = domainDecomp->getNumProcs();
+		if (rank != 0)
+			return;
+	#endif
+
+	unsigned int nNumComponents;
+	nNumComponents = domain->getNumberOfComponents();
+	nNumComponents += (unsigned int)(nNumComponents > 1);  // + 1 because component 0 stands for all components
+
+	// writing .dat-files
+	std::stringstream outputstream[nNumComponents*9];
+	std::stringstream filenamestream[nNumComponents*9];
+
+	string strForceDir[9] = { "fx__", "fy__", "fz__", "fx+_", "fy+_", "fz+_", "fx-_", "fy-_", "fz-_"};
+
+	unsigned int index = 0;
+
+	for(unsigned short c = 0; c < nNumComponents; ++c)
+	{
+		for(unsigned short si = 0; si < 3; ++si)
+		{
+			for(unsigned short d = 0; d < 3; ++d)
+			{
+				// filename
+				filenamestream[index] << "Force-profile_region" << this->GetID() << "_c-" << c << "_" << strForceDir[3*si+d] << ".dat";
+
+				// data line
+				outputstream[index] << std::setw(14) << simstep;
+
+				for(unsigned short s = 0; s < _nNumShellsProfiles; ++s)
+				{
+					outputstream[index] << std::setw(14) << std::setprecision(6) << _dForceCompGlobal[c][3*si+d][s];
+				}
+
+				outputstream[index] << endl;
+
+				// Datei zum schreiben öffnen, daten schreiben
+				ofstream fileout(filenamestream[index].str().c_str(), ios::app);
+				fileout << outputstream[index].str();
+				fileout.close();
+
+				index++;
+			}
+		}
+	}
+}
 
 
 void SampleRegion::WriteDataVDF(DomainDecompBase* domainDecomp, unsigned long simstep)
@@ -1852,6 +2073,14 @@ void SampleRegion::ResetLocalValuesProfiles()
                 // [component][fx,fy,fz][position]
                 _dForceCompLocal_py[c][d][s]  = 0.;
                 _dForceCompLocal_ny[c][d][s]  = 0.;
+
+
+                // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+                for(unsigned int i = 0; i < 3; ++i)
+                {
+					_nNumMoleculesCompForceLocal[c][3*i+d][s] = 0;
+					_dForceCompLocal[c][3*i+d][s] = 0.;
+                }
             }
         }
     }
@@ -1889,10 +2118,11 @@ void SampleRegion::UpdateSlabParameters()
 
 // class RegionSampling
 
-RegionSampling::RegionSampling(Domain* domain)
+RegionSampling::RegionSampling(DomainDecompBase* domainDecomp, Domain* domain)
 {
-    //store domain pointer
+    //store domain/domainDecomp pointer
     _domain = domain;
+    _domainDecomp = domainDecomp;
 
     // number of components
     _nNumComponents = domain->getNumberOfComponents() + 1;  // + 1 because component 0 stands for all components

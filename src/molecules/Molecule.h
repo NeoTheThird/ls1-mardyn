@@ -176,6 +176,21 @@ public:
 		_r[0] = fixedx;
 		_r[1] = fixedy;
 	}
+	void setXYZ() { fixedx = _r[0]; fixedy = _r[1]; fixedz = _r[2];}
+	void resetXYZ()
+	{
+		_F[0] = 0.;
+		_F[1] = 0.;
+		_F[2] = 0.;
+		_v[0] = 0.;
+		_v[1] = 0.;
+		_v[2] = 0.;
+		_r[0] = fixedx;
+		_r[1] = fixedy;
+		_r[2] = fixedz;
+	}
+	bool IsFixed() {return _bFixed;}
+	void SetFixed(bool bVal) {_bFixed = bVal;}
 
 	void Fljcenteradd(unsigned int i, double a[])
 	{ double* Fsite=&(_ljcenters_F[3*i]); for(unsigned short d=0;d<3;++d) Fsite[d]+=a[d]; }
@@ -279,6 +294,8 @@ private:
 	bool _Tersoff_neighbours_second[MAX_TERSOFF_NEIGHBOURS]; /* TODO: Comment */
 	int _numTersoffNeighbours;
 	double fixedx, fixedy;
+	double fixedz;
+	bool _bFixed;
 
 	// setup cache values/properties
 	void setupCache();

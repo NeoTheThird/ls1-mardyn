@@ -71,6 +71,8 @@ public:
     // output
     void WriteDataProfiles(DomainDecompBase* domainDecomp, unsigned long simstep, Domain* domain);
     void WriteDataVDF(DomainDecompBase* domainDecomp, unsigned long simstep);
+    void WriteDataProfilesForceHeader(DomainDecompBase* domainDecomp, Domain* domain);
+    void WriteDataProfilesForce(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
 
     void UpdateSlabParameters();
 
@@ -243,13 +245,20 @@ private:
     double*** _dForceCompLocal_ny;
     double*** _dForceCompGlobal_py;
     double*** _dForceCompGlobal_ny;
+
+    // [component][fx,fy,fz,fx+,fy+,fz+,fx-,fy-,fz-][position]
+    unsigned long*** _nNumMoleculesCompForceLocal;
+    unsigned long*** _nNumMoleculesCompForceGlobal;
+
+    double*** _dForceCompLocal;
+    double*** _dForceCompGlobal;
 };
 
 
 class RegionSampling
 {
 public:
-    RegionSampling(Domain* domain);
+    RegionSampling(DomainDecompBase* domainDecomp, Domain* domain);
     ~RegionSampling();
 
     void AddRegion(double dLowerCorner[3], double dUpperCorner[3] );
@@ -263,6 +272,9 @@ public:
 
     unsigned short GetNumComponents() {return _nNumComponents;}
 
+    Domain* GetDomain(){return _domain;}
+    DomainDecompBase* GetDomainDecomposition(){return _domainDecomp;}
+
 private:
     std::vector<SampleRegion> _vecSampleRegions;
 
@@ -272,6 +284,8 @@ private:
     unsigned long _writeFrequencyVDF;
 
     Domain* _domain;
+    DomainDecompBase* _domainDecomp;
+
     unsigned short _nNumComponents;
 };
 

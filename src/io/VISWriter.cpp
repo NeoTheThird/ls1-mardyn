@@ -18,9 +18,10 @@
 using Log::global_log;
 using namespace std;
 
-VISWriter::VISWriter(unsigned long writeFrequency, string outputPrefix) {
+VISWriter::VISWriter(unsigned long writeFrequency, unsigned long writeFrequencyFile, string outputPrefix) {
 	_outputPrefix = outputPrefix;
 	_writeFrequency = writeFrequency;
+	_writeFrequencyFile = writeFrequencyFile;
 	_wroteVIS = false;
 
 	if (outputPrefix == "default") {
@@ -52,9 +53,11 @@ void VISWriter::readXML(XMLfileUnits& xmlconfig) {
 
 void VISWriter::initOutput(ParticleContainer* particleContainer,
                            DomainDecompBase* domainDecomp, Domain* domain) {
+	/*
     string filename = _outputPrefix + ".vis";
 	ofstream fileout(filename.c_str(), ios::out);
 	fileout.close();
+	*/
 }
 
 void VISWriter::doOutput(ParticleContainer* particleContainer,
@@ -67,18 +70,22 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 		if(_appendTimestamp) {
 			filenamestream << "-" << gettimestring();
 		}
-		filenamestream << ".vis";
+		filenamestream << "_" << std::setw(10) << std::setfill('0') << (((simstep-_writeFrequency)/_writeFrequencyFile)+1)*_writeFrequencyFile << ".vis";
 		
 		char filename[filenamestream.str().size()+1];
 		strcpy(filename,filenamestream.str().c_str());
+
+		// cout << "filename = " << filename << endl;
 
 #ifdef ENABLE_MPI
 		int rank = domainDecomp->getRank();
 		int numprocs = domainDecomp->getNumProcs();
 		if (rank== 0){
 #endif
-			if (!_wroteVIS){
-				outputstream << "      id t          x          y          z     q0     q1     q2     q3        c\n";
+			//if (!_wroteVIS){
+			if ((simstep-_writeFrequency)%_writeFrequencyFile == 0){
+				//outputstream << "      id t          x          y          z     q0     q1     q2     q3        c\n";
+				outputstream << "     id t      x      y      z     q0     q1     q2     q3\n";
 				_wroteVIS = true;
 			}
 			else
@@ -97,13 +104,20 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 					break;
 				}
 			}
+//			if (!halo) {
+//				outputstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(2)
+//				            << pos->componentid() << setprecision(3);
+//				for (unsigned short d = 0; d < 3; d++) outputstream << setw(11) << pos->r(d);
+//				outputstream << setprecision(3) << setw(7) << pos->q().qw() << setw(7) << pos->q().qx()
+//				            << setw(7) << pos->q().qy()<< setw(7) << pos->q().qz()
+//				            << setw(9) << right << 0 << "\n";
+//			}
 			if (!halo) {
-				outputstream << setiosflags(ios::fixed) << setw(8) << pos->id() << setw(2)
-				            << pos->componentid() << setprecision(3);
-				for (unsigned short d = 0; d < 3; d++) outputstream << setw(11) << pos->r(d);
+				outputstream << setiosflags(ios::fixed) << setw(7) << pos->id() << setw(2)
+				            << pos->componentid() << setprecision(1);
+				for (unsigned short d = 0; d < 3; d++) outputstream << setw(7) << pos->r(d);
 				outputstream << setprecision(3) << setw(7) << pos->q().qw() << setw(7) << pos->q().qx()
-				            << setw(7) << pos->q().qy()<< setw(7) << pos->q().qz()
-				            << setw(9) << right << 0 << "\n";
+				            << setw(7) << pos->q().qy()<< setw(7) << pos->q().qz() << endl;
 			}
 		}
 		long outputsize = outputstream.str().size();
@@ -112,7 +126,15 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 		strcpy(output,outputstream.str().c_str());
 #ifdef ENABLE_MPI
 		MPI_File fh;
-		MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_WRONLY|MPI_MODE_APPEND, MPI_INFO_NULL, &fh);
+
+		if ((simstep-_writeFrequency)%_writeFrequencyFile == 0)
+		{
+			MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_WRONLY|MPI_MODE_CREATE, MPI_INFO_NULL, &fh);
+		}
+		else
+		{
+			MPI_File_open(MPI_COMM_WORLD, filename, MPI_MODE_WRONLY|MPI_MODE_APPEND, MPI_INFO_NULL, &fh);
+		}
 
 		for (int dest = rank+1; dest < numprocs; dest++){
 			int sendcount = 1;
@@ -135,9 +157,18 @@ void VISWriter::doOutput(ParticleContainer* particleContainer,
 		MPI_File_write(fh, output, outputsize, MPI_CHAR, &status);
 		MPI_File_close(&fh);
 #else
-		ofstream fileout(filename, ios::out|ios::app);
-		fileout << output;
-		fileout.close();
+		if ((simstep-_writeFrequency)%1000 == 0)
+		{
+			ofstream fileout(filename, ios::out);
+			fileout << output;
+			fileout.close();
+		}
+		else
+		{
+			ofstream fileout(filename, ios::out|ios::app);
+			fileout << output;
+			fileout.close();
+		}
 #endif
 	}
 }

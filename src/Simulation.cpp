@@ -748,9 +748,10 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 						<< " '" << outputPathAndPrefix << "'.\n";
 			} else if ((token == "VisittWriter") || (token == "VISWriter")) {
 				unsigned long writeFrequency;
+				unsigned long writeFrequencyFile;
 				string outputPathAndPrefix;
-				inputfilestream >> writeFrequency >> outputPathAndPrefix;
-				_outputPlugins.push_back(new VISWriter(writeFrequency,
+				inputfilestream >> writeFrequency >> outputPathAndPrefix >> writeFrequencyFile;
+				_outputPlugins.push_back(new VISWriter(writeFrequency, writeFrequencyFile,
 						outputPathAndPrefix));
 				global_log->debug() << "VISWriter " << writeFrequency << " '"
 						<< outputPathAndPrefix << "'.\n";
@@ -1381,7 +1382,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
              if(_regionSampling == NULL)
              {
-                 _regionSampling = new RegionSampling(_domain);
+                 _regionSampling = new RegionSampling(_domainDecomposition, _domain);
              }
 
              inputfilestream >> token;
@@ -1627,6 +1628,48 @@ void Simulation::prepare_start() {
 
     if(_regionSampling != NULL)
         _regionSampling->Init(_domain);
+
+	// mheinen 2015-12-15 --> FIXED_MOLECULES
+	{
+        // fixed components
+        vector<Component>& vComponents = *(this->getEnsemble()->components());
+        vector<Component>::iterator cit;
+        Component* comp3;  // fixed N2
+        Component* comp4;  // fixed H2
+
+        cit = vComponents.begin();
+        cit += 2;
+        comp3 = &(*(cit));
+        cit += 1;
+        comp4 = &(*(cit));
+
+		Molecule* tM;
+		double dPosY;
+		double dBoxY = _domain->getGlobalLength(1);
+
+		for( tM  = _moleculeContainer->begin();
+			 tM != _moleculeContainer->end();
+			 tM  = _moleculeContainer->next() )
+		{
+			dPosY = tM->r(1);
+
+			// liquid phase
+			if(dPosY < 2.*_cutoffRadius)
+			{
+//				cout << "cid(old) = " << tM->componentid() << endl;
+				tM->setXYZ();
+				tM->setComponent(comp3);
+//				cout << "cid(new) = " << tM->componentid() << endl;
+			}
+			// vapor phase
+			else if(dPosY > dBoxY-2.*_cutoffRadius)
+			{
+				tM->setXYZ();
+				tM->setComponent(comp4);
+			}
+		}
+	}
+    // <-- FIXED_MOLECULES
 }
 
 void Simulation::simulate() {
@@ -1676,6 +1719,96 @@ void Simulation::simulate() {
 		global_log->debug() << "simulation time: " << getSimulationTime() << endl;
 
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
+
+		// mheinen 2015-12-15 --> MIRROR_WALL_AND_FIXED_MOLECULES
+		{
+			Molecule* tM;
+			//double dPosY;
+			double ro[3];
+			double rn[3];
+			double v[3];
+			double lambda;
+			//double dVelY;
+			double dBoxY = _domain->getGlobalLength(1);
+			double dMirrorPosLeft  = 2.*_cutoffRadius;
+			double dMirrorPosRight = dBoxY-2.*_cutoffRadius;
+			unsigned int cid;
+
+            for( tM  = _moleculeContainer->begin();
+                 tM != _moleculeContainer->end();
+                 tM  = _moleculeContainer->next() )
+            {
+            	cid = tM->componentid();
+
+				if( cid > 1 )
+				{
+					tM->resetXYZ();
+				}
+				else
+				{
+					ro[1] = tM->r(1);
+
+					if(ro[1] < dMirrorPosLeft)
+					{
+						ro[0] = tM->r(0);
+						ro[2] = tM->r(2);
+
+						v[0] = tM->v(0);
+						v[1] = tM->v(1);
+						v[2] = tM->v(2);
+
+						lambda = (dMirrorPosLeft - ro[1])/v[1];
+
+						rn[0] = ro[0] + lambda * v[0];
+						rn[1] = ro[1] + lambda * v[1];
+						rn[2] = ro[2] + lambda * v[2];
+
+//						cout << "ro[0] = " << ro[0] << endl;
+//						cout << "ro[1] = " << ro[1] << endl;
+//						cout << "ro[2] = " << ro[2] << endl;
+//
+//						cout << "rn[0] = " << rn[0] << endl;
+//						cout << "rn[1] = " << rn[1] << endl;
+//						cout << "rn[2] = " << rn[2] << endl;
+//
+//						cout << "v[0] = " << v[0] << endl;
+//						cout << "v[1] = " << v[1] << endl;
+//						cout << "v[2] = " << v[2] << endl;
+
+						// set new position, velocity
+						tM->setr(0, rn[0]);
+						tM->setr(1, rn[1]);
+						tM->setr(2, rn[2]);
+
+						tM->setv(1, v[1] * -1.);
+					}
+					else if(ro[1] > dMirrorPosRight)
+					{
+						ro[0] = tM->r(0);
+						ro[2] = tM->r(2);
+
+						v[0] = tM->v(0);
+						v[1] = tM->v(1);
+						v[2] = tM->v(2);
+
+						lambda = (dMirrorPosRight - ro[1])/v[1];
+
+						rn[0] = ro[0] + lambda * v[0];
+						rn[1] = ro[1] + lambda * v[1];
+						rn[2] = ro[2] + lambda * v[2];
+
+						// set new position, velocity
+						tM->setr(0, rn[0]);
+						tM->setr(1, rn[1]);
+						tM->setr(2, rn[2]);
+
+						tM->setv(1, v[1] * -1.);
+					}
+				}
+			}  // loop over molecules
+		}
+        // <-- MIRROR_WALL_AND_FIXED_MOLECULES
+
 
 	    // mheinen 2015-05-29 --> DENSITY_CONTROL
 	    // should done after calling eventNewTimestep() / before force calculation, because force _F[] on molecule is deleted by method Molecule::setupCache()
@@ -1912,6 +2045,35 @@ void Simulation::simulate() {
 			global_log->debug() << "alert z-oscillators" << endl;
 			_integrator->zOscillation(_zoscillator, _moleculeContainer);
 		}
+
+/*
+		// mheinen 2015-12-10 --> MIRROR_WALL
+		{
+			Molecule* tM;
+			double dPosY;
+			double dForceMeanY = -270;
+			double dForce[3];
+
+			for( tM  = _moleculeContainer->begin();
+				 tM != _moleculeContainer->end();
+				 tM  = _moleculeContainer->next() )
+			{
+				dPosY = tM->r(1);
+
+				dForce[0] = tM->F(0);
+				dForce[1] = tM->F(1);
+				dForce[2] = tM->F(2);
+
+				if(dPosY < 2*_cutoffRadius && tM->componentid() == 0)
+				{
+					dForce[1] += dForceMeanY * (2. - dPosY / _cutoffRadius);
+
+					tM->setF(dForce);
+				}
+			}
+		}
+        // <-- MIRROR_WALL
+*/
 
 		// Inform the integrator about the calculated forces
 		global_log->debug() << "Inform the integrator" << endl;
