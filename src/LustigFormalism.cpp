@@ -171,11 +171,11 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
 #endif
 }
 
-void LustigFormalism::Init(const double& U6, const double& dUdV, const double& d2UdV2)
+void LustigFormalism::Init(const double& U6, const double& dUdVm3, const double& d2UdV2m3)
 {
 	_ULocal      = U6 / 6.;
-	_dUdVLocal   = _mInvV * dUdV;
-	_d2UdV2Local = _InvV2 * d2UdV2;
+	_dUdVLocal   = _mInvV * dUdVm3 / 3.;
+	_d2UdV2Local = _InvV2 * d2UdV2m3 / 3.;
 }
 
 void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
