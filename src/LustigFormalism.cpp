@@ -11,12 +11,15 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <limits>
 
 #include "Domain.h"
 #include "parallel/DomainDecompBase.h"
 #include "molecules/ParaStrm.h"
 
 using namespace std;
+
+//typedef std::numeric_limits<double> dbl;
 
 LustigFormalism::LustigFormalism()
 {
@@ -311,15 +314,15 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "         simstep";
-		outputstream << "                                   _A00r";
-		outputstream << "                                   _A10r";
-		outputstream << "                                   _A01r";
-		outputstream << "                                   _A20r";
-		outputstream << "                                   _A11r";
-		outputstream << "                                   _A02r";
-		outputstream << "                                   _A30r";
-		outputstream << "                                   _A21r";
-		outputstream << "                                   _A12r";
+		outputstream << "                   _A00r";
+		outputstream << "                   _A10r";
+		outputstream << "                   _A01r";
+		outputstream << "                   _A20r";
+		outputstream << "                   _A11r";
+		outputstream << "                   _A02r";
+		outputstream << "                   _A30r";
+		outputstream << "                   _A21r";
+		outputstream << "                   _A12r";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -336,14 +339,14 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "         simstep";
-		outputstream << "                                    dUdV";
-		outputstream << "                                 dUdVavg";
-		outputstream << "                                   dUdV2";
-		outputstream << "                                dUdV2avg";
-		outputstream << "                                  d2UdV2";
-		outputstream << "                               d2UdV2avg";
-		outputstream << "                                   UdUdV";
-		outputstream << "                                UdUdVavg";
+		outputstream << "                    dUdV";
+		outputstream << "                 dUdVavg";
+		outputstream << "                   dUdV2";
+		outputstream << "                dUdV2avg";
+		outputstream << "                  d2UdV2";
+		outputstream << "               d2UdV2avg";
+		outputstream << "                   UdUdV";
+		outputstream << "                UdUdVavg";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -360,16 +363,16 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "      numConfigs";
-		outputstream << "                                       U";
-		outputstream << "                                      U2";
-		outputstream << "                                      U3";
-		outputstream << "                                    dUdV";
-		outputstream << "                                  d2UdV2";
-		outputstream << "                                   dUdV2";
-		outputstream << "                                   UdUdV";
-		outputstream << "                                  U2dUdV";
-		outputstream << "                                  UdUdV2";
-		outputstream << "                                 Ud2UdV2";
+		outputstream << "                       U";
+		outputstream << "                      U2";
+		outputstream << "                      U3";
+		outputstream << "                    dUdV";
+		outputstream << "                  d2UdV2";
+		outputstream << "                   dUdV2";
+		outputstream << "                   UdUdV";
+		outputstream << "                  U2dUdV";
+		outputstream << "                  UdUdV2";
+		outputstream << "                 Ud2UdV2";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -400,19 +403,19 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			filenamestream << "LustigFormalism" << ".dat";
 			string strFilename = filenamestream.str();
 
-			// simstep
-			outputstream << std::setw(16) << simstep;
+			// number of sampled configurations
+			outputstream << std::setw(16) << _nNumConfigs;
 
 			// data
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A00r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A10r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A01r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A20r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A11r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A02r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A30r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A21r;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _A20r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A00r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A10r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A01r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A20r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A11r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A02r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A30r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A21r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A20r;
 			outputstream << endl;
 
 			ofstream fileout(strFilename.c_str(), ios::app);
@@ -428,8 +431,8 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			filenamestream << "LustigFormalism_dUdV" << ".dat";
 			string strFilename = filenamestream.str();
 
-			// simstep
-			outputstream << std::setw(16) << simstep;
+			// number of sampled configurations
+			outputstream << std::setw(16) << _nNumConfigs;
 
 			// data
 			double InvNumConfigs = 1. / (double)(_nNumConfigs);
@@ -439,14 +442,14 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			double dUdV2   = _dUdV2GlobalSum   * InvNumConfigs;
 			double UdUdV   = _UdUdVGlobalSum   * InvNumConfigs;
 
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdVGlobal;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << dUdV;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdV2Global;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << dUdV2;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _d2UdV2Global;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << d2UdV2;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdVGlobal;
-			outputstream << std::setw(40) << fixed << std::setprecision(16) << UdUdV;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdVGlobal;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << dUdV;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdV2Global;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << dUdV2;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _d2UdV2Global;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << d2UdV2;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdVGlobal;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << UdUdV;
 			outputstream << endl;
 
 			ofstream fileout(strFilename.c_str(), ios::app);
@@ -467,20 +470,20 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 		filenamestream << "LustigFormalism_sums" << ".dat";
 		string strFilename = filenamestream.str();
 
-		// number of configurations
+		// number of sampled configurations
 		outputstream << std::setw(16) << _nNumConfigs;
 
 		// data
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UGlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U2GlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U3GlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdVGlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _d2UdV2GlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _dUdV2GlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdVGlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _U2dUdVGlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _UdUdV2GlobalSum;
-		outputstream << std::setw(40) << fixed << std::setprecision(16) << _Ud2UdV2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UGlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U3GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdVGlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _d2UdV2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdV2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdVGlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2dUdVGlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdV2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _Ud2UdV2GlobalSum;
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::app);
