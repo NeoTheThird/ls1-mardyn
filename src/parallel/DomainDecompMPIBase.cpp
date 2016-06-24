@@ -179,11 +179,12 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 	// the following implements a non-blocking recv scheme, which overlaps unpacking of
 	// messages with waiting for other messages to arrive
 	bool allDone = false;
+/*
 	double startTime = MPI_Wtime();
 
 	double waitCounter = 1.0;
 	double deadlockTimeOut = 5.0;
-
+*/
 	while (not allDone) {
 		allDone = true;
 
@@ -202,7 +203,7 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 			allDone &= _neighbours[d][i].testRecv(moleculeContainer,
 					removeRecvDuplicates);
 		}
-
+/*
 		// catch deadlocks
 		double waitingTime = MPI_Wtime() - startTime;
 		if (waitingTime > waitCounter) {
@@ -225,7 +226,7 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 			MPI_Abort(_comm, 1);
 			exit(1);
 		}
-
+*/
 	} // while not allDone
 }
 
