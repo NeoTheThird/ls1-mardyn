@@ -139,6 +139,16 @@ private:
 	double _myRF;
 
 	/**
+	 * \brief 1st volume derivative of potential energy
+	 */
+	double _dUdVm3;
+
+	/**
+	 * \brief 2nd volume derivative of potential energy
+	 */
+	double _d2UdV2m3;
+
+	/**
 	 * \brief array, that stores the dist_lookup.
 	 * For all vectorization methods, that utilize masking, this stores masks.
 	 * To utilize the gather operations of the MIC architecture, the dist_lookup is able to store the indices of the required particles.
@@ -174,7 +184,7 @@ private:
 			const vcp_double_vec& r2_x, const vcp_double_vec& r2_y, const vcp_double_vec& r2_z,
 			vcp_double_vec& f_x, vcp_double_vec& f_y, vcp_double_vec& f_z,
 			vcp_double_vec& V_x, vcp_double_vec& V_y, vcp_double_vec& V_z,
-			vcp_double_vec& sum_upot6lj, vcp_double_vec& sum_virial,
+			vcp_double_vec& sum_upot6lj, vcp_double_vec& sum_virial, vcp_double_vec& sum_dUdVm3, vcp_double_vec& sum_d2UdV2m3,
 			const vcp_mask_vec& forceMask,
 			const vcp_double_vec& eps_24, const vcp_double_vec& sig2,
 			const vcp_double_vec& shift6);

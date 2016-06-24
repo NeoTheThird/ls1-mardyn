@@ -21,7 +21,7 @@ VectorizedCellProcessor::VectorizedCellProcessor(Domain & domain, double cutoffR
 		CellProcessor(cutoffRadius, LJcutoffRadius), _domain(domain),
 		// maybe move the following to somewhere else:
 		_epsRFInvrc3(2. * (domain.getepsilonRF() - 1.) / ((cutoffRadius * cutoffRadius * cutoffRadius) * (2. * domain.getepsilonRF() + 1.))), 
-		_eps_sig(), _shift6(), _upot6lj(0.0), _upotXpoles(0.0), _virial(0.0), _myRF(0.0),
+		_eps_sig(), _shift6(), _upot6lj(0.0), _upotXpoles(0.0), _virial(0.0), _myRF(0.0), _dUdVm3(0.0), _d2UdV2m3(0.0),
 		_ljc_dist_lookup(nullptr), _charges_dist_lookup(nullptr), _dipoles_dist_lookup(nullptr), _quadrupoles_dist_lookup(nullptr){
 
 #if VCP_VEC_TYPE==VCP_NOVEC
@@ -86,12 +86,15 @@ void VectorizedCellProcessor::initTraversal(const size_t numCells) {
 	_upot6lj = 0.0;
 	_upotXpoles = 0.0;
 	_myRF = 0.0;
+	_dUdVm3 = 0.0;
+	_d2UdV2m3 = 0.0;
 }
 
 
 void VectorizedCellProcessor::endTraversal() {
 	_domain.setLocalVirial(_virial + 3.0 * _myRF);
 	_domain.setLocalUpot(_upot6lj / 6.0 + _upotXpoles + _myRF);
+	_domain.InitLustigFormalism(_upot6lj, _dUdVm3, _d2UdV2m3);
 }
 
 	//const vcp_double_vec minus_one = vcp_simd_set1(-1.0); //currently not used, would produce warning
@@ -117,7 +120,7 @@ void VectorizedCellProcessor::endTraversal() {
 			const vcp_double_vec& r2_x, const vcp_double_vec& r2_y, const vcp_double_vec& r2_z,
 			vcp_double_vec& f_x, vcp_double_vec& f_y, vcp_double_vec& f_z,
 			vcp_double_vec& V_x, vcp_double_vec& V_y, vcp_double_vec& V_z,
-			vcp_double_vec& sum_upot6lj, vcp_double_vec& sum_virial,
+			vcp_double_vec& sum_upot6lj, vcp_double_vec& sum_virial, vcp_double_vec& sum_dUdVm3, vcp_double_vec& sum_d2UdV2m3,
 			const vcp_mask_vec& forceMask,
 			const vcp_double_vec& eps_24, const vcp_double_vec& sig2,
 			const vcp_double_vec& shift6)
@@ -152,15 +155,24 @@ void VectorizedCellProcessor::endTraversal() {
 		V_y = m_dy * f_y;//1FP (virial)
 		V_z = m_dz * f_z;//1FP (virial)
 
+		const vcp_double_vec dudVm3   = eps_24*(two*lj12 -       lj6);
+		const vcp_double_vec d2udV2m3 = eps_24*(ten*lj12 - three*lj6);
+
 		// Check if we have to add the macroscopic values up
 		if (calculateMacroscopic) {
 
 			const vcp_double_vec upot_sh = vcp_simd_fma(eps_24, lj12m6, shift6); //2 FP upot				//shift6 is not masked -> we have to mask upot_shifted
 			const vcp_double_vec upot_masked = vcp_simd_applymask(upot_sh, forceMask); //mask it
+			const vcp_double_vec dudVm3_masked   = vcp_simd_applymask(dudVm3,   forceMask); //mask it
+			const vcp_double_vec d2udV2m3_masked = vcp_simd_applymask(d2udV2m3, forceMask); //mask it
 
 			sum_upot6lj = sum_upot6lj + upot_masked;//1FP (sum macro)
 
 			sum_virial = sum_virial +  V_x + V_y + V_z;//1 FP (sum macro) + 2 FP (virial)
+
+			// Lustig Formalism
+			sum_dUdVm3   = sum_dUdVm3   + dudVm3_masked;
+			sum_d2UdV2m3 = sum_d2UdV2m3 + d2udV2m3_masked;
 		}
 	}
 
@@ -1081,6 +1093,8 @@ void VectorizedCellProcessor :: _calculatePairs(const CellDataSoA & soa1, const 
 	vcp_double_vec sum_upotXpoles = VCP_SIMD_ZEROV;
 	vcp_double_vec sum_virial = VCP_SIMD_ZEROV;
 	vcp_double_vec sum_myRF = VCP_SIMD_ZEROV;
+	vcp_double_vec sum_dUdVm3 = VCP_SIMD_ZEROV;
+	vcp_double_vec sum_d2UdV2m3 = VCP_SIMD_ZEROV;
 
 	const vcp_double_vec rc2 = vcp_simd_set1(_LJCutoffRadiusSquare);
 	const vcp_double_vec cutoffRadiusSquare = vcp_simd_set1(_cutoffRadiusSquare);
@@ -1193,7 +1207,7 @@ void VectorizedCellProcessor :: _calculatePairs(const CellDataSoA & soa1, const 
 							m_r_x2, m_r_y2, m_r_z2, c_r_x2, c_r_y2, c_r_z2,
 							fx, fy, fz,
 							Vx, Vy, Vz,
-							sum_upot6lj, sum_virial,
+							sum_upot6lj, sum_virial, sum_dUdVm3, sum_d2UdV2m3,
 							MaskGatherChooser::getForceMask(lookupORforceMask),
 							eps_24, sig2,
 							shift6);
@@ -1245,7 +1259,7 @@ void VectorizedCellProcessor :: _calculatePairs(const CellDataSoA & soa1, const 
 							m_r_x2, m_r_y2, m_r_z2, c_r_x2, c_r_y2, c_r_z2,
 							fx, fy, fz,
 							Vx, Vy, Vz,
-							sum_upot6lj, sum_virial,
+							sum_upot6lj, sum_virial, sum_dUdVm3, sum_d2UdV2m3,
 							remainderM,//use remainder mask as forcemask
 							eps_24, sig2,
 							shift6);
@@ -2734,6 +2748,8 @@ void VectorizedCellProcessor :: _calculatePairs(const CellDataSoA & soa1, const 
 	hSum_Add_Store(&_upotXpoles, sum_upotXpoles);
 	hSum_Add_Store(&_virial, sum_virial);
 	hSum_Add_Store(&_myRF, vcp_simd_sub(zero, sum_myRF));
+	hSum_Add_Store(&_dUdVm3, sum_dUdVm3);
+	hSum_Add_Store(&_d2UdV2m3, sum_d2UdV2m3);
 
 } // void LennardJonesCellHandler::CalculatePairs_(LJSoA & soa1, LJSoA & soa2)
 
