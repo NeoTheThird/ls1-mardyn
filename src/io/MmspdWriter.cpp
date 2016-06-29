@@ -83,7 +83,12 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
   // header line
   unsigned long numTimesteps = _simulation.getNumTimesteps();
   mmspdfstream << "1 " << "0 0 0 " << domain->getGlobalLength(0) <<" "<< domain->getGlobalLength(1)<< " " << domain->getGlobalLength(2) << " "
-		       << numTimesteps / _writeFrequency+1    << " " << domain-> getNumberOfComponents() << " " << "0" << "\n";
+		       << numTimesteps / _writeFrequency+1    << " ";
+
+  if (domain->getNumberOfComponents() < 2)
+	  mmspdfstream << 2 << " " << "0" << "\n";
+  else
+	  mmspdfstream << domain->getNumberOfComponents() << " " << "0" << "\n";
 		       
   
   
@@ -112,8 +117,13 @@ void MmspdWriter::initOutput(ParticleContainer* particleContainer,
       else {
 	mmspdfstream << "**************** Error: Unspecified component!*************\n Possible reason: more than 5 components?\n"; 
       }
-      mmspdfstream<< setprecision(4) << domain->getSigma(i,0)*0.7 << " x f y f z f" << "\n";
-  } // end of particle definitions		
+      mmspdfstream<< setprecision(4) << domain->getSigma(i,0)*0.5 << " x f y f z f" << "\n";
+  } // end of particle definitions
+
+  if(domain->getNumberOfComponents() < 2)
+	  mmspdfstream << "s 4 3 cr b 255 cg b 0 cb b 0 r f " << setprecision(4) << domain->getSigma(0, 0)*0.5 << " x f y f z f" << "\n";
+
+
   
   mmspdfstream.close();
 #ifdef ENABLE_MPI
