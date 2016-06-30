@@ -415,7 +415,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A02r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A30r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A21r;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A20r; // TODO: bug? shouldn't it be _A12r?
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A12r;
 			outputstream << endl;
 
 			ofstream fileout(strFilename.c_str(), ios::app);
