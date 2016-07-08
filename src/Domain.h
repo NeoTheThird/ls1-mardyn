@@ -14,7 +14,7 @@
 /* 
  * TODO add comments for variables 
  */
-#define CHECKPOINT_FILE_VERSION 20140131  /**< checkpoint file version */
+#define CHECKPOINT_FILE_VERSION 20160512  /**< checkpoint file version */
 
 #define MIN_BETA 0.9  /**< minimal scaling factor before an explosion is detected */
 #define KINLIMIT_PER_T 10.0
@@ -540,7 +540,7 @@ private:
         float _globalDecisiveDensity;  // set from outside
 
 	//! writing out a density profile in cylindrical coordinates
-	bool _universalCylindricalGeometry;
+	bool _universalCylindricalGeometry=false;
 	//! centre of the cylindrical coordinate system
 	double _universalCentre[3];
 	//! outermost radial distance up to which the binning is applied

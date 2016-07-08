@@ -2,7 +2,7 @@
 #define KDDECOMPOSITION2_H_
 
 #include <mpi.h>
-
+#include <algorithm>
 #include <list>
 #include <vector>
 
@@ -49,7 +49,7 @@ class KDDecomposition: public DomainDecompMPIBase {
 	 *                            influences the quality of the load balancing. I recommend to
 	 *                            set it to 2 - 4.
 	 */
-	KDDecomposition(double cutoffRadius, Domain* domain, int updateFrequency = 100, int fullSearchThreshold = 2);
+	KDDecomposition(double cutoffRadius, Domain* domain, int updateFrequency = 100, int fullSearchThreshold = 2, bool hetero=false, bool cutsmaller=false, bool forceRatio=false);
 
 	KDDecomposition();
 
@@ -119,6 +119,16 @@ class KDDecomposition: public DomainDecompMPIBase {
 
 	int getUpdateFrequency() { return _frequency; }
 	void setUpdateFrequency(int frequency) { _frequency = frequency; }
+	virtual std::vector<int> getNeighbourRanks(){
+		//global_log->error() << "not implemented \n";
+		exit(-1);
+		return std::vector<int> (0);
+	}
+	virtual std::vector<int> getNeighbourRanksFullShell(){
+		//global_log->error() << "not implemented \n";
+		exit(-1);
+		return std::vector<int> (0);
+	}
 
  private:
 	void constructNewTree(KDNode *& newRoot, KDNode *& newOwnLeaf, ParticleContainer* moleculeContainer);
@@ -265,7 +275,10 @@ class KDDecomposition: public DomainDecompMPIBase {
 	std::vector<double> _accumulatedProcessorSpeeds;//length nprocs+1, first element is 0.
 	double _totalMeanProcessorSpeed;
 	double _totalProcessorSpeed;
-	const bool _heterogeneousSystems = true;
+	int _processorSpeedUpdateCount;
+	bool _heterogeneousSystems;
+	bool _splitBiggest;  // indicates, whether a subdomain is to be split along its biggest size
+	bool _forceRatio;  // if you want to enable forcing the above ratio, enable this.
 };
 
 

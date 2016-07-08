@@ -24,16 +24,17 @@ using Log::global_log;
 
 KDDecomposition::KDDecomposition() :
 		_globalNumCells(1), _decompTree(NULL), _ownArea(NULL), _numParticlesPerCell(NULL), _steps(0), _frequency(1.), _cutoffRadius(
-				1.), _fullSearchThreshold(8), _totalMeanProcessorSpeed(1.), _totalProcessorSpeed(1.) {
+				1.), _fullSearchThreshold(8), _totalMeanProcessorSpeed(1.), _totalProcessorSpeed(1.), _processorSpeedUpdateCount(0),
+				_heterogeneousSystems(false), _splitBiggest(true), _forceRatio(false){
 	bool before = global_log->get_do_output();
 	global_log->set_mpi_output_all();
 	global_log->debug() << "KDDecomposition: Rank " << _rank << " executing file " << global_simulation->getName() << std::endl;
 	global_log->set_do_output(before);
 }
 
-KDDecomposition::KDDecomposition(double cutoffRadius, Domain* domain, int updateFrequency, int fullSearchThreshold) :
-		_steps(0), _frequency(updateFrequency), _fullSearchThreshold(fullSearchThreshold), _totalMeanProcessorSpeed(1.), _totalProcessorSpeed(
-				1.) {
+KDDecomposition::KDDecomposition(double cutoffRadius, Domain* domain, int updateFrequency, int fullSearchThreshold, bool hetero, bool cutsmaller, bool forceRatio) :
+		_steps(0), _frequency(updateFrequency), _fullSearchThreshold(fullSearchThreshold), _totalMeanProcessorSpeed(1.),
+		_totalProcessorSpeed(1.), _processorSpeedUpdateCount(0), _heterogeneousSystems(hetero), _splitBiggest(!cutsmaller), _forceRatio(forceRatio) {
 	bool before = global_log->get_do_output();
 	global_log->set_mpi_output_all();
 	global_log->debug() << "KDDecomposition: Rank " << _rank << " executing file " << global_simulation->getName() << std::endl;
@@ -98,6 +99,12 @@ void KDDecomposition::readXML(XMLfileUnits& xmlconfig) {
 	global_log->info() << "KDDecomposition update frequency: " << _frequency << endl;
 	xmlconfig.getNodeValue("fullSearchThreshold", _fullSearchThreshold);
 	global_log->info() << "KDDecomposition full search threshold: " << _fullSearchThreshold << endl;
+	xmlconfig.getNodeValue("heterogeneousSystems", _heterogeneousSystems);
+	global_log->info() << "KDDecomposition for heterogeneous systems?: " << (_heterogeneousSystems?"yes":"no") << endl;
+	xmlconfig.getNodeValue("splitBiggestDimension", _splitBiggest);
+	global_log->info() << "KDDecomposition splits along biggest domain?: " << (_splitBiggest?"yes":"no") << endl;
+	xmlconfig.getNodeValue("forceRatio", _forceRatio);
+	global_log->info() << "KDDecomposition forces load/performance ratio?: " << (_forceRatio?"yes":"no") << endl;
 }
 
 int KDDecomposition::getNonBlockingStageCount(){
@@ -163,7 +170,7 @@ void KDDecomposition::balanceAndExchange(bool forceRebalancing, ParticleContaine
 	}
 }
 
-void KDDecomposition::initCommunicationPartners(double cutoffRadius, Domain * domain) {
+void KDDecomposition::initCommunicationPartners(double /*cutoffRadius*/, Domain * domain) {
 
 //	if(_neighboursInitialized) {
 //		return;
@@ -510,20 +517,27 @@ void KDDecomposition::constructNewTree(KDNode *& newRoot, KDNode *& newOwnLeaf, 
 
 void KDDecomposition::updateMeanProcessorSpeeds(std::vector<double>& processorSpeeds,
 		std::vector<double>& accumulatedProcessorSpeeds, ParticleContainer* moleculeContainer) {
+	// update the processor speed exactly twice (first update at preprocessor stage (no speeds known yet)
+	// second update after first real measurements
+	if(_processorSpeedUpdateCount > 1){
+		return;
+	}
+	_processorSpeedUpdateCount++;
+
 	if (_heterogeneousSystems) {
 		FlopCounter fl(global_simulation->getcutoffRadius(), global_simulation->getLJCutoff());
 		moleculeContainer->traverseCells(fl);
 		double flopCount = fl.getMyFlopCount();
-		double flopRate = flopCount / global_simulation->getOneLoopCompTime();
-		if (flopRate == 0.) {  // for unit_tests...
+		double flopRate = flopCount / global_simulation->getAndResetOneLoopCompTime();
+		if (flopRate == 0.) {  // for unit_tests and first simulation
 			flopRate = 1.;
 		}
 		collCommInit(_numProcs);
-		for (int i = 0; i < getRank(); i++) {
+		for (int i = 0; i < _rank; i++) {
 			collCommAppendDouble(0.);
 		}
 		collCommAppendDouble(flopRate);
-		for (int i = getRank() + 1; i < _numProcs; i++) {
+		for (int i = _rank + 1; i < _numProcs; i++) {
 			collCommAppendDouble(0.);
 		}
 		collCommAllreduceSum();
@@ -867,14 +881,13 @@ bool KDDecomposition::calculateAllSubdivisions(KDNode* node, std::list<KDNode*>&
 			(_accumulatedProcessorSpeeds[node->_owningProc + node->_numProcs] - _accumulatedProcessorSpeeds[node->_owningProc + leftRightLoadRatioIndex]);
 
 
-	bool forceRatio = true;  // if you want to enable forcing the above ratio, enable this.
+
 	bool splitLoad = true;  // indicates, whether to split the domain according to the load
 							// or whether the domain should simply be split in half and the number of processes should be distributed accordingly.
-	bool splitBiggest = true;
 
 	size_t dimInit = 0;
 	size_t dimEnd = 3;
-	if(splitBiggest){
+	if(_splitBiggest){
 		size_t max = costsLeft[0].size();
 		size_t maxInd = 0;
 		for (unsigned int dim = 1; dim < 3; dim++){
@@ -900,7 +913,7 @@ bool KDDecomposition::calculateAllSubdivisions(KDNode* node, std::list<KDNode*>&
 		int maxEndIndex = node->_highCorner[dim] - node->_lowCorner[dim] - 1;
 		int endIndex = maxEndIndex;
 
-		if (node->_numProcs > _fullSearchThreshold or forceRatio) {
+		if (node->_numProcs > _fullSearchThreshold or _forceRatio) {
 			if (splitLoad) {  // we choose the index to be the best possible for splitting the ratios.
 				double minError = fabs(costsLeft[dim][0] / costsRight[dim][0] - leftRightLoadRatio);
 				size_t index = 0;
@@ -996,7 +1009,7 @@ bool KDDecomposition::calculateAllSubdivisions(KDNode* node, std::list<KDNode*>&
 			if ((clone->_child1->_numProcs <= 0 || clone->_child1->_numProcs >= node->_numProcs) ||
 					(clone->_child2->_numProcs <= 0 || clone->_child2->_numProcs >= node->_numProcs) ){
 				//continue;
-				global_log->error() << "ERROR in calculateAllSubdivisions(), part of the domain was not assigned to a proc" << endl;
+				global_log->error_always_output() << "ERROR in calculateAllSubdivisions(), part of the domain was not assigned to a proc" << endl;
 				global_simulation->exit(1);
 			}
 			assert( clone->_child1->isResolvable() && clone->_child2->isResolvable() );

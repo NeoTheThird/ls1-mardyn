@@ -37,7 +37,7 @@ VTK ?= 0
 SUPPORT_GENERATOR ?= 0
 
 # select vectorization mode:
-VECTORIZE_CODE ?= SSE
+VECTORIZE_CODE ?= AOS
 # AOS      - LegacyCellProcessor
 # SSE      - VectorizedCellProcessor with SSE intrinsics (default)
 # AVX      - VectorizedCellProcessor with AVX intrinsics
@@ -46,9 +46,28 @@ VECTORIZE_CODE ?= SSE
 # KNC_G_S  - VectorizedCellProcessor with KNC intrinsics and gather-scatter (not fully optimized yet in this branch)
 # SOA      - VectorizedCellProcessor with no intrinsics
 # see "make help_vect"
-vec_options := AOS SSE AVX AVX2 KNC_MASK KNC_G_S SOA
+vec_options := AOS SSE AVX AVX2 KNC_MASK KNC_G_S SOA SSEAMD AVXAMD
 ifeq (, $(filter $(VECTORIZE_CODE), $(vec_options)))
   $(error ERROR: no valid vectorize code option chosen. see "make help_vect")
+endif
+
+# allow FFT acceleration of FMM (requires FFTW!) ?
+ENABLE_FMM_FFT ?= 0
+
+# allow acceleration of MPI communication through overlapping communication ?
+ENABLE_OVERLAPPING ?= 0
+
+# allow OpenMP? Leave off for now, unless you are developing it.
+OPENMP ?= 0
+
+PAPI ?= 0
+
+ifeq ($(ENABLE_FMM_FFT), 1)
+OPENMP_SIMD = 1
+USE_FFTW = 1
+else
+OPENMP_SIMD = 0
+USE_FFTW = 0
 endif
 
 #build name and include config file
@@ -62,7 +81,7 @@ else
   $(error ERROR: config file for $(CFG) not found - no include )
 endif
 
-SOURCES_COMMON = $(shell find ./ -name "*.cpp" | grep -E -v "(parallel/|/tests/|/vtk/)")
+SOURCES_COMMON = $(shell find ./ -name "*.cpp" | grep -E -v "(parallel/|/tests/|/vtk/|/fft/)")
 SOURCES_SEQ = $(shell find parallel/ -name "*.cpp" | grep "Dummy" | grep -E -v "(/tests/|/vtk/)")
 SOURCES_SEQ += $(shell find parallel/ -name "*.cpp" | grep "DomainDecompBase" | grep -E -v "/tests/")
 SOURCES_PAR = $(shell find parallel/ -name "*.cpp" | grep -E -v "(/tests/|/vtk/)")
@@ -70,10 +89,10 @@ SOURCES = $(SOURCES_COMMON) $(SOURCES_$(PARTYPE))
 
 
 OBJECTS = $(SOURCES:.cpp=.o)
-INCLUDES = -I$(SRCDIR) -I$(SRCDIR)/External
+INCLUDES = -I$(SRCDIR) -isystem $(SRCDIR)/External
 
 BINARY_BASENAME = MarDyn
-ifneq ($(realpath .svn),)
+ifneq ($(shell realpath .svn),)
   $(info Building from a svn version.)
   SVN_VERSION = $(shell svnversion | sed -e "s/:/-/")
   ifneq ($(SVN_VERSION),)
@@ -86,7 +105,7 @@ else
 endif
 
 CXX = $(CXX_$(PARTYPE))
-CXXFLAGS = $(CXXFLAGS_$(PARTYPE)_$(TARGET)) $(INCLUDES) -DMPICH_IGNORE_CXX_SEEK -std=c++11
+CXXFLAGS += $(CXXFLAGS_$(PARTYPE)_$(TARGET)) $(INCLUDES) -DMPICH_IGNORE_CXX_SEEK -std=c++11
 LDFLAGS = $(LINKFLAGS_$(PARTYPE)_$(TARGET)) 
 
 ifeq ($(SUPPORT_GENERATOR), 1)
@@ -109,6 +128,23 @@ CXXFLAGS += $(CXXFLAGS_VECTORIZE)
 LDFLAGS += $(LDFLAGS_VECTORIZE)
 endif
 
+ifeq ($(OPENMP), 1)
+CXXFLAGS += -D ENABLE_OPENMP=1 $(FLAGS_OPENMP)
+LDFLAGS += $(FLAGS_OPENMP)
+else
+  ifeq ($(OPENMP_SIMD),1)
+  CXXFLAGS += $(FLAGS_OPENMP)
+  endif
+endif
+
+ifeq ($(ENABLE_FMM_FFT),1)
+CXXFLAGS += -DFMM_FFT
+endif
+
+ifeq ($(ENABLE_OVERLAPPING),1)
+CXXFLAGS += -DENABLE_OVERLAPPING
+endif
+
 ifeq ($(PAPI),1)
 CXXFLAGS += -D WITH_PAPI=1
 LDFLAGS += -lpapi
@@ -116,7 +152,7 @@ endif
 
 
 ifeq ($(DEPS),1)
-  # create .deps subdirectories containing dependency information
+# create .deps subdirectories containing dependency information
   $(shell find -type d ! -name .deps -execdir mkdir -p {}/.deps \;)
   DEPCOMP = depmode=$(DEPMODE) source=$< object=$@ $(MAKEFILEDIR)depcomp
 else
@@ -129,6 +165,11 @@ ifeq ($(VTK), 1)
   include $(VTK_MAKEFILE)
 endif
 
+ifeq ($(USE_FFTW), 1)
+  FFTW_MAKEFILE := $(realpath $(MAKEFILEDIR)/fft.mk ) 
+  include $(FFTW_MAKEFILE)
+endif
+
 $(BINARY): $(OBJECTS)
 	@echo "building $(BINARY)"
 	$(CXX) -o $@ $(OBJECTS) $(LDFLAGS)
@@ -139,19 +180,23 @@ $(BINARY): $(OBJECTS)
 
 .PHONY: help all clean cleanall depend cfg_list cfg_help lcov clean_deps
 
+hl=$(shell tput smul)
+norm=$(shell tput sgr0)
+underline=${hl}$(1)${norm}
 help:
 	@echo "Current configuration: $(CFG_INFO)"
 	@echo
-	@echo "options:"
-	@echo "make CFG=...                      			choose compiler (see make cfg_list)"
-	@echo "make PARTYPE=SEQ | PAR            			choose parallelization type (see cfg_help)"
-	@echo "make TARGET=DEBUG | RELEASE       			choose target (see cfg_help)"
-	@echo "make DEPS=0 | 1                   			compile using dependancy tracking"
-	@echo "make UNIT_TESTS=0 | 1             			compile with or without unit tests (and build cppunit if neccessary)"
-	@echo "make VTK=0 | 1                    	 		compile with or without the vtk output plugin" 
-	@echo "make SUPPORT_DL_GENERATOR=0 | 1   	        compile with support for input generators as dynamic libraries"
-	@echo "make VECTORIZE_CODE=AOS | SSE | AVX | ...	compile with vectorization support (see help_vect)"
-	@echo "make PAPI=0 | 1			                   	compile with PAPI counter support"
+	@echo "options (underlined options are default values):"
+	@echo "make CFG=$(call underline,gcc), ...                      			choose compiler (see make cfg_list)"
+	@echo "make PARTYPE=$(call underline,SEQ) | PAR            			choose parallelization type (see cfg_help)"
+	@echo "make TARGET=DEBUG | $(call underline,RELEASE)       			choose target (see cfg_help)"
+	@echo "make DEPS=$(call underline,0) | 1                   			compile using dependancy tracking"
+	@echo "make UNIT_TESTS=$(call underline,0) | 1             			compile with or without unit tests (and build cppunit if neccessary)"
+	@echo "make VTK=$(call underline,0) | 1                    	 		compile with or without the vtk output plugin" 
+	@echo "make SUPPORT_GENERATOR=$(call underline,0) | 1   	     		   	compile with support for input generators as dynamic libraries"
+	@echo "make VECTORIZE_CODE=AOS | $(call underline,SSE) | AVX | ...		compile with vectorization support (see help_vect)"
+	@echo "make PAPI=$(call underline,0) | 1			                   	compile with PAPI counter support"
+	@echo "make ENABLE_FMM_FFT=$(call underline,0) | 1				compile using an FFT accelerated FMM method"
 	@echo
 	@echo "targets:"
 	@echo "make all         build $(BINARY)"
@@ -163,6 +208,7 @@ help:
 	@echo "make depend      generate makefile dependency list"
 	@echo "make lcov        create code coverage information"
 	@echo "make lcov_clean  reset profile data"
+	@echo "make test  		run the unit tests"
 
 help_vect:
 	@echo "Vectorization help:"
@@ -242,7 +288,24 @@ lcov:
 	genhtml --output-director $(SRCDIR)/../lcov/ Mardyn.info
 
 lcov_clean:
-	 lcov --directory $(SRCDIR) -b $(SRCDIR) --zerocounters
+	lcov --directory $(SRCDIR) -b $(SRCDIR) --zerocounters
+
+.PHONY: test
+
+
+test:
+	@test -L $(BINARY_BASENAME) || { echo "\n----no executable found. Compile the program first.---\n"; exit 1; }
+	@$(eval FILENAME := $(shell ls -l $(BINARY_BASENAME) | tr -s ' ' | cut -d ' ' -f 11))
+	@echo testing with executable: $(FILENAME)
+	@if test $(findstring PAR, $(FILENAME)); then \
+		echo parallel execution ; \
+    	mpirun -n 2 $(SRCDIR)/$(BINARY_BASENAME) -t -d $(SRCDIR)/../test_input/ ; \
+    	mpirun -n 1 $(SRCDIR)/$(BINARY_BASENAME) -t -d $(SRCDIR)/../test_input/ ; \
+    else \
+    	echo Serial execution ; \
+    	$(SRCDIR)/$(BINARY_BASENAME) -t -d $(SRCDIR)/../test_input/ ; \
+    fi
+#	$(MPICMD) $(SRCDIR)/$(BINARY_BASENAME) -t -d $(SRCDIR)/../test_input/
 
 # include potentially generated dependency information
 -include $(shell find -path '*/.deps/*' -type f)

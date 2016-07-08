@@ -81,6 +81,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 	double timestepLength;
 	unsigned cosetid = 0;
         bool widom = false;
+        map<unsigned, double*> cavity_grid;
 
 	// The first line of the config file has to contain the token "MDProjectConfig"
 	inputfilestream >> token;
@@ -161,7 +162,18 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				getline(inputfilestream, line);
 				stringstream lineStream(line);
 				lineStream >> updateFrequency >> fullSearchThreshold;
-				_domainDecomposition = (DomainDecompBase*) new KDDecomposition(_cutoffRadius, _domain, updateFrequency, fullSearchThreshold);
+				bool hetero=false, cutsmaller=false, forceRatio=false;
+				if(line.find("hetero") != string::npos){
+					hetero=true;
+				}
+				if(line.find("cutSmaller") != string::npos){
+					cutsmaller=true;  // allow domain to be split not only along biggest side
+				}
+				if(line.find("forceRatio") != string::npos){
+					forceRatio=true;  // allow domain to be split not only along biggest side
+				}
+				_domainDecomposition = (DomainDecompBase*) new KDDecomposition(_cutoffRadius, _domain, updateFrequency,
+						fullSearchThreshold, hetero, cutsmaller, forceRatio);
 			}
 #endif
 		} else if (token == "datastructure") {
@@ -214,6 +226,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				_outputPlugins.push_back(new XyzWriter(writeFrequency,
 						outputPathAndPrefix, true));
 				global_log->debug() << "XyzWriter " << writeFrequency << " '"
+						<< outputPathAndPrefix << "'.\n";
+			} else if (token == "CavityWriter") {
+				unsigned long writeFrequency;
+				string outputPathAndPrefix;
+				inputfilestream >> writeFrequency >> outputPathAndPrefix;
+				_outputPlugins.push_back(new CavityWriter(writeFrequency,
+						outputPathAndPrefix, true));
+				global_log->debug() << "CavityWriter " << writeFrequency << " '"
 						<< outputPathAndPrefix << "'.\n";
 			} else if (token == "CheckpointWriter") {
 				unsigned long writeFrequency;
@@ -538,7 +558,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					global_log->debug()
 							<< "Syntax: chemicalPotential <mu> component <cid> "
 							<< "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
-							<< "conduct <ntest> tests every <nstep> steps\n";
+							<< "conduct <ntest> tests every <nstep> steps" << endl;
 					exit(1);
 				}
 				inputfilestream >> x1 >> y1 >> z1;
@@ -550,7 +570,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				global_log->debug()
 						<< "Syntax: chemicalPotential <mu> component <cid> "
 						<< "[control <x0> <y0> <z0> to <x1> <y1> <z1>] "
-						<< "conduct <ntest> tests every <nstep> steps\n";
+						<< "conduct <ntest> tests every <nstep> steps" << endl;
 				exit(1);
 			}
 			unsigned intest;
@@ -596,7 +616,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			global_log->info() << setprecision(6) << "chemical Potential "
 					<< imu << " component " << icid + 1 << " (internally "
 					<< icid << ") conduct " << intest << " tests every "
-					<< instep << " steps: ";
+					<< instep << " steps: " << endl;
 			global_log->info() << flush;
 			_lmu.push_back(tmu);
 			global_log->info() << " pushed back." << endl;
@@ -604,7 +624,58 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> h;
 		} else if(token == "Widom") {
                         widom = true;
-		} else if (token == "NVE") {
+		} else if(token == "cavity") {
+                        unsigned cavity_cid;
+                        inputfilestream >> cavity_cid;
+                        cavity_cid--;
+                        inputfilestream >> token;
+                        if (token != "radius") {
+                                global_log->error() << "Expected 'radius' instead of '"
+                                                << token << "'.\n";
+                                global_log->debug()
+                                                << "Syntax: cavity <cid> radius <R> <coord_max> grid <N_x> <N_y> <N_z> every <n_step> steps\n";
+                                exit(1);
+                        }
+                        double cavity_radius;
+                        inputfilestream >> cavity_radius;
+                        int neighbours;
+                        inputfilestream >> neighbours;
+                        inputfilestream >> token;
+                        if (token != "grid") {
+                                global_log->error() << "Expected 'grid' instead of '"
+                                                << token << "'.\n";
+                                global_log->debug()
+                                                << "Syntax: cavity <cid> radius <R> <coord_max> grid <N_x> <N_y> <N_z> every <n_step> steps\n";
+                                exit(1);
+                        }
+                        unsigned gridx, gridy, gridz;
+                        inputfilestream >> gridx >> gridy >> gridz;
+                        inputfilestream >> token;
+                        if (token != "every") {
+                                global_log->error() << "Expected 'every' instead of '"
+                                                << token << "'.\n";
+                                global_log->debug()
+                                                << "Syntax: cavity <cid> radius <R> <coord_max> grid <N_x> <N_y> <N_z> every <n_step> steps\n";
+                                exit(1);
+                        }
+                        unsigned cavity_steps;
+                        inputfilestream >> cavity_steps;
+                        inputfilestream >> token;
+                        if (token != "steps") {
+                                global_log->error() << "Expected 'steps' instead of '"
+                                                << token << "'.\n";
+                                global_log->debug()
+                                                << "Syntax: cavity <cid> radius <R> <coord_max> grid <N_x> <N_y> <N_z> every <n_step> steps\n";
+                                exit(1);
+                        }
+                        this->_mcav[cavity_cid] = CavityEnsemble();
+                        this->_mcav[cavity_cid].setInterval(cavity_steps);
+                        this->_mcav[cavity_cid].setMaxNeighbours(neighbours, cavity_radius*cavity_radius);
+                        cavity_grid[cavity_cid] = new double[3];
+                        (cavity_grid[cavity_cid])[0] = gridx;
+                        (cavity_grid[cavity_cid])[1] = gridy;
+                        (cavity_grid[cavity_cid])[2] = gridz;
+                } else if (token == "NVE") {
 			/* TODO: Documentation, what it does (no "Enerstat" at the moment) */
 			_domain->thermostatOff();
 			global_log->error() << "Not implemented" << endl;
@@ -860,4 +931,30 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 		j++;
 	}
+	
+ 	unsigned long Nbasis = 3 * (this->_domain->getglobalNumMolecules() + 3 * this->_lmu.size());
+	map<unsigned, CavityEnsemble>::iterator ceit;
+        for(ceit = _mcav.begin(); ceit != _mcav.end(); ceit++)
+        {
+           ceit->second.setSystem(_domain->getGlobalLength(0), _domain->getGlobalLength(1), _domain->getGlobalLength(2));
+           ceit->second.setIdOffset((1 + ceit->first) * Nbasis);
+
+           ceit->second.setSubdomain( ownrank, _moleculeContainer->getBoundingBoxMin(0),
+                                               _moleculeContainer->getBoundingBoxMax(0),
+                                               _moleculeContainer->getBoundingBoxMin(1),
+                                               _moleculeContainer->getBoundingBoxMax(1),
+                                               _moleculeContainer->getBoundingBoxMin(2),
+                                               _moleculeContainer->getBoundingBoxMax(2)  );
+           double Tcur = _domain->getCurrentTemperature(0);
+           double Ttar =_domain->severalThermostats()? _domain->getTargetTemperature(1)
+                                                     : _domain->getTargetTemperature(0);
+           if ((Tcur < 0.667 * Ttar) || (Tcur > 1.5 * Ttar)) Tcur = Ttar;
+           ceit->second.submitTemperature(Tcur);
+           
+           ceit->second.init(
+              global_simulation->getEnsemble()->component(ceit->first),
+              (cavity_grid[ceit->first])[0], (cavity_grid[ceit->first])[1], (cavity_grid[ceit->first])[2]
+           );
+           ceit->second.communicateNumCavities(this->_domainDecomposition);
+        }
 }

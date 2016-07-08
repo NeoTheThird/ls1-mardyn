@@ -8,8 +8,9 @@
 #include "CompareFMMContainersTest.h"
 #include "molecules/Molecule.h"
 #include "bhfmm/FastMultipoleMethod.h"
+#include "parallel/DomainDecompBase.h"
 
-TEST_SUITE_REGISTRATION(CompareFMMContainersTest);
+//TEST_SUITE_REGISTRATION(CompareFMMContainersTest);
 
 CompareFMMContainersTest::CompareFMMContainersTest() {
 	// TODO Auto-generated constructor stub
@@ -21,6 +22,10 @@ CompareFMMContainersTest::~CompareFMMContainersTest() {
 }
 
 void CompareFMMContainersTest::compare(double cutoffRadius, bool periodic) {
+	if (this->_domainDecomposition->getNumProcs() != 1) {
+		test_log->info() << "Not executing CompareFMMContainerTest for more than 1 proc" << std::endl;
+		return;
+	}
 
 	double globalDomainLength[3] = {8., 8., 8.};
 	double bBoxMin[3] = {0., 0., 0.};

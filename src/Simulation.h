@@ -1,12 +1,15 @@
 #ifndef SIMULATION_H_
 #define SIMULATION_H_
 
+#include "ensemble/CavityEnsemble.h"
 #include "ensemble/GrandCanonical.h"
 #include "parallel/DomainDecompTypes.h"
 #include "utils/OptionParser.h"
 #include "utils/SysMon.h"
 #include "thermostats/VelocityScalingThermostat.h"
-
+#ifdef USE_VT
+#include "VT.h"
+#endif
 class Wall;
 class Mirror;
 using optparse::Values;
@@ -56,6 +59,7 @@ const int VELSCALE_THERMOSTAT = 1;
 namespace bhfmm {
 class FastMultipoleMethod;
 } // bhfmm
+
 
 /** @brief Controls the simulation process
  *  @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
@@ -484,7 +488,15 @@ private:
 
 public:
 	//! computational time for one execution of traverseCell
-	double getOneLoopCompTime(){return _oneLoopCompTime;}
+	double getAndResetOneLoopCompTime() {
+		if(_loopCompTimeSteps==0){
+			return 1.;
+		}
+		double t = _loopCompTime/_loopCompTimeSteps;
+		_loopCompTime = 0.;
+		_loopCompTimeSteps = 0;
+		return t;
+	}
 	void setOutputPrefix( std::string prefix ) { _outputPrefix = prefix; }
 	void setOutputPrefix( char *prefix ) { _outputPrefix = std::string( prefix ); }
 	std::string getOutputPrefix() { return _outputPrefix; }
@@ -526,6 +538,7 @@ private:
 	 * gradient of the chemical potential.
 	 */
 	std::list<ChemicalPotential> _lmu;
+        std::map<unsigned, CavityEnsemble> _mcav;  // first: component id; second: cavity ensemble
 
 	/** This is Planck's constant. (Required for the Metropolis
 	 * criterion which is used for the grand canonical ensemble).
@@ -540,7 +553,9 @@ private:
 	double _forced_checkpoint_time;
 
 	//! computational time for one loop
-	double _oneLoopCompTime;
+	double _loopCompTime;
+
+	int _loopCompTimeSteps;
 
 	std::string _programName;
 };

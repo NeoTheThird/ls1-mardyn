@@ -50,7 +50,7 @@ public:
 	 *
 	 * @param numCells number of cells in window
 	 */
-	virtual void initTraversal(const size_t numCells) = 0;
+	virtual void initTraversal() = 0;
 
 	/**
 	 * Called before a cell is touched for the first time during an interation.
@@ -74,6 +74,8 @@ public:
 
 	virtual double processSingleMolecule(Molecule* m1, ParticleCell& cell2) = 0;
 
+        virtual int countNeighbours(Molecule* m1, ParticleCell& cell2, double RR) = 0;
+	
 	/**
 	 * Called after the cell has been considered for the last time during the traversal.
 	 */

@@ -6,7 +6,6 @@
  */
 
 #include "SolidHarmonicsExpansion.h"
-#include "bhfmm/utils/RotationParameterLookUp.h"
 #include <iomanip>
 
 using namespace std;
@@ -21,6 +20,11 @@ SolidHarmonicsExpansion::SolidHarmonicsExpansion(int order, bool initializeToZer
 
 SolidHarmonicsExpansion::SolidHarmonicsExpansion(const SolidHarmonicsExpansion & rhs) :
 		_order(rhs._order), _c(rhs._c), _s(rhs._s) {
+#ifdef FMM_FFT
+	//copy the FFTData from FFTAccelerableExpansion inheritance if needed
+	if (issetFFTData())
+		_FFTData = rhs._FFTData->copyContainer();
+#endif  /* FMM_FFT */
 }
 
 // DESTRUCTOR //
@@ -475,6 +479,7 @@ SolidHarmonicsExpansion rotatePhi(const SolidHarmonicsExpansion & E, const doubl
 }
 
 SolidHarmonicsExpansion rotateThetaL(const SolidHarmonicsExpansion & LE, const WignerMatrix& W) {
+	assert(W.getType() == bhfmm::ROT_TYPE_L);
 	const bool initializeToZero = false;
 	const int order = LE.getOrder();
 	SolidHarmonicsExpansion L_result(order, initializeToZero);
@@ -484,6 +489,7 @@ SolidHarmonicsExpansion rotateThetaL(const SolidHarmonicsExpansion & LE, const W
 }
 
 SolidHarmonicsExpansion rotateThetaM(const SolidHarmonicsExpansion & ME, const WignerMatrix& W) {
+	assert(W.getType() == bhfmm::ROT_TYPE_M);
 	const bool initializeToZero = false;
 	const int order = ME.getOrder();
 	SolidHarmonicsExpansion M_result(order, initializeToZero);

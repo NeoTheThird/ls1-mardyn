@@ -14,6 +14,7 @@
 #include "particleContainer/LinkedCells.h"
 #include "parallel/DomainDecompBase.h"
 #include "parallel/NonBlockingMPIHandlerBase.h"
+#include "parallel/NonBlockingMPIMultiStepHandler.h"
 #include "molecules/Molecule.h"
 
 #ifdef ENABLE_MPI
@@ -39,6 +40,7 @@
 #include "ensemble/GrandCanonical.h"
 #include "ensemble/CanonicalEnsemble.h"
 #include "ensemble/PressureGradient.h"
+#include "ensemble/CavityEnsemble.h"
 
 #include "thermostats/VelocityScalingThermostat.h"
 #include "thermostats/TemperatureControl.h"
@@ -83,7 +85,8 @@ Simulation::Simulation()
 	_temperatureControl(NULL),
 	_FMM(NULL),
 	_forced_checkpoint_time(0),
-	_oneLoopCompTime(1.),
+	_loopCompTime(0.),
+	_loopCompTimeSteps(0),
 	_programName("")
 {
 	_ensemble = new CanonicalEnsemble();
@@ -117,6 +120,9 @@ void Simulation::exit(int exitcode) {
 
 
 void Simulation::readXML(XMLfileUnits& xmlconfig) {
+#ifdef USE_VT
+	VT_traceoff();
+#endif
 	/* integrator */
 	if(xmlconfig.changecurrentnode("integrator")) {
 		string integratorType;
@@ -423,6 +429,9 @@ void Simulation::readXML(XMLfileUnits& xmlconfig) {
 		else if(pluginname == "XyzWriter") {
 			outputPlugin = new XyzWriter();
 		}
+		else if(pluginname == "CavityWriter") {
+			outputPlugin = new CavityWriter();
+		}
 		/* temporary */
 		else if(pluginname == "MPICheckpointWriter") {
 			outputPlugin = new MPICheckpointWriter();
@@ -657,7 +666,6 @@ void Simulation::prepare_start() {
 			bBoxMin[i] = _domainDecomposition->getBoundingBoxMin(i, _domain);
 			bBoxMax[i] = _domainDecomposition->getBoundingBoxMax(i, _domain);
 		}
-
 		_FMM->init(globalLength, bBoxMin, bBoxMax,
 				dynamic_cast<LinkedCells*>(_moleculeContainer)->cellLength());
 
@@ -674,7 +682,8 @@ void Simulation::prepare_start() {
 	t.start();
 	_moleculeContainer->traverseCells(*_cellProcessor);
 	t.stop();
-	_oneLoopCompTime = t.get_etime();
+	_loopCompTime = t.get_etime();
+	_loopCompTimeSteps = 1;
 
 	if (_FMM != NULL) {
 		global_log->info() << "Performing initial FMM force calculation" << endl;
@@ -723,7 +732,7 @@ void Simulation::prepare_start() {
 			true, 1.0);
 	global_log->debug() << "Calculating global values finished." << endl;
 
-	if (_lmu.size() > 0) {
+	if (_lmu.size() + _mcav.size() > 0) {
 		/* TODO: thermostat */
 		double Tcur = _domain->getGlobalCurrentTemperature();
 		/* FIXME: target temperature from thermostat ID 0 or 1? */
@@ -740,6 +749,10 @@ void Simulation::prepare_start() {
 			cpit->submitTemperature(Tcur);
 			cpit->setPlanckConstant(h);
 		}
+                map<unsigned, CavityEnsemble>::iterator ceit;
+		for (ceit = _mcav.begin(); ceit != _mcav.end(); ceit++) {
+                   ceit->second.submitTemperature(Tcur);
+                }
 	}
 
 	// initialize output
@@ -811,6 +824,11 @@ void Simulation::simulate() {
 	loopTimer.add_papi_counters(num_papi_events, (char**) papi_event_list);
 #endif
 	loopTimer.start();
+#ifndef NDEBUG
+#ifndef ENABLE_MPI
+		unsigned particleNoTest;
+#endif
+#endif
 
 	for (_simstep = _initSimulation; _simstep <= _numberOfTimesteps; _simstep++) {
 		global_log->debug() << "timestep: " << getSimulationStep() << endl;
@@ -830,6 +848,16 @@ void Simulation::simulate() {
 				j++;
 			}
 		}
+		if (_simstep >= _initStatistics) {
+                   map<unsigned, CavityEnsemble>::iterator ceit;
+                   for(ceit = this->_mcav.begin(); ceit != this->_mcav.end(); ceit++)
+                   {
+                      if (!((_simstep + 2 * ceit->first + 3) % ceit->second.getInterval()))
+                      {
+                         ceit->second.preprocessStep();
+                      }
+                   }
+                }
 
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
 
@@ -846,7 +874,7 @@ void Simulation::simulate() {
 		 *the halo MUST NOT be present*/
 #ifndef NDEBUG 
 #ifndef ENABLE_MPI
-			unsigned particleNoTest = 0;
+			particleNoTest = 0;
                         for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next())
                         particleNoTest++;
                         global_log->info()<<"particles before determine shift-methods, halo not present:" << particleNoTest<< "\n";
@@ -897,13 +925,14 @@ void Simulation::simulate() {
 			updateParticleContainerAndDecomposition();
 			decompositionTimer.stop();
 
-			double currentEtime = computationTimer.get_etime();
-			computationTimer.start();
+			double startEtime = computationTimer.get_etime();
 			// Force calculation and other pair interaction related computations
 			global_log->debug() << "Traversing pairs" << endl;
+			computationTimer.start();
 			_moleculeContainer->traverseCells(*_cellProcessor);
 			computationTimer.stop();
-			_oneLoopCompTime = computationTimer.get_etime() - currentEtime;
+			_loopCompTime += computationTimer.get_etime() - startEtime;
+			_loopCompTimeSteps ++;
 		}
 		computationTimer.start();
 		if (_FMM != NULL) {
@@ -932,8 +961,8 @@ void Simulation::simulate() {
                                         this->_domain->setDensityCoefficient(cpit->getDensityCoefficient());
                                         double localUpotBackup = _domain->getLocalUpot();
                                         double localVirialBackup = _domain->getLocalVirial();
-					_moleculeContainer->grandcanonicalStep(&(*cpit),
-							_domain->getGlobalCurrentTemperature(), this->_domain, *_cellProcessor);
+					cpit->grandcanonicalStep(_moleculeContainer,
+							_domain->getGlobalCurrentTemperature(), this->_domain, _cellProcessor);
                                         _domain->setLocalUpot(localUpotBackup);
                                         _domain->setLocalVirial(localVirialBackup);
 #ifndef NDEBUG
@@ -941,10 +970,8 @@ void Simulation::simulate() {
 					cpit->assertSynchronization(_domainDecomposition);
 #endif
 
-					int localBalance =
-							_moleculeContainer->localGrandcanonicalBalance();
-					int balance = _moleculeContainer->grandcanonicalBalance(
-							_domainDecomposition);
+					int localBalance = cpit->getLocalGrandcanonicalBalance();
+					int balance = cpit->grandcanonicalBalance(_domainDecomposition);
 					global_log->debug() << "   b["
 							<< ((balance > 0) ? "+" : "") << balance << "("
 							<< ((localBalance > 0) ? "+" : "") << localBalance
@@ -956,27 +983,32 @@ void Simulation::simulate() {
 				j++;
 			}
 		}
-
-		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
-		  * realignment tools borrowed from Martin Horsch
-		  * For the actual shift the halo MUST be present!
-		  */
 		
-		if(_doAlignCentre && !(_simstep % _alignmentInterval))
-		{
-			_domain->realign(_moleculeContainer);
-#ifndef NDEBUG 
-#ifndef ENABLE_MPI
-			particleNoTest = 0;
-			for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) 
-			particleNoTest++;
-			global_log->info()<<"particles after realign(), halo present:" << particleNoTest<< "\n";
-#endif
-#endif
-		}
+		if(_simstep >= _initStatistics)
+                {
+                   map<unsigned, CavityEnsemble>::iterator ceit;
+                   for(ceit = this->_mcav.begin(); ceit != this->_mcav.end(); ceit++)
+                   {
+                      if (!((_simstep + 2 * ceit->first + 3) % ceit->second.getInterval()))
+                      {
+                         global_log->debug() << "Cavity ensemble for component " << ceit->first << ".\n";
+                         
+                         this->_moleculeContainer->cavityStep(
+                            &ceit->second, _domain->getGlobalCurrentTemperature(), this->_domain, *_cellProcessor
+                         );
+                      }
+                           
+                      if( (!((_simstep + 2 * ceit->first + 7) % ceit->second.getInterval())) ||
+                          (!((_simstep + 2 * ceit->first + 3) % ceit->second.getInterval())) ||
+                          (!((_simstep + 2 * ceit->first - 1) % ceit->second.getInterval())) )
+                      {                                   
+                         this->_moleculeContainer->numCavities(&ceit->second, this->_domainDecomposition);
+                      }
+                   }
+                }
 		
 		// clear halo
-
+	        //
 		global_log->debug() << "Deleting outer particles / clearing halo." << endl;
 		_moleculeContainer->deleteOuterParticles();
 
@@ -1112,6 +1144,7 @@ void Simulation::simulate() {
         }
         // <-- TEMPERATURE_CONTROL
 		
+		
 
 		advanceSimulationTime(_integrator->getTimestepLength());
 
@@ -1133,6 +1166,26 @@ void Simulation::simulate() {
 		perStepIoTimer.start();
 
 		output(_simstep);
+		
+		
+		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
+		  * realignment tools borrowed from Martin Horsch
+		  * For the actual shift the halo MUST NOT be present!
+		  */
+		if(_doAlignCentre && !(_simstep % _alignmentInterval))
+		{
+			_domain->realign(_moleculeContainer);
+#ifndef NDEBUG 
+#ifndef ENABLE_MPI
+			unsigned particleNoTest = 0;
+			particleNoTest = 0;
+			for (tM = _moleculeContainer->begin(); tM != _moleculeContainer->end(); tM = _moleculeContainer->next()) 
+			particleNoTest++;
+			cout <<"particles after realign(), halo absent: " << particleNoTest<< "\n";
+#endif
+#endif
+		}
+		
 		if(_forced_checkpoint_time >= 0 && (decompositionTimer.get_etime() + computationTimer.get_etime()
 				+ ioTimer.get_etime() + perStepIoTimer.get_etime()) >= _forced_checkpoint_time) {
 			/* force checkpoint for specified time */
@@ -1192,7 +1245,7 @@ void Simulation::output(unsigned long simstep) {
 	for (outputIter = _outputPlugins.begin(); outputIter != _outputPlugins.end(); outputIter++) {
 		OutputBase* output = (*outputIter);
 		global_log->debug() << "Output from " << output->getPluginName() << endl;
-		output->doOutput(_moleculeContainer, _domainDecomposition, _domain, simstep, &(_lmu));
+		output->doOutput(_moleculeContainer, _domainDecomposition, _domain, simstep, &(_lmu), &(_mcav));
 	}
 
 	if ((simstep >= _initStatistics) && _doRecordProfile && !(simstep % _profileRecordingTimesteps)) {
@@ -1355,4 +1408,6 @@ void Simulation::initialize() {
 	global_log->info() << "Domain construction done." << endl;
 	_particlePairsHandler = new ParticlePairs2PotForceAdapter(*_domain);
 	_longRangeCorrection = NULL;
+        
+        this->_mcav = map<unsigned, CavityEnsemble>();
 }

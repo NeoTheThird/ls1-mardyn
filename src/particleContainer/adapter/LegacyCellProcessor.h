@@ -33,13 +33,15 @@ public:
 
 	virtual ~LegacyCellProcessor();
 
-	void initTraversal(const size_t numCells);
+	void initTraversal();
 
 	void preprocessCell(ParticleCell& /*cell*/) {}
 
 	void processCellPair(ParticleCell& cell1, ParticleCell& cell2);
 
 	double processSingleMolecule(Molecule* m1, ParticleCell& cell2);
+
+        int countNeighbours(Molecule* m1, ParticleCell& cell2, double RR);
 
 	void processCell(ParticleCell& cell);
 
