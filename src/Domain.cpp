@@ -1247,7 +1247,8 @@ void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
                   + yun * this->_universalNProfileUnits[2] + zun;
    if(unID < 0) return;
 
-   _localWidomProfile[unID] += exp(-DU / _globalTemperatureMap[0]);
+   double dWidom = exp(-DU / _globalTemperatureMap[0]);
+   _localWidomProfile[unID] += dWidom;
    _localWidomInstances[unID] += 1.0;
 
    double Tloc = _universalTProfile[unID];
@@ -1256,6 +1257,9 @@ void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
       _localWidomProfileTloc[unID] += exp(-DU/Tloc);
       _localWidomInstancesTloc[unID] += 1.0;
    }
+
+   // LustigFormalism
+   _lustigFormalism->InitWidom(dWidom);
 }
 
 void Domain::resetGamma(){

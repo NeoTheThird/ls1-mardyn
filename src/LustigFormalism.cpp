@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <string>
 #include <limits>
+#include <cmath>
 
 #include "Domain.h"
 #include "parallel/DomainDecompBase.h"
@@ -28,6 +29,8 @@ LustigFormalism::LustigFormalism()
 
 	// reset sums
 	this->ResetSums();
+
+	_nNumWidomTestsGlobal = 1000;  // TODO <-- get from GrandCanonical class
 }
 
 void LustigFormalism::InitSums(string strFilename)
@@ -77,6 +80,7 @@ void LustigFormalism::InitSums(string strFilename)
 		_U2dUdVGlobalSum  = atof(str[8].c_str());
 		_UdUdV2GlobalSum  = atof(str[9].c_str());
 		_Ud2UdV2GlobalSum = atof(str[10].c_str());
+		_WidomEnergyGlobalSum = atof(str[11].c_str()) * _nNumWidomTestsGlobal;
 
 #ifdef DEBUG
 		cout << "_nNumConfigs      = " << _nNumConfigs << endl;
@@ -90,6 +94,7 @@ void LustigFormalism::InitSums(string strFilename)
 		cout << "_U2dUdVGlobalSum  = " << _U2dUdVGlobalSum << endl;
 		cout << "_UdUdV2GlobalSum  = " << _UdUdV2GlobalSum << endl;
 		cout << "_Ud2UdV2GlobalSum = " << _Ud2UdV2GlobalSum << endl;
+		cout << "_WidomEnergyGlobalSum = " << _WidomEnergyGlobalSum << endl;
 #endif
 	}
 
@@ -181,18 +186,28 @@ void LustigFormalism::Init(const double& U6, const double& dUdVm3, const double&
 	_d2UdV2Local = _InvV2 * d2UdV2m3 / 3.;
 }
 
+void LustigFormalism::InitWidom(const double& dU)
+{
+	_WidomEnergyLocal += dU;
+}
+
 void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
 {
 	// calculate global values
-	domainDecomp->collCommInit(3);
+	domainDecomp->collCommInit(4);
 	domainDecomp->collCommAppendDouble(_ULocal);
 	domainDecomp->collCommAppendDouble(_dUdVLocal);
 	domainDecomp->collCommAppendDouble(_d2UdV2Local);
+	domainDecomp->collCommAppendDouble(_WidomEnergyLocal);
 	domainDecomp->collCommAllreduceSum();
 	_UGlobal      = domainDecomp->collCommGetDouble();
 	_dUdVGlobal   = domainDecomp->collCommGetDouble();
 	_d2UdV2Global = domainDecomp->collCommGetDouble();
+	_WidomEnergyGlobal = domainDecomp->collCommGetDouble();
 	domainDecomp->collCommFinalize();
+
+	// reset local values
+	this->ResetLocalValues();
 
 #ifdef ENABLE_MPI
 	int rank = domainDecomp->getRank();
@@ -229,6 +244,9 @@ void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
     _UdUdV2GlobalSum  += _UdUdV2Global;
     _Ud2UdV2GlobalSum += _Ud2UdV2Global;
 
+    // chem. potential mu
+    _WidomEnergyGlobalSum += _WidomEnergyGlobal;
+
     _nNumConfigs++;
 }
 
@@ -262,7 +280,6 @@ void LustigFormalism::CalcDerivatives()
 //    cout << "Ud2UdV2 = " <<  Ud2UdV2 << endl;
 
 	// derivatives
-	_A00r = 0.;
 	_A10r = _beta*U*_InvN;
 	_A01r = -1.*_beta*_v*dUdV;
 	_A20r = _beta2*_InvN*(U*U - U2);
@@ -276,6 +293,10 @@ void LustigFormalism::CalcDerivatives()
 	_A12r +=    _v2*_N*_beta *d2UdV2;
 	_A12r += 2.*_v *   _beta2*U*dUdV    - 2.*_v    *_beta2*UdUdV;
 	_A12r += 2.*_v *   _beta *dUdV;
+
+	// chem. potential
+	double dInvNumWidomTests = 1. / (double)(_nNumWidomTestsGlobal * _nNumConfigs);
+	_mu_res = -log(_WidomEnergyGlobalSum * dInvNumWidomTests);
 
 	// thermodynamic properties
 }
@@ -294,6 +315,12 @@ void LustigFormalism::ResetSums()
     _U2dUdVGlobalSum  = 0.;
     _UdUdV2GlobalSum  = 0.;
     _Ud2UdV2GlobalSum = 0.;
+    _WidomEnergyGlobalSum = 0.;
+}
+
+void LustigFormalism::ResetLocalValues()
+{
+	_WidomEnergyLocal = 0.;
 }
 
 void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
@@ -314,7 +341,7 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		string strFilename = filenamestream.str();
 
 		outputstream << "         simstep";
-		outputstream << "                   _A00r";
+		outputstream << "                  mu_res";
 		outputstream << "                   _A10r";
 		outputstream << "                   _A01r";
 		outputstream << "                   _A20r";
@@ -373,6 +400,7 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		outputstream << "                  U2dUdV";
 		outputstream << "                  UdUdV2";
 		outputstream << "                 Ud2UdV2";
+		outputstream << "             WidomEnergy";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -407,7 +435,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			outputstream << std::setw(16) << _nNumConfigs;
 
 			// data
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A00r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _mu_res;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A10r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A01r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A20r;
@@ -474,6 +502,8 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 		outputstream << std::setw(16) << _nNumConfigs;
 
 		// data
+		double dInvNumWidomTestsPerConfig = 1. / (double)(_nNumWidomTestsGlobal);
+
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UGlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2GlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U3GlobalSum;
@@ -484,6 +514,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2dUdVGlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdV2GlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _Ud2UdV2GlobalSum;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _WidomEnergyGlobalSum * dInvNumWidomTestsPerConfig;
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::app);

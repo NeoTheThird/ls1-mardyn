@@ -27,6 +27,7 @@ public:
 	unsigned long GetStop()  {return _nStop;}
 	void InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ);
 	void Init(const double& U6, const double& dUdV, const double& d2UdV2);
+	void InitWidom(const double& dWidom);
 	void CalcGlobalValues(DomainDecompBase* domainDecomp);
     void CalcDerivatives();
 	void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -35,6 +36,7 @@ public:
 private:
     // reset local values
     void ResetSums();
+    void ResetLocalValues();
 
 
 private:
@@ -118,6 +120,13 @@ private:
 
 	//! parameter streams for each possible pair of molecule-types
 	Comp2Param _comp2params;
+
+	// mu
+    double _WidomEnergyLocal;
+    double _WidomEnergyGlobal;
+    double _WidomEnergyGlobalSum;
+    unsigned long _nNumWidomTestsGlobal;
+    double _mu_res;
 
 };  // class LustigFormalism
 
