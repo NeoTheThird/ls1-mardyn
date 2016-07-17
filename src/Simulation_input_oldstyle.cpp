@@ -620,6 +620,11 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			global_log->info() << flush;
 			_lmu.push_back(tmu);
 			global_log->info() << " pushed back." << endl;
+
+			// Lustig formalism
+			if(NULL != _domain->GetLustig() )
+				_domain->GetLustig()->SetNumWidomTests(intest);
+
 		} else if (token == "planckConstant") {
 			inputfilestream >> h;
 		} else if(token == "Widom") {

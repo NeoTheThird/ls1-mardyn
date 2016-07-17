@@ -24,13 +24,59 @@ using namespace std;
 
 LustigFormalism::LustigFormalism()
 {
+	_tsBufferIndex = 0;
 	_nWriteFreq = 1000;
 	_nWriteFreqSums = 100000;
 
 	// reset sums
 	this->ResetSums();
 
-	_nNumWidomTestsGlobal = 1000;  // TODO <-- get from GrandCanonical class
+	// init num widom tests
+	_nNumWidomTestsGlobal = 0;
+
+	// allocate memory
+	_ULocal       = new double[_nWriteFreq];
+	_dUdVLocal    = new double[_nWriteFreq];
+	_d2UdV2Local  = new double[_nWriteFreq];
+	_UGlobal      = new double[_nWriteFreq];
+	_dUdVGlobal   = new double[_nWriteFreq];
+	_d2UdV2Global = new double[_nWriteFreq];
+
+	_U2Global      = new double[_nWriteFreq];
+    _U3Global      = new double[_nWriteFreq];
+    _dUdV2Global   = new double[_nWriteFreq];
+    _UdUdVGlobal   = new double[_nWriteFreq];
+    _U2dUdVGlobal  = new double[_nWriteFreq];
+    _UdUdV2Global  = new double[_nWriteFreq];
+    _Ud2UdV2Global = new double[_nWriteFreq];
+
+    _WidomEnergyLocal  = new double[_nWriteFreq];
+    _WidomEnergyGlobal = new double[_nWriteFreq];
+
+	// reset (init) local values
+	this->ResetLocalValues();
+}
+
+LustigFormalism::~LustigFormalism()
+{
+	// free memory
+	delete[] _ULocal;
+	delete[] _dUdVLocal;
+	delete[] _d2UdV2Local;
+	delete[] _UGlobal;
+	delete[] _dUdVGlobal;
+	delete[] _d2UdV2Global;
+
+	delete[] _U2Global;
+	delete[] _U3Global;
+	delete[] _dUdV2Global;
+	delete[] _UdUdVGlobal;
+	delete[] _U2dUdVGlobal;
+	delete[] _UdUdV2Global;
+	delete[] _Ud2UdV2Global;
+
+	delete[] _WidomEnergyLocal;
+	delete[] _WidomEnergyGlobal;
 }
 
 void LustigFormalism::InitSums(string strFilename)
@@ -181,30 +227,60 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
 
 void LustigFormalism::Init(const double& U6, const double& dUdVm3, const double& d2UdV2m3)
 {
-	_ULocal      = U6 / 6.;
-	_dUdVLocal   = _mInvV * dUdVm3 / 3.;
-	_d2UdV2Local = _InvV2 * d2UdV2m3 / 3.;
+	_ULocal[_tsBufferIndex]      = U6 / 6.;
+	_dUdVLocal[_tsBufferIndex]   = _mInvV * dUdVm3 / 3.;
+	_d2UdV2Local[_tsBufferIndex] = _InvV2 * d2UdV2m3 / 3.;
+}
+
+void LustigFormalism::EventConfigurationSampled()
+{
+	_tsBufferIndex++;
+	_nNumConfigs++;
 }
 
 void LustigFormalism::InitWidom(const double& dU)
 {
-	_WidomEnergyLocal += dU;
+	_WidomEnergyLocal[_tsBufferIndex] += dU;
 }
 
 void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
 {
-	// calculate global values
-	domainDecomp->collCommInit(4);
-	domainDecomp->collCommAppendDouble(_ULocal);
-	domainDecomp->collCommAppendDouble(_dUdVLocal);
-	domainDecomp->collCommAppendDouble(_d2UdV2Local);
-	domainDecomp->collCommAppendDouble(_WidomEnergyLocal);
-	domainDecomp->collCommAllreduceSum();
-	_UGlobal      = domainDecomp->collCommGetDouble();
-	_dUdVGlobal   = domainDecomp->collCommGetDouble();
-	_d2UdV2Global = domainDecomp->collCommGetDouble();
-	_WidomEnergyGlobal = domainDecomp->collCommGetDouble();
-	domainDecomp->collCommFinalize();
+
+#ifdef DEBUG
+
+#ifdef ENABLE_MPI
+	MPI_Barrier(MPI_COMM_WORLD);
+#endif
+
+	unsigned long tsBufferIndexGlobal;
+    domainDecomp->collCommInit(1);
+    domainDecomp->collCommAppendUnsLong(_tsBufferIndex);
+    domainDecomp->collCommAllreduceSum();
+    tsBufferIndexGlobal = domainDecomp->collCommGetUnsLong();
+    domainDecomp->collCommFinalize();
+    cout << "tsBufferIndexGlobal = " << tsBufferIndexGlobal << endl;
+#endif
+
+    // Collective Communiation
+    domainDecomp->collCommInit(4*_nWriteFreq);
+
+    for(unsigned int i=0; i<_nWriteFreq; ++i)
+    {
+        domainDecomp->collCommAppendDouble(_ULocal[i]);
+        domainDecomp->collCommAppendDouble(_dUdVLocal[i]);
+        domainDecomp->collCommAppendDouble(_d2UdV2Local[i]);
+        domainDecomp->collCommAppendDouble(_WidomEnergyLocal[i]);
+    }
+    domainDecomp->collCommAllreduceSum();
+
+    for(unsigned int i=0; i<_nWriteFreq; ++i)
+    {
+        _UGlobal[i]      = domainDecomp->collCommGetDouble();
+        _dUdVGlobal[i]   = domainDecomp->collCommGetDouble();
+        _d2UdV2Global[i] = domainDecomp->collCommGetDouble();
+        _WidomEnergyGlobal[i] = domainDecomp->collCommGetDouble();
+    }
+    domainDecomp->collCommFinalize();
 
 	// reset local values
 	this->ResetLocalValues();
@@ -216,46 +292,45 @@ void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
 		return;
 #endif
 
-	// LRC
-	_UGlobal += _U_LRC;
-	_dUdVGlobal += _dUdV_LRC;
-	_d2UdV2Global += _d2UdV2_LRC;
+	for(unsigned int i=0; i<_nWriteFreq; ++i)
+	{
+		// LRC
+		_UGlobal[i]      += _U_LRC;
+		_dUdVGlobal[i]   += _dUdV_LRC;
+		_d2UdV2Global[i] += _d2UdV2_LRC;
 
-	// squared values, 3rd potenz
-	_U2Global = _UGlobal*_UGlobal;
-    _U3Global = _UGlobal*_U2Global;
-    _dUdV2Global = _dUdVGlobal*_dUdVGlobal;
+		// squared values, 3rd potenz
+		_U2Global[i] = _UGlobal[i]*_UGlobal[i];
+	    _U3Global[i] = _UGlobal[i]*_U2Global[i];
+	    _dUdV2Global[i] = _dUdVGlobal[i]*_dUdVGlobal[i];
 
-    // mixed values
-    _UdUdVGlobal     = _UGlobal  * _dUdVGlobal;
-    _U2dUdVGlobal    = _U2Global * _dUdVGlobal;
-    _Ud2UdV2Global   = _UGlobal  * _d2UdV2Global;
-    _UdUdV2Global    = _UGlobal  * _dUdV2Global;
+	    // mixed values
+	    _UdUdVGlobal[i]     = _UGlobal[i]  * _dUdVGlobal[i];
+	    _U2dUdVGlobal[i]    = _U2Global[i] * _dUdVGlobal[i];
+	    _Ud2UdV2Global[i]   = _UGlobal[i]  * _d2UdV2Global[i];
+	    _UdUdV2Global[i]    = _UGlobal[i]  * _dUdV2Global[i];
 
-    // accumulate
-	_UGlobalSum       += _UGlobal;
-	_U2GlobalSum      += _U2Global;
-    _U3GlobalSum      += _U3Global;
-	_dUdVGlobalSum    += _dUdVGlobal;
-	_d2UdV2GlobalSum  += _d2UdV2Global;
-    _dUdV2GlobalSum   += _dUdV2Global;
-    _UdUdVGlobalSum   += _UdUdVGlobal;
-    _U2dUdVGlobalSum  += _U2dUdVGlobal;
-    _UdUdV2GlobalSum  += _UdUdV2Global;
-    _Ud2UdV2GlobalSum += _Ud2UdV2Global;
+	    // accumulate
+		_UGlobalSum       += _UGlobal[i];
+		_U2GlobalSum      += _U2Global[i];
+	    _U3GlobalSum      += _U3Global[i];
+		_dUdVGlobalSum    += _dUdVGlobal[i];
+		_d2UdV2GlobalSum  += _d2UdV2Global[i];
+	    _dUdV2GlobalSum   += _dUdV2Global[i];
+	    _UdUdVGlobalSum   += _UdUdVGlobal[i];
+	    _U2dUdVGlobalSum  += _U2dUdVGlobal[i];
+	    _UdUdV2GlobalSum  += _UdUdV2Global[i];
+	    _Ud2UdV2GlobalSum += _Ud2UdV2Global[i];
 
-    // chem. potential mu
-    _WidomEnergyGlobalSum += _WidomEnergyGlobal;
-
-    _nNumConfigs++;
+	    // chem. potential mu
+	    _WidomEnergyGlobalSum += _WidomEnergyGlobal[i];
+	}
 }
 
 void LustigFormalism::CalcDerivatives()
 {
 	// divide by number of sampled configurations
 	double InvNumConfigs = 1. / (double)(_nNumConfigs);
-
-//	cout << "_nNumConfigs = " <<  _nNumConfigs << endl;
 
 	double U       = _UGlobalSum       * InvNumConfigs;
 	double U2      = _U2GlobalSum      * InvNumConfigs;
@@ -295,8 +370,13 @@ void LustigFormalism::CalcDerivatives()
 	_A12r += 2.*_v *   _beta *dUdV;
 
 	// chem. potential
-	double dInvNumWidomTests = 1. / (double)(_nNumWidomTestsGlobal * _nNumConfigs);
-	_mu_res = -log(_WidomEnergyGlobalSum * dInvNumWidomTests);
+	if(_nNumWidomTestsGlobal < 1)
+		_mu_res = NAN;
+	else
+	{
+		double dInvNumWidomTests = 1. / (double)(_nNumWidomTestsGlobal * _nNumConfigs);
+		_mu_res = -log(_WidomEnergyGlobalSum * dInvNumWidomTests);
+	}
 
 	// thermodynamic properties
 }
@@ -320,7 +400,10 @@ void LustigFormalism::ResetSums()
 
 void LustigFormalism::ResetLocalValues()
 {
-	_WidomEnergyLocal = 0.;
+	for(unsigned int i=0; i<_nWriteFreq; ++i)
+		_WidomEnergyLocal[i] = 0.;
+
+	_tsBufferIndex = 0;
 }
 
 void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
@@ -340,7 +423,7 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		filenamestream << "LustigFormalism" << ".dat";
 		string strFilename = filenamestream.str();
 
-		outputstream << "         simstep";
+		outputstream << "      numConfigs";
 		outputstream << "                  mu_res";
 		outputstream << "                   _A10r";
 		outputstream << "                   _A01r";
@@ -365,15 +448,11 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		filenamestream << "LustigFormalism_dUdV" << ".dat";
 		string strFilename = filenamestream.str();
 
-		outputstream << "         simstep";
+		outputstream << "      Config no.";
+		outputstream << "                       U";
 		outputstream << "                    dUdV";
-		outputstream << "                 dUdVavg";
-		outputstream << "                   dUdV2";
-		outputstream << "                dUdV2avg";
 		outputstream << "                  d2UdV2";
-		outputstream << "               d2UdV2avg";
-		outputstream << "                   UdUdV";
-		outputstream << "                UdUdVavg";
+		outputstream << "             WidomEnergy";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -411,16 +490,18 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 
 void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long simstep)
 {
+	if( _tsBufferIndex == _nWriteFreq)
+	{
+		// calc global values
+		this->CalcGlobalValues(domainDecomp);
+
 #ifdef ENABLE_MPI
     int rank = domainDecomp->getRank();
     // int numprocs = domainDecomp->getNumProcs();
     if (rank != 0)
-    	return;
+        return;
 #endif
 
-	if(simstep % _nWriteFreq == 0)
-	{
-		// calc global values
 		this->CalcDerivatives();
 
 		{
@@ -459,26 +540,20 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			filenamestream << "LustigFormalism_dUdV" << ".dat";
 			string strFilename = filenamestream.str();
 
-			// number of sampled configurations
-			outputstream << std::setw(16) << _nNumConfigs;
-
 			// data
-			double InvNumConfigs = 1. / (double)(_nNumConfigs);
+			unsigned long nConfigIndexBegin = _nNumConfigs - _nWriteFreq + 1;
 
-			double dUdV    = _dUdVGlobalSum    * InvNumConfigs;
-			double d2UdV2  = _d2UdV2GlobalSum  * InvNumConfigs;
-			double dUdV2   = _dUdV2GlobalSum   * InvNumConfigs;
-			double UdUdV   = _UdUdVGlobalSum   * InvNumConfigs;
+			for(unsigned int i=0; i<_nWriteFreq; ++i)
+			{
+				// number of sampled configurations
+				outputstream << std::setw(16) << nConfigIndexBegin + i;
 
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdVGlobal;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << dUdV;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdV2Global;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << dUdV2;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _d2UdV2Global;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << d2UdV2;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdVGlobal;
-			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << UdUdV;
-			outputstream << endl;
+				outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UGlobal[i];
+				outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dUdVGlobal[i];
+				outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _d2UdV2Global[i];
+				outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _WidomEnergyGlobal[i];
+				outputstream << endl;
+			}
 
 			ofstream fileout(strFilename.c_str(), ios::app);
 			fileout << outputstream.str();
@@ -487,7 +562,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 
 	} // if(simstep % _nWriteFreq == 0)
 
-	if(simstep % _nWriteFreqSums != 0)
+	if( _nNumConfigs % _nWriteFreqSums != 0)
 		return;
 
     {

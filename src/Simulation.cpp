@@ -783,8 +783,8 @@ void Simulation::simulate() {
 	unsigned uCAT = _pressureGradient->getUCAT();
 // 	_initSimulation = (unsigned long) (_domain->getCurrentTime()
 // 			/ _integrator->getTimestepLength());
-    _initSimulation = (unsigned long) (this->_simulationTime / _integrator->getTimestepLength());
-	// _initSimulation = 1;
+    //_initSimulation = (unsigned long) (this->_simulationTime / _integrator->getTimestepLength());
+	_initSimulation = 1;
 	/* demonstration for the usage of the new ensemble class */
 	/*CanonicalEnsemble ensemble(_moleculeContainer, global_simulation->getEnsemble()->components());
 	ensemble.updateGlobalVariable(NUM_PARTICLES);
@@ -829,7 +829,6 @@ void Simulation::simulate() {
 		unsigned particleNoTest;
 #endif
 #endif
-
 	for (_simstep = _initSimulation; _simstep <= _numberOfTimesteps; _simstep++) {
 		global_log->debug() << "timestep: " << getSimulationStep() << endl;
 		global_log->debug() << "simulation time: " << getSimulationTime() << endl;
@@ -860,6 +859,9 @@ void Simulation::simulate() {
                 }
 
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
+
+        // Lustig formalism
+        _domain->GetLustig()->TriggerNewSimstep(_simstep);
 
 		// activate RDF sampling
 		if ((_simstep >= _initStatistics) && _rdf != NULL) {
@@ -1056,7 +1058,9 @@ void Simulation::simulate() {
 		// Lustig formalism
 		if(NULL != _domain->GetLustig() && _domain->GetLustig()->GetStart() < _simstep && _domain->GetLustig()->GetStop() >= _simstep)
 		{
-			_domain->GetLustig()->CalcGlobalValues(_domainDecomposition);
+			_domain->GetLustig()->EventConfigurationSampled();
+
+			//_domain->GetLustig()->CalcGlobalValues(_domainDecomposition);
 			_domain->GetLustig()->WriteData(_domainDecomposition, _simstep);
 		}
 

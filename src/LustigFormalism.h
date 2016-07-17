@@ -18,7 +18,7 @@ class LustigFormalism
 {
 public:
 	LustigFormalism();
-	~LustigFormalism() {}
+	~LustigFormalism();
 
 	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop, unsigned long nWriteFreqSums)
 	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums;}
@@ -32,6 +32,11 @@ public:
     void CalcDerivatives();
 	void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
 	void WriteData(DomainDecompBase* domainDecomp, unsigned long simstep);
+    void TriggerNewSimstep(unsigned long simstep){_bSimstepTrigger = true; _simstep = simstep;}
+    void ResetTriggerNewSimstep(){_bSimstepTrigger = false;}
+    bool IsNewSimstep(){return _bSimstepTrigger;}
+    void SetNumWidomTests(unsigned int nNumWidomTests){_nNumWidomTestsGlobal = nNumWidomTests;}
+    void EventConfigurationSampled();
 
 private:
     // reset local values
@@ -47,6 +52,7 @@ private:
 	double _mInvV;
 	double _InvV2;
 	double _T;
+	unsigned long _tsBufferIndex;
 	unsigned long _nWriteFreq;
 	unsigned long _nWriteFreqSums;
 	unsigned long _nStart;
@@ -60,22 +66,22 @@ private:
 	double _beta3;
 
 	// local
-	double _ULocal;
-	double _dUdVLocal;
-	double _d2UdV2Local;
+	double* _ULocal;
+	double* _dUdVLocal;
+	double* _d2UdV2Local;
 
     // global
-	double _UGlobal;
-	double _dUdVGlobal;
-	double _d2UdV2Global;
+	double* _UGlobal;
+	double* _dUdVGlobal;
+	double* _d2UdV2Global;
 
-	double _U2Global;
-    double _U3Global;
-    double _dUdV2Global;
-    double _UdUdVGlobal;
-    double _U2dUdVGlobal;
-    double _UdUdV2Global;
-    double _Ud2UdV2Global;
+	double* _U2Global;
+    double* _U3Global;
+    double* _dUdV2Global;
+    double* _UdUdVGlobal;
+    double* _U2dUdVGlobal;
+    double* _UdUdV2Global;
+    double* _Ud2UdV2Global;
 
     // sums
     double _UGlobalSum;
@@ -122,11 +128,14 @@ private:
 	Comp2Param _comp2params;
 
 	// mu
-    double _WidomEnergyLocal;
-    double _WidomEnergyGlobal;
+    double* _WidomEnergyLocal;
+    double* _WidomEnergyGlobal;
     double _WidomEnergyGlobalSum;
-    unsigned long _nNumWidomTestsGlobal;
+    unsigned int _nNumWidomTestsGlobal;
     double _mu_res;
+
+    bool _bSimstepTrigger;
+    unsigned long _simstep;
 
 };  // class LustigFormalism
 

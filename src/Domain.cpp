@@ -1823,7 +1823,10 @@ void Domain::InitLustigFormalism(const double& dU6, const double& dUdVsum, const
 {
 	if(NULL == _lustigFormalism)
 		return;
-
-	_lustigFormalism->Init(dU6, dUdVsum, d2UdV2sum);
+    if(true ==_lustigFormalism->IsNewSimstep() )
+    {
+	    _lustigFormalism->Init(dU6, dUdVsum, d2UdV2sum);
+        _lustigFormalism->ResetTriggerNewSimstep();
+    }
 }
 
