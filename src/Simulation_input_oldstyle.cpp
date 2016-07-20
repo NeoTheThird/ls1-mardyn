@@ -448,6 +448,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> xun >> yun >> zun;
 			_domain->setupProfile(xun, yun, zun);
 			_doRecordProfile = true;
+			_domain->RecordProfile(true);
 
 		}
 		//by Stefan Becker

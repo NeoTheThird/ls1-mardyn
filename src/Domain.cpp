@@ -87,6 +87,7 @@ Domain::Domain(int rank, PressureGradient* pg){
 
     // Lustig formalism
     _lustigFormalism = new LustigFormalism();
+    _doRecordProfile = false;
 }
 
 void Domain::readXML(XMLfileUnits& xmlconfig) {
@@ -1239,6 +1240,15 @@ unsigned Domain::getNumberOfComponents(){
 
 void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
 {
+	double dWidom = exp(-DU / _globalTemperatureMap[0]);
+
+	// LustigFormalism
+	if(NULL != _lustigFormalism)
+		_lustigFormalism->InitWidom(dWidom);
+
+	if(false == this->RecordingProfile() )
+		return;
+
    unsigned xun, yun, zun;
    xun = (unsigned)floor(r[0] * this->_universalInvProfileUnit[0]);
    yun = (unsigned)floor(r[1] * this->_universalInvProfileUnit[1]);
@@ -1247,7 +1257,6 @@ void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
                   + yun * this->_universalNProfileUnits[2] + zun;
    if(unID < 0) return;
 
-   double dWidom = exp(-DU / _globalTemperatureMap[0]);
    _localWidomProfile[unID] += dWidom;
    _localWidomInstances[unID] += 1.0;
 
@@ -1257,9 +1266,6 @@ void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
       _localWidomProfileTloc[unID] += exp(-DU/Tloc);
       _localWidomInstancesTloc[unID] += 1.0;
    }
-
-   // LustigFormalism
-   _lustigFormalism->InitWidom(dWidom);
 }
 
 void Domain::resetGamma(){

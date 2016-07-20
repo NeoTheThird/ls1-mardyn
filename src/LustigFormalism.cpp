@@ -55,6 +55,8 @@ LustigFormalism::LustigFormalism()
 
 	// reset (init) local values
 	this->ResetLocalValues();
+
+	_bSimstepTrigger = false;
 }
 
 LustigFormalism::~LustigFormalism()

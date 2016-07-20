@@ -419,6 +419,9 @@ public:
     void InitLustigFormalism(const double& dU6, const double& dUdVsum, const double& d2UdV2sum);
     LustigFormalism* GetLustig() {return _lustigFormalism;}
 
+    void RecordProfile(bool doRecordProfile) {_doRecordProfile = doRecordProfile;}
+    bool RecordingProfile() {return _doRecordProfile;}
+
 private:
 
 	//! rank of the local process
@@ -612,6 +615,8 @@ private:
 
     // Lustig formalism
     LustigFormalism* _lustigFormalism;
+
+    bool _doRecordProfile;
 };
 
 
