@@ -589,3 +589,58 @@ void ChemicalPotential::grandcanonicalStep(TMoleculeContainer* moleculeContainer
 	}
 #endif
 }
+
+void ChemicalPotential::grandcanonicalStepWidomOnly(TMoleculeContainer* moleculeContainer, double T,
+		Domain* domain, CellProcessor* cellProcessor)
+{
+	Molecule* m;
+
+	// check if sample molecule is stored already
+	if (!this->hasSample()) {
+		m = moleculeContainer->begin();
+		//old: m = &(*(_particles.begin()));
+		bool rightComponent = false;
+		MoleculeIterator mit;
+		if (m->componentid() != this->getComponentID()) {
+			for (mit = moleculeContainer->begin();
+					mit != moleculeContainer->end();
+					mit = moleculeContainer->next()) {
+				if (mit->componentid() == this->getComponentID()) {
+					rightComponent = true;
+					break;
+				}
+			}
+		}
+		if (rightComponent)
+			m = &(*(mit));
+		this->storeMolecule(*m);
+	}
+
+	double DeltaUpot;
+	ParticlePairs2PotForceAdapter particlePairsHandler(*domain);
+
+	double ins[3];
+	Molecule tmp = this->loadMolecule();
+
+	// get next insertion molecule position
+	nextid = this->getInsertion(ins);
+	bool hasInsertion = (nextid > 0);
+
+	// while insertion instances present
+	while (hasInsertion)
+	{
+		// store position, id in molecule object
+		for (int d = 0; d < 3; d++)
+			tmp.setr(d, ins[d]);
+		tmp.setid(nextid);
+		m = &tmp;
+
+		// calc potential energy of test particle and submit result for further data processing
+		DeltaUpot = moleculeContainer->getEnergy(&particlePairsHandler, m, *cellProcessor);
+		domain->submitDU(this->getComponentID(), DeltaUpot, ins);
+
+		// get next insertion molecule position
+		nextid = this->getInsertion(ins);
+		hasInsertion = (nextid > 0);
+	}
+}

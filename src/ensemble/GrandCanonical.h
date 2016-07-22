@@ -81,7 +81,7 @@ public:
 	void grandcanonicalStep(TMoleculeContainer * moleculeContainer, double T, Domain* domain, CellProcessor* cellProcessor);
 	/* Moved from LinkedCells! */
 	int grandcanonicalBalance(DomainDecompBase* comm);
-
+	void grandcanonicalStepWidomOnly(TMoleculeContainer* moleculeContainer, double T, Domain* domain, CellProcessor* cellProcessor);
 
 private:
 	int ownrank;  // only for debugging purposes (indicate rank in console output)

@@ -837,15 +837,25 @@ void Simulation::simulate() {
 		computationTimer.start();
 
 		/** @todo What is this good for? Where come the numbers from? Needs documentation */
-		if (_simstep >= _initGrandCanonical) {
-			unsigned j = 0;
-			list<ChemicalPotential>::iterator cpit;
-			for (cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
-				if (!((_simstep + 2 * j + 3) % cpit->getInterval())) {
-					cpit->prepareTimestep(_moleculeContainer,
-							_domainDecomposition);
+		if (_simstep >= _initGrandCanonical)
+		{
+			list<ChemicalPotential>::iterator cpit = _lmu.begin();
+			if( cpit->isWidom() )
+			{
+				if (_simstep % cpit->getInterval() == 0)
+					cpit->prepareTimestep(_moleculeContainer, _domainDecomposition);
+			}
+			else
+			{
+				unsigned j = 0;
+				list<ChemicalPotential>::iterator cpit;
+				for (cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
+					if (!((_simstep + 2 * j + 3) % cpit->getInterval())) {
+						cpit->prepareTimestep(_moleculeContainer,
+								_domainDecomposition);
+					}
+					j++;
 				}
-				j++;
 			}
 		}
 		if (_simstep >= _initStatistics) {
@@ -953,35 +963,45 @@ void Simulation::simulate() {
 
 		/** @todo For grand canonical ensemble? Should go into appropriate ensemble class. Needs documentation. */
 		// test deletions and insertions
-		if (_simstep >= _initGrandCanonical) {
-			unsigned j = 0;
-			list<ChemicalPotential>::iterator cpit;
-			for (cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
-				if (!((_simstep + 2 * j + 3) % cpit->getInterval())) {
-					global_log->debug() << "Grand canonical ensemble(" << j << "): test deletions and insertions"
-							<< endl;
-					this->_domain->setLambda(cpit->getLambda());
-					this->_domain->setDensityCoefficient(cpit->getDensityCoefficient());
-					double localUpotBackup = _domain->getLocalUpot();
-					double localVirialBackup = _domain->getLocalVirial();
-					cpit->grandcanonicalStep(_moleculeContainer, _domain->getGlobalCurrentTemperature(), this->_domain,
-							_cellProcessor);
-					_domain->setLocalUpot(localUpotBackup);
-					_domain->setLocalVirial(localVirialBackup);
-#ifndef NDEBUG
-					/* check if random numbers inserted are the same for all processes... */
-					cpit->assertSynchronization(_domainDecomposition);
-#endif
+		if (_simstep >= _initGrandCanonical)
+		{
+			list<ChemicalPotential>::iterator cpit = _lmu.begin();
+			if( cpit->isWidom() )
+			{
+				if (_simstep % cpit->getInterval() == 0)
+					cpit->grandcanonicalStepWidomOnly(_moleculeContainer, _domain->getGlobalCurrentTemperature(), _domain, _cellProcessor);
+			}
+			else
+			{
+				unsigned j = 0;
+				list<ChemicalPotential>::iterator cpit;
+				for (cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
+					if (!((_simstep + 2 * j + 3) % cpit->getInterval())) {
+						global_log->debug() << "Grand canonical ensemble(" << j << "): test deletions and insertions"
+								<< endl;
+						this->_domain->setLambda(cpit->getLambda());
+						this->_domain->setDensityCoefficient(cpit->getDensityCoefficient());
+						double localUpotBackup = _domain->getLocalUpot();
+						double localVirialBackup = _domain->getLocalVirial();
+						cpit->grandcanonicalStep(_moleculeContainer, _domain->getGlobalCurrentTemperature(), this->_domain,
+								_cellProcessor);
+						_domain->setLocalUpot(localUpotBackup);
+						_domain->setLocalVirial(localVirialBackup);
+	#ifndef NDEBUG
+						/* check if random numbers inserted are the same for all processes... */
+						cpit->assertSynchronization(_domainDecomposition);
+	#endif
 
-					int localBalance = cpit->getLocalGrandcanonicalBalance();
-					int balance = cpit->grandcanonicalBalance(_domainDecomposition);
-					global_log->debug() << "   b[" << ((balance > 0) ? "+" : "") << balance << "("
-							<< ((localBalance > 0) ? "+" : "") << localBalance << ")" << " / c = "
-							<< cpit->getComponentID() << "]   " << endl;
-					_domain->Nadd(cpit->getComponentID(), balance, localBalance);
+						int localBalance = cpit->getLocalGrandcanonicalBalance();
+						int balance = cpit->grandcanonicalBalance(_domainDecomposition);
+						global_log->debug() << "   b[" << ((balance > 0) ? "+" : "") << balance << "("
+								<< ((localBalance > 0) ? "+" : "") << localBalance << ")" << " / c = "
+								<< cpit->getComponentID() << "]   " << endl;
+						_domain->Nadd(cpit->getComponentID(), balance, localBalance);
+					}
+
+					j++;
 				}
-
-				j++;
 			}
 		}
 		
