@@ -33,7 +33,7 @@ public:
 
 	// false if no deletion remains for this subdomain
 	bool getDeletion(TMoleculeContainer* cell, double* minco, double* maxco);
-	unsigned long getInsertion(double* ins);  // 0 if no insertion remains for this subdomain
+	/*unsigned*/ long getInsertion(double* ins);  // 0 if no insertion remains for this subdomain
 	bool decideDeletion(double deltaUTilde);
 	bool decideInsertion(double deltaUTilde);
 

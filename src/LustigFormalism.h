@@ -21,13 +21,13 @@ public:
 	~LustigFormalism();
 
 	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop, unsigned long nWriteFreqSums)
-	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums;}
+	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums; this->InitDatastructures();}
 	void InitSums(std::string strFilename);
 	unsigned long GetStart() {return _nStart;}
 	unsigned long GetStop()  {return _nStop;}
 	void InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ);
 	void Init(const double& U6, const double& dUdV, const double& d2UdV2);
-	void InitWidom(const double& dWidom);
+	void InitWidom(const double& DU, const double& T);
 	void CalcGlobalValues(DomainDecompBase* domainDecomp);
     void CalcDerivatives();
 	void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -37,11 +37,13 @@ public:
     bool IsNewSimstep(){return _bSimstepTrigger;}
     void SetNumWidomTests(unsigned int nNumWidomTests){_nNumWidomTestsGlobal = nNumWidomTests;}
     void EventConfigurationSampled();
+    void StoreDomainDecompPointer(DomainDecompBase* domainDecomp) {_domainDecomp = domainDecomp;}
 
 private:
     // reset local values
     void ResetSums();
     void ResetLocalValues();
+    void InitDatastructures();
 
 
 private:
@@ -99,6 +101,7 @@ private:
     double _U_LRC;
     double _dUdV_LRC;
     double _d2UdV2_LRC;
+    double _dU_LRC;
 
 	// ideal
 	double _A00i;
@@ -131,11 +134,14 @@ private:
     double* _WidomEnergyLocal;
     double* _WidomEnergyGlobal;
     double _WidomEnergyGlobalSum;
+    unsigned int _nNumWidomTestsLocal;
     unsigned int _nNumWidomTestsGlobal;
     double _mu_res;
 
     bool _bSimstepTrigger;
     unsigned long _simstep;
+
+    DomainDecompBase* _domainDecomp;
 
 };  // class LustigFormalism
 

@@ -252,9 +252,9 @@ bool ChemicalPotential::getDeletion(TMoleculeContainer* cell, double* minco, dou
 }
 
 // returns 0 if no insertion remains for this subdomain
-unsigned long ChemicalPotential::getInsertion(double* ins)
+/*unsigned*/ long ChemicalPotential::getInsertion(double* ins)
 {
-	 if(this->remainingInsertionIDs.empty()) return 0;
+	 if(this->remainingInsertionIDs.empty()) return -1;
 
 	 for(int d=0; d<3; d++)
 	 {
@@ -622,25 +622,33 @@ void ChemicalPotential::grandcanonicalStepWidomOnly(TMoleculeContainer* molecule
 	double ins[3];
 	Molecule tmp = this->loadMolecule();
 
-	// get next insertion molecule position
-	nextid = this->getInsertion(ins);
-	bool hasInsertion = (nextid > 0);
+	bool hasInsertion = (remainingInsertionIDs.size() > 0);
+
+//	cout << "remainingInsertionIDs.size() = " << remainingInsertionIDs.size() << endl;
 
 	// while insertion instances present
 	while (hasInsertion)
 	{
+		// get next insertion molecule position
+		long _nextid = this->getInsertion(ins);
+		hasInsertion = (remainingInsertionIDs.size() > 0);
+//		hasInsertion = (_nextid > 0);
+
 		// store position, id in molecule object
 		for (int d = 0; d < 3; d++)
 			tmp.setr(d, ins[d]);
-		tmp.setid(nextid);
+		tmp.setid(_nextid);
 		m = &tmp;
+
+//		cout << "remainingInsertionIDs.size() = " << remainingInsertionIDs.size() << endl;
+//		cout << "ins[0] = " << ins[0] << endl;
+//		cout << "ins[1] = " << ins[1] << endl;
+//		cout << "ins[2] = " << ins[2] << endl;
 
 		// calc potential energy of test particle and submit result for further data processing
 		DeltaUpot = moleculeContainer->getEnergy(&particlePairsHandler, m, *cellProcessor);
 		domain->submitDU(this->getComponentID(), DeltaUpot, ins);
 
-		// get next insertion molecule position
-		nextid = this->getInsertion(ins);
-		hasInsertion = (nextid > 0);
+//		cout << "DeltaUpot = " << DeltaUpot << endl;
 	}
 }

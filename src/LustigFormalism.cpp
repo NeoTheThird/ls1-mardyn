@@ -21,6 +21,7 @@
 using namespace std;
 
 //typedef std::numeric_limits<double> dbl;
+//#define DEBUG
 
 LustigFormalism::LustigFormalism()
 {
@@ -28,12 +29,37 @@ LustigFormalism::LustigFormalism()
 	_nWriteFreq = 1000;
 	_nWriteFreqSums = 100000;
 
+	// init datastructures
+	_ULocal       = NULL;
+	_dUdVLocal    = NULL;
+	_d2UdV2Local  = NULL;
+	_UGlobal      = NULL;
+	_dUdVGlobal   = NULL;
+	_d2UdV2Global = NULL;
+
+	_U2Global      = NULL;
+	_U3Global      = NULL;
+	_dUdV2Global   = NULL;
+	_UdUdVGlobal   = NULL;
+	_U2dUdVGlobal  = NULL;
+	_UdUdV2Global  = NULL;
+	_Ud2UdV2Global = NULL;
+
+	_WidomEnergyLocal  = NULL;
+	_WidomEnergyGlobal = NULL;
+
 	// reset sums
 	this->ResetSums();
 
 	// init num widom tests
+	_nNumWidomTestsLocal  = 0;
 	_nNumWidomTestsGlobal = 0;
 
+	_bSimstepTrigger = false;
+}
+
+void LustigFormalism::InitDatastructures()
+{
 	// allocate memory
 	_ULocal       = new double[_nWriteFreq];
 	_dUdVLocal    = new double[_nWriteFreq];
@@ -43,20 +69,18 @@ LustigFormalism::LustigFormalism()
 	_d2UdV2Global = new double[_nWriteFreq];
 
 	_U2Global      = new double[_nWriteFreq];
-    _U3Global      = new double[_nWriteFreq];
-    _dUdV2Global   = new double[_nWriteFreq];
-    _UdUdVGlobal   = new double[_nWriteFreq];
-    _U2dUdVGlobal  = new double[_nWriteFreq];
-    _UdUdV2Global  = new double[_nWriteFreq];
-    _Ud2UdV2Global = new double[_nWriteFreq];
+	_U3Global      = new double[_nWriteFreq];
+	_dUdV2Global   = new double[_nWriteFreq];
+	_UdUdVGlobal   = new double[_nWriteFreq];
+	_U2dUdVGlobal  = new double[_nWriteFreq];
+	_UdUdV2Global  = new double[_nWriteFreq];
+	_Ud2UdV2Global = new double[_nWriteFreq];
 
-    _WidomEnergyLocal  = new double[_nWriteFreq];
-    _WidomEnergyGlobal = new double[_nWriteFreq];
+	_WidomEnergyLocal  = new double[_nWriteFreq];
+	_WidomEnergyGlobal = new double[_nWriteFreq];
 
 	// reset (init) local values
 	this->ResetLocalValues();
-
-	_bSimstepTrigger = false;
 }
 
 LustigFormalism::~LustigFormalism()
@@ -214,7 +238,10 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
     
     const double PI = 3.14159265358979323846;
 	if(uLJshift6 == 0.)
-		_U_LRC = PI*_rho*eps24*rc3*(1./3.*lj12 - lj6) * _N/9.;
+	{
+		_U_LRC  = PI*_rho*eps24*rc3*(1./3.*lj12 - lj6) * _N/9.;
+		_dU_LRC = PI*_rho*eps24*rc3*(1./3.*lj12 - lj6) * 1./9. * (2+1./_N);  // LRC for Testparticle of Widom method
+	}
 	else
 		_U_LRC = 0.;
     _dUdV_LRC   = -8.*PI/9.*_InvV *(_N-1.)*_rho*rc3*eps*( 4.*lj12 -  6.*lj6);
@@ -240,9 +267,28 @@ void LustigFormalism::EventConfigurationSampled()
 	_nNumConfigs++;
 }
 
-void LustigFormalism::InitWidom(const double& dU)
+void LustigFormalism::InitWidom(const double& DU, const double& T)
 {
-	_WidomEnergyLocal[_tsBufferIndex] += dU;
+	_WidomEnergyLocal[_tsBufferIndex] += exp(-(DU+_dU_LRC) / T);
+
+//	_nNumWidomTestsLocal++;
+
+//	if(_domainDecomp->getRank() == 0)
+//		cout << "_nNumWidomTestsLocal = " << _nNumWidomTestsLocal << endl;
+//	cout << "DU = " << DU << endl;
+//	cout << "_dU_LRC = " << _dU_LRC << endl;
+//	cout << "T  = " << T  << endl;
+//	cout << "exp(-(DU+_dU_LRC) / T)  = " << exp(-(DU+_dU_LRC) / T)  << endl;
+//	cout << "_tsBufferIndex = " << _tsBufferIndex << endl;
+//	cout << "_WidomEnergyLocal[_tsBufferIndex] = " << _WidomEnergyLocal[_tsBufferIndex] << endl;
+
+//	if(_domainDecomp->getRank() == 0)
+//	{
+//		cout << "DU = " << DU << endl;
+//		cout << "T  = " << T  << endl;
+//		cout << "_dU_LRC = " << _dU_LRC << endl;
+//		cout << "_WidomEnergyLocal[0] = " << _WidomEnergyLocal[0] << endl;
+//	}
 }
 
 void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
@@ -403,9 +449,13 @@ void LustigFormalism::ResetSums()
 void LustigFormalism::ResetLocalValues()
 {
 	for(unsigned int i=0; i<_nWriteFreq; ++i)
+	{
+//		cout << "_WidomEnergyLocal[" << i << "] = " << _WidomEnergyLocal[i] << endl;
 		_WidomEnergyLocal[i] = 0.;
+	}
 
 	_tsBufferIndex = 0;
+//	_nNumWidomTestsLocal = 0;
 }
 
 void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)

@@ -1240,11 +1240,9 @@ unsigned Domain::getNumberOfComponents(){
 
 void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
 {
-	double dWidom = exp(-DU / _globalTemperatureMap[0]);
-
 	// LustigFormalism
 	if(NULL != _lustigFormalism)
-		_lustigFormalism->InitWidom(dWidom);
+		_lustigFormalism->InitWidom(DU, _globalTemperatureMap[0]);
 
 	if(false == this->RecordingProfile() )
 		return;
@@ -1257,6 +1255,7 @@ void Domain::submitDU(unsigned /*cid*/, double DU, double* r)
                   + yun * this->_universalNProfileUnits[2] + zun;
    if(unID < 0) return;
 
+   double dWidom = exp(-DU / _globalTemperatureMap[0]);
    _localWidomProfile[unID] += dWidom;
    _localWidomInstances[unID] += 1.0;
 

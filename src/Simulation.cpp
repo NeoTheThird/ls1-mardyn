@@ -969,7 +969,12 @@ void Simulation::simulate() {
 			if( cpit->isWidom() )
 			{
 				if (_simstep % cpit->getInterval() == 0)
+				{
 					cpit->grandcanonicalStepWidomOnly(_moleculeContainer, _domain->getGlobalCurrentTemperature(), _domain, _cellProcessor);
+
+//					if(_domainDecomposition->getRank() == 0)
+//						cout << "_simstep = " << _simstep << endl;
+				}
 			}
 			else
 			{
