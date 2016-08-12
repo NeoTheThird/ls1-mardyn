@@ -66,7 +66,7 @@ void InputOldstyle::readPhaseSpaceHeader(Domain* domain, double timestep)
 	global_log->info() << "Reading phase space header from file " << _phaseSpaceHeaderFile << endl;
 
 
-	vector<Component>& dcomponents = *(_simulation.getEnsemble()->components());
+	vector<Component>& dcomponents = *(_simulation.getEnsemble()->getComponents());
 	bool header = true; // When the last header element is reached, "header" is set to false
 
 	while(header) {
@@ -289,12 +289,12 @@ unsigned long InputOldstyle::readPhaseSpace(ParticleContainer* particleContainer
 #endif
 
 	string token;
-	vector<Component>& dcomponents = *(_simulation.getEnsemble()->components());
+	vector<Component>& dcomponents = *(_simulation.getEnsemble()->getComponents());
 	unsigned int numcomponents = dcomponents.size();
 	unsigned long nummolecules;
 	unsigned long maxid = 0; // stores the highest molecule ID found in the phase space file
 	string ntypestring("ICRVQD");
-	enum Ndatatype { ICRVQDV, ICRVQD, IRV, ICRV } ntype = ICRVQD;
+	enum Ndatatype { ICRVQDV, ICRVQD, IRV, ICRV } ntype = ICRVQDV;
 
 #ifdef ENABLE_MPI
 	if (domainDecomp->getRank() == 0) 
@@ -425,10 +425,11 @@ unsigned long InputOldstyle::readPhaseSpace(ParticleContainer* particleContainer
 				Molecule *m;
 				ParticleData::ParticleDataToMolecule(particle_buff[j], &m);
 				particleContainer->addParticle(*m);
+				componentid=m->componentid();
 				
 				// TODO: The following should be done by the addPartice method.
-				dcomponents[m->componentid()].incNumMolecules();
-				domain->setglobalRotDOF(dcomponents[m->componentid()].getRotationalDegreesOfFreedom() + domain->getglobalRotDOF());
+				dcomponents[componentid].incNumMolecules();
+				domain->setglobalRotDOF(dcomponents[componentid].getRotationalDegreesOfFreedom() + domain->getglobalRotDOF());
 				
 				if(m->id() > maxid) maxid = m->id();
 
@@ -446,7 +447,8 @@ unsigned long InputOldstyle::readPhaseSpace(ParticleContainer* particleContainer
 #else
 		particleContainer->addParticle(m1);
 		
-		 // TODO: The following should be done by the addPartice method.
+		componentid=m1.componentid();
+		// TODO: The following should be done by the addPartice method.
 		dcomponents[componentid].incNumMolecules();
 		domain->setglobalRotDOF(dcomponents[componentid].getRotationalDegreesOfFreedom() + domain->getglobalRotDOF());
 		

@@ -418,7 +418,7 @@ void LinkedCells::traverseCell(const long int cellIndex, CellProcessor& cellProc
 		// to neighbour cells in the halo region, all others already have been calculated
 		for (auto neighbourOffsetsIter = _backwardNeighbourOffsets.begin();
 				neighbourOffsetsIter != _backwardNeighbourOffsets.end(); neighbourOffsetsIter++) {
-			ParticleCell& neighbourCell = _cells[cellIndex - *neighbourOffsetsIter]; // minus oder plus?
+			ParticleCell& neighbourCell = _cells[cellIndex - *neighbourOffsetsIter];
 			if (neighbourCell.isHaloCell()) {
 				cellProcessor.processCellPair(currentCell, neighbourCell);
 			}
@@ -1074,13 +1074,20 @@ double LinkedCells::getEnergy(ParticlePairsHandler* particlePairsHandler,
 		// (potentially re-) initialize dummyCell
 		dummyCell.assignCellToInnerRegion();
 		dummyCell.removeAllParticles();
+		double l[3] = {m1->r(0)-10., m1->r(1)-10., m1->r(2)-10.}, u[3] = {m1->r(0)+10., m1->r(1)+10., m1->r(2)+10.};
+		dummyCell.setBoxMin(l);
+		dummyCell.setBoxMax(u);
 		dummyCell.addParticle(m1, false);
+
 		dummyCell.buildSoACaches();
 		dummyCell.setCellIndex(_cells.back().getCellIndex() * 10);
 	}
 
 	unsigned long cellIndex = getCellIndexOfMolecule(m1);
+
 	ParticleCell& currentCell = _cells[cellIndex];
+
+	assert(not currentCell.isHaloCell());
 
 	double oldEnergy = global_simulation->getDomain()->getLocalUpot();
 
@@ -1099,7 +1106,7 @@ double LinkedCells::getEnergy(ParticlePairsHandler* particlePairsHandler,
 	for (auto neighbourOffsetsIter = _backwardNeighbourOffsets.begin();
 			neighbourOffsetsIter != _backwardNeighbourOffsets.end();
 			neighbourOffsetsIter++) {
-		ParticleCell& neighbourCell = _cells[cellIndex - *neighbourOffsetsIter]; // minus oder plus?
+		ParticleCell& neighbourCell = _cells[cellIndex - *neighbourOffsetsIter];
 		u += cellProcessor->processSingleMolecule(m1, neighbourCell);
 	}
 

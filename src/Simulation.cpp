@@ -332,7 +332,7 @@ void Simulation::readXML(XMLfileUnits& xmlconfig) {
 					}
 					else {
 						int componentId = 0;
-						componentId = getEnsemble()->component(componentName)->ID();
+						componentId = getEnsemble()->getComponent(componentName)->ID();
 						int thermostatID = _domain->getThermostat(componentId);
 						_domain->setTargetTemperature(thermostatID, temperature);
 						global_log->info() << "Adding velocity scaling thermostat for component '" << componentName << "' (ID: " << componentId << "), T = " << temperature << endl;
@@ -583,11 +583,11 @@ void Simulation::initConfigXML(const string& inputfilename) {
 	std::list<ChemicalPotential>::iterator cpit;
 	for (cpit = _lmu.begin(); cpit != _lmu.end(); cpit++) {
 		cpit->setIncrement(idi);
-		double tmp_molecularMass = global_simulation->getEnsemble()->component(cpit->getComponentID())->m();
+		double tmp_molecularMass = global_simulation->getEnsemble()->getComponent(cpit->getComponentID())->m();
 		cpit->setSystem(_domain->getGlobalLength(0),
 				_domain->getGlobalLength(1), _domain->getGlobalLength(2),
 				tmp_molecularMass);
-		cpit->setGlobalN(global_simulation->getEnsemble()->component(cpit->getComponentID())->getNumMolecules());
+		cpit->setGlobalN(global_simulation->getEnsemble()->getComponent(cpit->getComponentID())->getNumMolecules());
 		cpit->setNextID(j + (int) (1.001 * (256 + maxid)));
 
 		cpit->setSubdomain(ownrank, _moleculeContainer->getBoundingBoxMin(0),
@@ -625,7 +625,7 @@ void Simulation::prepare_start() {
 	bool dipole_present = false;
 	bool quadrupole_present = false;
 
-	const vector<Component> components = *(global_simulation->getEnsemble()->components());
+	const vector<Component> components = *(global_simulation->getEnsemble()->getComponents());
 	for (size_t i = 0; i < components.size(); i++) {
 		lj_present |= (components[i].numLJcenters() != 0);
 		charge_present |= (components[i].numCharges() != 0);
@@ -644,9 +644,12 @@ void Simulation::prepare_start() {
 	else*/
 	if(this->_doRecordVirialProfile) {
 		global_log->warning() << "Using legacy cell processor. (The vectorized code does not support the virial tensor and the localized virial profile.)" << endl;
-		_cellProcessor = new LegacyCellProcessor( _cutoffRadius, _LJCutoffRadius, _particlePairsHandler);
-	}
-	else {
+		_cellProcessor = new LegacyCellProcessor(_cutoffRadius, _LJCutoffRadius, _particlePairsHandler);
+	} else if (_rdf != NULL) {
+		global_log->warning() << "Using legacy cell processor. (The vectorized code does not support rdf sampling.)"
+				<< endl;
+		_cellProcessor = new LegacyCellProcessor(_cutoffRadius, _LJCutoffRadius, _particlePairsHandler);
+	} else {
 		global_log->info() << "Using vectorized cell processor." << endl;
 		_cellProcessor = new VectorizedCellProcessor( *_domain, _cutoffRadius, _LJCutoffRadius);
 	}
@@ -787,7 +790,7 @@ void Simulation::simulate() {
     //_initSimulation = (unsigned long) (this->_simulationTime / _integrator->getTimestepLength());
 	_initSimulation = 1;
 	/* demonstration for the usage of the new ensemble class */
-	/*CanonicalEnsemble ensemble(_moleculeContainer, global_simulation->getEnsemble()->components());
+	/*CanonicalEnsemble ensemble(_moleculeContainer, global_simulation->getEnsemble()->getComponents());
 	ensemble.updateGlobalVariable(NUM_PARTICLES);
 	global_log->debug() << "Number of particles in the Ensemble: "
 			<< ensemble.N() << endl;
@@ -879,7 +882,7 @@ void Simulation::simulate() {
 			global_log->info() << "Activating the RDF sampling" << endl;
 			this->_rdf->tickRDF();
 			this->_particlePairsHandler->setRDF(_rdf);
-			this->_rdf->accumulateNumberOfMolecules(*(global_simulation->getEnsemble()->components()));
+			this->_rdf->accumulateNumberOfMolecules(*(global_simulation->getEnsemble()->getComponents()));
 		}
 
 		/*! by Stefan Becker <stefan.becker@mv.uni-kl.de> 
@@ -901,7 +904,12 @@ void Simulation::simulate() {
 				_domain->determineYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
 			}
 			// edited by Michaela Heier --> realign can be used when LJ93-Potential will be used. Only the shift in the xz-plane will be used. 
-			else if(_doAlignCentre && _applyWallFun){
+			else if(_doAlignCentre && _applyWallFun_LJ_9_3){
+				global_log->info() << "realign in the xz-plane without a shift in y-direction\n";
+				_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+				_domain->noYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
+			}
+			else if(_doAlignCentre && _applyWallFun_LJ_10_4){
 				global_log->info() << "realign in the xz-plane without a shift in y-direction\n";
 				_domain->determineXZShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
 				_domain->noYShift(_domainDecomposition, _moleculeContainer, _alignmentCorrection);
@@ -953,8 +961,12 @@ void Simulation::simulate() {
 			_FMM->computeElectrostatics(_moleculeContainer);
 		}
 
-		if(_wall && _applyWallFun){
+		if(_wall && _applyWallFun_LJ_9_3){
 		  _wall->calcTSLJ_9_3(_moleculeContainer, _domain);
+		}
+
+		if(_wall && _applyWallFun_LJ_10_4){
+		  _wall->calcTSLJ_10_4(_moleculeContainer, _domain);
 		}
 		
 		if(_mirror && _applyMirror){
@@ -1094,7 +1106,7 @@ void Simulation::simulate() {
 			global_log->debug() << "Velocity scaling" << endl;
 			if (_domain->severalThermostats()) {
 				_velocityScalingThermostat.enableComponentwise();
-				for(unsigned int cid = 0; cid < global_simulation->getEnsemble()->components()->size(); cid++) {
+				for(unsigned int cid = 0; cid < global_simulation->getEnsemble()->getComponents()->size(); cid++) {
 					int thermostatId = _domain->getThermostat(cid);
 					_velocityScalingThermostat.setBetaTrans(thermostatId, _domain->getGlobalBetaTrans(thermostatId));
 					_velocityScalingThermostat.setBetaRot(thermostatId, _domain->getGlobalBetaRot(thermostatId));
@@ -1426,7 +1438,8 @@ void Simulation::initialize() {
 	_alignmentInterval = 25;
 	_momentumInterval = 1000;
 	_wall = NULL;
-	_applyWallFun = false;
+	_applyWallFun_LJ_9_3 = false;
+	_applyWallFun_LJ_10_4 = false;
 	_mirror = NULL;
 	_applyMirror = false;
 

@@ -8,6 +8,7 @@
 #include "DomainDecompMPIBase.h"
 #include "molecules/Molecule.h"
 #include "particleContainer/ParticleContainer.h"
+#include "Simulation.h"
 
 using Log::global_log;
 
@@ -179,12 +180,11 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 	// the following implements a non-blocking recv scheme, which overlaps unpacking of
 	// messages with waiting for other messages to arrive
 	bool allDone = false;
-/*
 	double startTime = MPI_Wtime();
 
 	double waitCounter = 1.0;
 	double deadlockTimeOut = 60.0;
-*/
+	global_log->set_mpi_output_all();
 	while (not allDone) {
 		allDone = true;
 
@@ -203,11 +203,11 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 			allDone &= _neighbours[d][i].testRecv(moleculeContainer,
 					removeRecvDuplicates);
 		}
-/*
+
 		// catch deadlocks
 		double waitingTime = MPI_Wtime() - startTime;
 		if (waitingTime > waitCounter) {
-			global_log->warning() << "Deadlock warning: Rank " << _rank
+			global_log->warning() << "DomainDecompMPIBase::finalizeExchangeMoleculesMPI1d: Deadlock warning: Rank " << _rank
 					<< " is waiting for more than " << waitCounter << " seconds"
 					<< std::endl;
 			waitCounter += 1.0;
@@ -217,17 +217,17 @@ void DomainDecompMPIBase::finalizeExchangeMoleculesMPI1D(
 		}
 
 		if (waitingTime > deadlockTimeOut) {
-			global_log->warning() << "Deadlock error: Rank " << _rank
+			global_log->error() << "DomainDecompMPIBase::finalizeExchangeMoleculesMPI1d: Deadlock error: Rank " << _rank
 					<< " is waiting for more than " << deadlockTimeOut
 					<< " seconds" << std::endl;
 			for (int i = 0; i < numNeighbours; ++i) {
 				_neighbours[d][i].deadlockDiagnosticSendRecv();
 			}
-			MPI_Abort(_comm, 1);
-			exit(1);
+			global_simulation->exit(457);
 		}
-*/
+
 	} // while not allDone
+	global_log->set_mpi_output_root(0);
 }
 
 
