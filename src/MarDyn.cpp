@@ -95,6 +95,10 @@ int run_unit_tests(Values &options, vector<string> &args) {
  * all classes.
  */
 int main(int argc, char** argv) {
+
+    Timer* mardyn_timer = new Timer;
+    mardyn_timer->start();
+
 #ifdef ENABLE_MPI
 	MPI_Init(&argc, &argv);
 #endif
@@ -188,7 +192,7 @@ int main(int argc, char** argv) {
 	global_log->info() << "Default output prefix: " << simulation.getOutputPrefix() << endl;
 
 
-	simulation.prepare_start();
+	simulation.prepare_start(mardyn_timer);
 
 	Timer sim_timer;
 	sim_timer.start();

@@ -886,6 +886,12 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop, nWriteFreqSums);
 			_domain->GetLustig()->StoreDomainDecompPointer(_domainDecomposition);
 
+		} else if (token == "CheckpointWriter") {
+
+			inputfilestream >> _nWriteFreqCheckpoints;
+			inputfilestream >> _dWalltimeSeconds;
+			_dWalltimeSecondsHalf = _dWalltimeSeconds * 0.5;
+
 		} else {
 			if (token != "")
 				global_log->warning() << "Did not process unknown token " << token << endl;

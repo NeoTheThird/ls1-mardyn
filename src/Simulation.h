@@ -207,7 +207,7 @@ public:
 	 * This method has to ensure, that all values are available at
 	 * time step zero
 	 */
-	void prepare_start();
+	void prepare_start(Timer* mardyn_timer);
 
 	/** @brief Controls the main loop of the simulation.
 	 *
@@ -559,6 +559,20 @@ private:
 	int _loopCompTimeSteps;
 
 	std::string _programName;
+
+	// CHECKPOINT_WRITING: Write only 2 checkpoints: half and before full walltime, with respect to write frequency
+	unsigned long _nWriteFreqCheckpoints;
+	double _dWalltimeSeconds;
+	double _dWalltimeSecondsHalf;
+	double _dSecondsPerTimestep;
+	bool _bHalftimePassed;
+	double _dTimestepsPerSecond;
+	unsigned long _n1stCheckpointTS;
+	unsigned long _n2ndCheckpointTS;
+	bool _bWrote1stCheckpoint;
+	bool _bWrote2ndCheckpoint;
+	double _dWriteTimeSecondsCP;
+    double _dTimePreLoopSeconds;
 };
 #endif /*SIMULATION_H_*/
 

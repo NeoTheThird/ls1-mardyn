@@ -614,7 +614,7 @@ void Simulation::initConfigXML(const string& inputfilename) {
 	}
 }
 
-void Simulation::prepare_start() {
+void Simulation::prepare_start(Timer* mardyn_timer) {
 	global_log->info() << "Initializing simulation" << endl;
 
 	global_log->info() << "Initialising cell processor" << endl;
@@ -774,6 +774,14 @@ void Simulation::prepare_start() {
     // Lustig formalism
 	_domain->GetLustig()->InitNVT(_domain, _domain->getglobalNumMolecules(), _domain->getGlobalVolume(), _domain->getTargetTemperature(0), _LJCutoffRadius);
     _domain->GetLustig()->WriteHeader(_domainDecomposition, _domain);
+
+    // time before simulation starts
+    mardyn_timer->stop();
+    _dTimePreLoopSeconds = mardyn_timer->get_etime();
+#ifdef DEBUG
+    cout << "_dTimePreLoopSeconds = " << _dTimePreLoopSeconds << endl;
+#endif
+    mardyn_timer->start();
 }
 
 void Simulation::simulate() {
@@ -1235,6 +1243,75 @@ void Simulation::simulate() {
 			_forced_checkpoint_time = -1; /* disable for further timesteps */
 		}
 		perStepIoTimer.stop();
+
+
+		// CHECKPOINT_WRITING: Write only 2 checkpoints - half and before full walltime, with respect to write frequency
+		if(false ==_bHalftimePassed)
+		{
+			// get elapsed time
+			loopTimer.stop();
+			loopTimer.start();
+
+			if(loopTimer.get_etime() >= _dWalltimeSecondsHalf)
+			{
+				_bHalftimePassed = true;
+				double dSafetyFactorSecondsPerTimestep = 1.05;
+				_dSecondsPerTimestep = _dWalltimeSecondsHalf/_simstep * dSafetyFactorSecondsPerTimestep;
+
+                global_log->info() << "Half of walltime passed, writing checkpoint at next occasion." << endl;
+				global_log->info() << "_dSecondsPerTimestep = " << _dSecondsPerTimestep << endl;
+
+			}
+		}
+		else
+		{
+			if(false == _bWrote1stCheckpoint)
+			{
+				if(0 ==_simstep % _nWriteFreqCheckpoints)
+				{
+					ioTimer.start();
+			        stringstream sstrFilenameCP;
+			        sstrFilenameCP << "cp-1st." << _simstep << ".restart.xdr";
+			        global_log->info() << "Writing 1st checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
+			        _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
+			        ioTimer.stop();
+			        _dWriteTimeSecondsCP = ioTimer.get_etime();  // time used to write a checkpoint
+			        
+                    global_log->info() << "_dWriteTimeSecondsCP = " << _dWriteTimeSecondsCP << endl;
+					
+                    // get elapsed time
+					loopTimer.stop();
+					loopTimer.start();
+			        double dSafetyFactorWriteTimeCP = 1.1;
+			        double dRemainingTimeSeconds = _dWalltimeSeconds - _dTimePreLoopSeconds - loopTimer.get_etime() - _dWriteTimeSecondsCP * dSafetyFactorWriteTimeCP;
+			        unsigned long nRemainingTimesteps = dRemainingTimeSeconds/_dSecondsPerTimestep;
+
+			        global_log->info() << "dRemainingTimeSeconds = " << dRemainingTimeSeconds << endl;
+			        global_log->info() << "nRemainingTimesteps = " << nRemainingTimesteps << endl;
+
+			        _n1stCheckpointTS = _simstep;
+			        _n2ndCheckpointTS = _n1stCheckpointTS + nRemainingTimesteps - (nRemainingTimesteps%_nWriteFreqCheckpoints);
+
+			        global_log->info() << "_n2ndCheckpointTS = " << _n2ndCheckpointTS << endl;
+
+					_bWrote1stCheckpoint = true;
+				}
+			}
+			else if(false == _bWrote2ndCheckpoint)
+			{
+				if(_simstep == _n2ndCheckpointTS)
+				{
+					ioTimer.start();
+					stringstream sstrFilenameCP;
+					sstrFilenameCP << "cp-2nd." << _simstep << ".restart.xdr";
+			        global_log->info() << "Writing 2nd checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
+			        _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
+			        ioTimer.stop();
+
+			        _bWrote2ndCheckpoint = true;
+				}
+			}
+		}
 	}
 	loopTimer.stop();
 	/***************************************************************************/
@@ -1450,5 +1527,18 @@ void Simulation::initialize() {
 	_particlePairsHandler = new ParticlePairs2PotForceAdapter(*_domain);
 	_longRangeCorrection = NULL;
         
-        this->_mcav = map<unsigned, CavityEnsemble>();
+	this->_mcav = map<unsigned, CavityEnsemble>();
+
+	// CHECKPOINT_WRITING: Write only 2 checkpoints: half and before full walltime, with respect to write frequency
+	_nWriteFreqCheckpoints = 100000;
+	_dWalltimeSeconds = 24. * 3600.;
+	_dWalltimeSecondsHalf = _dWalltimeSeconds * 0.5;
+	_dSecondsPerTimestep = 1.;
+	_bHalftimePassed = false;
+	_n1stCheckpointTS = 0;
+	_n2ndCheckpointTS = 0;
+	_bWrote1stCheckpoint = false;
+	_bWrote2ndCheckpoint = false;
+	_dWriteTimeSecondsCP = 60.;
+    _dTimePreLoopSeconds = 0.;
 }
