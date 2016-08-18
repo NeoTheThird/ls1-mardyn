@@ -60,6 +60,13 @@ namespace bhfmm {
 class FastMultipoleMethod;
 } // bhfmm
 
+enum CheckpointWritingStates
+{
+    CPWS_CHECK_FOR_HALFTIME_ELAPSED = 1,
+    CPWS_READY_TO_WRITE_1ST_CHECKPOINT = 2,
+    CPWS_READY_TO_WRITE_2ND_CHECKPOINT = 3,
+    CPWS_FINISHED_CHECKPOINT_WRITING = 4,
+};
 
 /** @brief Controls the simulation process
  *  @author Martin Bernreuther <bernreuther@hlrs.de> et al. (2010)
@@ -561,16 +568,15 @@ private:
 	std::string _programName;
 
 	// CHECKPOINT_WRITING: Write only 2 checkpoints: half and before full walltime, with respect to write frequency
+	int _nCPWritingStateLocal;
+	int _nCPWritingStateGlobal;
 	unsigned long _nWriteFreqCheckpoints;
 	double _dWalltimeSeconds;
 	double _dWalltimeSecondsHalf;
 	double _dSecondsPerTimestep;
-	bool _bHalftimePassed;
 	double _dTimestepsPerSecond;
 	unsigned long _n1stCheckpointTS;
 	unsigned long _n2ndCheckpointTS;
-	bool _bWrote1stCheckpoint;
-	bool _bWrote2ndCheckpoint;
 	double _dWriteTimeSecondsCP;
     double _dTimePreLoopSeconds;
 };

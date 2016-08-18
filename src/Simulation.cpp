@@ -1246,73 +1246,92 @@ void Simulation::simulate() {
 
 
 		// CHECKPOINT_WRITING: Write only 2 checkpoints - half and before full walltime, with respect to write frequency
-		if(false ==_bHalftimePassed)
-		{
-			// get elapsed time
-			loopTimer.stop();
-			loopTimer.start();
 
-			if(loopTimer.get_etime() >= _dWalltimeSecondsHalf)
-			{
-				_bHalftimePassed = true;
-				double dSafetyFactorSecondsPerTimestep = 1.05;
-				_dSecondsPerTimestep = _dWalltimeSecondsHalf/_simstep * dSafetyFactorSecondsPerTimestep;
+        // get elapsed time
+        loopTimer.stop();
+        loopTimer.start();
+
+#ifdef ENABLE_MPI
+        int rank = _domainDecomposition->getRank();
+        // int numprocs = domainDecomp->getNumProcs();
+        if (rank == 0 && CPWS_CHECK_FOR_HALFTIME_ELAPSED == _nCPWritingStateGlobal)
+        {
+#endif
+            if( (loopTimer.get_etime()+_dTimePreLoopSeconds) >= _dWalltimeSecondsHalf)
+            {
+                double dSafetyFactorSecondsPerTimestep = 1.05;
+                _dSecondsPerTimestep = _dWalltimeSecondsHalf/_simstep * dSafetyFactorSecondsPerTimestep;
 
                 global_log->info() << "Half of walltime passed, writing checkpoint at next occasion." << endl;
-				global_log->info() << "_dSecondsPerTimestep = " << _dSecondsPerTimestep << endl;
+                global_log->info() << "_dSecondsPerTimestep = " << _dSecondsPerTimestep << endl;
 
-			}
-		}
-		else
-		{
-			if(false == _bWrote1stCheckpoint)
-			{
-				if(0 ==_simstep % _nWriteFreqCheckpoints)
-				{
-					ioTimer.start();
-			        stringstream sstrFilenameCP;
-			        sstrFilenameCP << "cp-1st." << _simstep << ".restart.xdr";
-			        global_log->info() << "Writing 1st checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
-			        _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
-			        ioTimer.stop();
-			        _dWriteTimeSecondsCP = ioTimer.get_etime();  // time used to write a checkpoint
-			        
-                    global_log->info() << "_dWriteTimeSecondsCP = " << _dWriteTimeSecondsCP << endl;
-					
-                    // get elapsed time
-					loopTimer.stop();
-					loopTimer.start();
-			        double dSafetyFactorWriteTimeCP = 1.1;
-			        double dRemainingTimeSeconds = _dWalltimeSeconds - _dTimePreLoopSeconds - loopTimer.get_etime() - _dWriteTimeSecondsCP * dSafetyFactorWriteTimeCP;
-			        unsigned long nRemainingTimesteps = dRemainingTimeSeconds/_dSecondsPerTimestep;
+                _nCPWritingStateGlobal = CPWS_READY_TO_WRITE_1ST_CHECKPOINT;
+            }
+#ifdef ENABLE_MPI
+        }  // root process only
+#endif
 
-			        global_log->info() << "dRemainingTimeSeconds = " << dRemainingTimeSeconds << endl;
-			        global_log->info() << "nRemainingTimesteps = " << nRemainingTimesteps << endl;
+#ifdef ENABLE_MPI
+        MPI_Bcast(&_nCPWritingStateGlobal, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Barrier(MPI_COMM_WORLD);
+#endif
 
-			        _n1stCheckpointTS = _simstep;
-			        _n2ndCheckpointTS = _n1stCheckpointTS + nRemainingTimesteps - (nRemainingTimesteps%_nWriteFreqCheckpoints);
+        switch(_nCPWritingStateGlobal)
+        {
+        case CPWS_READY_TO_WRITE_1ST_CHECKPOINT:
 
-			        global_log->info() << "_n2ndCheckpointTS = " << _n2ndCheckpointTS << endl;
+            if(0 ==_simstep % _nWriteFreqCheckpoints)
+            {
+                ioTimer.start();
+                stringstream sstrFilenameCP;
+                sstrFilenameCP << "cp-1st." << _simstep << ".restart.xdr";
+                global_log->info() << "Writing 1st checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
+                _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
+                ioTimer.stop();
+                _dWriteTimeSecondsCP = ioTimer.get_etime();  // time used to write a checkpoint
 
-					_bWrote1stCheckpoint = true;
-				}
-			}
-			else if(false == _bWrote2ndCheckpoint)
-			{
-				if(_simstep == _n2ndCheckpointTS)
-				{
-					ioTimer.start();
-					stringstream sstrFilenameCP;
-					sstrFilenameCP << "cp-2nd." << _simstep << ".restart.xdr";
-			        global_log->info() << "Writing 2nd checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
-			        _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
-			        ioTimer.stop();
+                global_log->info() << "_dWriteTimeSecondsCP = " << _dWriteTimeSecondsCP << endl;
 
-			        _bWrote2ndCheckpoint = true;
-				}
-			}
-		}
-	}
+                // calc timestep in that 2nd CP has to be written
+                double dSafetyFactorWriteTimeCP = 1.1;
+                double dRemainingTimeSeconds = _dWalltimeSeconds - _dTimePreLoopSeconds - loopTimer.get_etime() - _dWriteTimeSecondsCP * dSafetyFactorWriteTimeCP;
+                unsigned long nRemainingTimesteps = dRemainingTimeSeconds/_dSecondsPerTimestep;
+
+                global_log->info() << "dRemainingTimeSeconds = " << dRemainingTimeSeconds << endl;
+                global_log->info() << "nRemainingTimesteps = " << nRemainingTimesteps << endl;
+
+                _n1stCheckpointTS = _simstep;
+                _n2ndCheckpointTS = _n1stCheckpointTS + nRemainingTimesteps - (nRemainingTimesteps%_nWriteFreqCheckpoints);
+
+                global_log->info() << "_n2ndCheckpointTS = " << _n2ndCheckpointTS << endl;
+#ifdef ENABLE_MPI
+                MPI_Bcast(&_n2ndCheckpointTS, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+                MPI_Barrier(MPI_COMM_WORLD);
+#endif
+                _nCPWritingStateGlobal = CPWS_READY_TO_WRITE_2ND_CHECKPOINT;
+            }
+            break;
+        case CPWS_READY_TO_WRITE_2ND_CHECKPOINT:
+
+            if(_simstep == _n2ndCheckpointTS)
+            {
+//                cout << "Rank = " << _domainDecomposition->getRank() << endl;
+
+                ioTimer.start();
+                stringstream sstrFilenameCP;
+                sstrFilenameCP << "cp-2nd." << _simstep << ".restart.xdr";
+                global_log->info() << "Writing 2nd checkpoint to file '" << sstrFilenameCP.str() << "'" << endl;
+                _domain->writeCheckpoint(sstrFilenameCP.str(), _moleculeContainer, _domainDecomposition, _simulationTime);
+                ioTimer.stop();
+
+                _nCPWritingStateGlobal = CPWS_FINISHED_CHECKPOINT_WRITING;
+            }
+            break;
+
+        }  // switch
+
+    }
+
 	loopTimer.stop();
 	/***************************************************************************/
 	/* END MAIN LOOP                                                           */
@@ -1530,15 +1549,14 @@ void Simulation::initialize() {
 	this->_mcav = map<unsigned, CavityEnsemble>();
 
 	// CHECKPOINT_WRITING: Write only 2 checkpoints: half and before full walltime, with respect to write frequency
+	_nCPWritingStateLocal  = CPWS_CHECK_FOR_HALFTIME_ELAPSED;
+	_nCPWritingStateGlobal = CPWS_CHECK_FOR_HALFTIME_ELAPSED;
 	_nWriteFreqCheckpoints = 100000;
 	_dWalltimeSeconds = 24. * 3600.;
 	_dWalltimeSecondsHalf = _dWalltimeSeconds * 0.5;
 	_dSecondsPerTimestep = 1.;
-	_bHalftimePassed = false;
 	_n1stCheckpointTS = 0;
 	_n2ndCheckpointTS = 0;
-	_bWrote1stCheckpoint = false;
-	_bWrote2ndCheckpoint = false;
 	_dWriteTimeSecondsCP = 60.;
     _dTimePreLoopSeconds = 0.;
 }

@@ -96,9 +96,6 @@ int run_unit_tests(Values &options, vector<string> &args) {
  */
 int main(int argc, char** argv) {
 
-    Timer* mardyn_timer = new Timer;
-    mardyn_timer->start();
-
 #ifdef ENABLE_MPI
 	MPI_Init(&argc, &argv);
 #endif
@@ -109,6 +106,9 @@ int main(int argc, char** argv) {
 	global_log->set_mpi_output_root(0);
 	//global_log->set_mpi_output_all();
 #endif
+
+    Timer* mardyn_timer = new Timer;
+    mardyn_timer->start();
 
 	OptionParser op;
 	Values options = initOptions(argc, argv, op);
