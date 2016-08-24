@@ -105,70 +105,67 @@ LustigFormalism::~LustigFormalism()
 	delete[] _WidomEnergyGlobal;
 }
 
-void LustigFormalism::InitSums(string strFilename)
+void LustigFormalism::InitRestart(std::string strRestartFilenameSums, unsigned long nRestartTimestep)
 {
-	ifstream filein(strFilename.c_str(), ios::in);
+	_strRestartFilenameSums = strRestartFilenameSums;
+	_nRestartTimestep = nRestartTimestep;
 
-	string zeile1, zeile2;
-	while (getline (filein, zeile1)) {
-	  zeile2.swap (zeile1);
-	}
+	this->InitSums();
+}
 
-	if (filein.bad () || !filein.eof ()) {
-	  // Datei konnte nicht gelesen werden o. sonst. Fehler
-		cout << "Couldnt read file!" << endl;
-	} else {
-	  // Variable zeile2 enthält hier die letzte Zeile der Datei.
-		char * cstr = new char [zeile2.length()+1];
-		std::strcpy (cstr, zeile2.c_str());
-		char* pch;
-		string str[20];
+void LustigFormalism::InitSums()
+{
+	ifstream filein(_strRestartFilenameSums.c_str(), ios::in);
 
-		pch = strtok(cstr, " ");
-		str[0] = pch;
+	// get last line
+//	string zeile1, zeile2;
+//	while (getline (filein, zeile1)) {
+//	  zeile2.swap (zeile1);
+//	}
 
-		int i=0;
-		while (pch != NULL)
+	string strLine, strToken;
+	string strTokens[20];
+
+	while (getline (filein, strLine))
+	{
+		stringstream sstr;
+		sstr << strLine;
+
+		sstr >> strToken;
+
+		if( (unsigned long) (atoi(strToken.c_str() ) ) == _nRestartTimestep)
 		{
-			str[i] = string(pch);
-#ifdef DEBUG
-			cout << "str[" << i << "] = " << str[i] << endl;
-			cout << "i = " << i << endl;
-#endif
-			i++;
-			pch = strtok (NULL, " ");
+			int i=1;
+			while (sstr >> strTokens[i])
+				i++;
 		}
-
-		delete[] cstr;
-
-		_nNumConfigs      = atoi(str[0].c_str());
-		_UGlobalSum       = atof(str[1].c_str());
-		_U2GlobalSum      = atof(str[2].c_str());
-		_U3GlobalSum      = atof(str[3].c_str());
-		_dUdVGlobalSum    = atof(str[4].c_str());
-		_d2UdV2GlobalSum  = atof(str[5].c_str());
-		_dUdV2GlobalSum   = atof(str[6].c_str());
-		_UdUdVGlobalSum   = atof(str[7].c_str());
-		_U2dUdVGlobalSum  = atof(str[8].c_str());
-		_UdUdV2GlobalSum  = atof(str[9].c_str());
-		_Ud2UdV2GlobalSum = atof(str[10].c_str());
-		_WidomEnergyGlobalSum = atof(str[11].c_str()) * _nNumWidomTestsGlobal;
-
-#ifdef DEBUG
-		cout << "_nNumConfigs      = " << _nNumConfigs << endl;
-		cout << "_UGlobalSum       = " << _UGlobalSum << endl;
-		cout << "_U2GlobalSum      = " << _U2GlobalSum << endl;
-		cout << "_U3GlobalSum      = " << _U3GlobalSum << endl;
-		cout << "_dUdVGlobalSum    = " << _dUdVGlobalSum << endl;
-		cout << "_d2UdV2GlobalSum  = " << _d2UdV2GlobalSum << endl;
-		cout << "_dUdV2GlobalSum   = " << _dUdV2GlobalSum << endl;
-		cout << "_UdUdVGlobalSum   = " << _UdUdVGlobalSum << endl;
-		cout << "_U2dUdVGlobalSum  = " << _U2dUdVGlobalSum << endl;
-		cout << "_UdUdV2GlobalSum  = " << _UdUdV2GlobalSum << endl;
-		cout << "_Ud2UdV2GlobalSum = " << _Ud2UdV2GlobalSum << endl;
-		cout << "_WidomEnergyGlobalSum = " << _WidomEnergyGlobalSum << endl;
-#endif
 	}
+
+	_nNumConfigs      = _nRestartTimestep;
+	_UGlobalSum       = atof(strTokens[1].c_str() );
+	_U2GlobalSum      = atof(strTokens[2].c_str() );
+	_U3GlobalSum      = atof(strTokens[3].c_str() );
+	_dUdVGlobalSum    = atof(strTokens[4].c_str() );
+	_d2UdV2GlobalSum  = atof(strTokens[5].c_str() );
+	_dUdV2GlobalSum   = atof(strTokens[6].c_str() );
+	_UdUdVGlobalSum   = atof(strTokens[7].c_str() );
+	_U2dUdVGlobalSum  = atof(strTokens[8].c_str() );
+	_UdUdV2GlobalSum  = atof(strTokens[9].c_str() );
+	_Ud2UdV2GlobalSum = atof(strTokens[10].c_str() );
+	_WidomEnergyGlobalSum = atof(strTokens[11].c_str() );
+
+//	global_log->info() << "_nNumConfigs      = " << _nNumConfigs << endl;
+//	global_log->info() << "_UGlobalSum       = " << _UGlobalSum << endl;
+//	global_log->info() << "_U2GlobalSum      = " << _U2GlobalSum << endl;
+//	global_log->info() << "_U3GlobalSum      = " << _U3GlobalSum << endl;
+//	global_log->info() << "_dUdVGlobalSum    = " << _dUdVGlobalSum << endl;
+//	global_log->info() << "_d2UdV2GlobalSum  = " << _d2UdV2GlobalSum << endl;
+//	global_log->info() << "_dUdV2GlobalSum   = " << _dUdV2GlobalSum << endl;
+//	global_log->info() << "_UdUdVGlobalSum   = " << _UdUdVGlobalSum << endl;
+//	global_log->info() << "_U2dUdVGlobalSum  = " << _U2dUdVGlobalSum << endl;
+//	global_log->info() << "_UdUdV2GlobalSum  = " << _UdUdV2GlobalSum << endl;
+//	global_log->info() << "_Ud2UdV2GlobalSum = " << _Ud2UdV2GlobalSum << endl;
+//	global_log->info() << "_WidomEnergyGlobalSum = " << _WidomEnergyGlobalSum << endl;
 
 	filein.close();
 }
@@ -629,7 +626,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 		outputstream << std::setw(16) << _nNumConfigs;
 
 		// data
-		double dInvNumWidomTestsPerConfig = 1. / (double)(_nNumWidomTestsGlobal);
+//		double dInvNumWidomTestsPerConfig = 1. / (double)(_nNumWidomTestsGlobal);
 
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UGlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2GlobalSum;
@@ -641,7 +638,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _U2dUdVGlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _UdUdV2GlobalSum;
 		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _Ud2UdV2GlobalSum;
-		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _WidomEnergyGlobalSum * dInvNumWidomTestsPerConfig;
+		outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _WidomEnergyGlobalSum;  // * dInvNumWidomTestsPerConfig; <-- would lead to confusion if number of test particle per timestep is changed after restart of simulation
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::app);

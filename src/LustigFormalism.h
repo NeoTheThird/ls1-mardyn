@@ -22,7 +22,7 @@ public:
 
 	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop, unsigned long nWriteFreqSums)
 	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums; this->InitDatastructures();}
-	void InitSums(std::string strFilename);
+	void InitRestart(std::string strRestartFilenameSums, unsigned long nRestartTimestep);
 	unsigned long GetStart() {return _nStart;}
 	unsigned long GetStop()  {return _nStop;}
 	void InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ);
@@ -44,6 +44,7 @@ private:
     void ResetSums();
     void ResetLocalValues();
     void InitDatastructures();
+    void InitSums();
 
 
 private:
@@ -142,6 +143,10 @@ private:
     unsigned long _simstep;
 
     DomainDecompBase* _domainDecomp;
+
+    // restart
+    std::string _strRestartFilenameSums;
+    unsigned long _nRestartTimestep;
 
 };  // class LustigFormalism
 

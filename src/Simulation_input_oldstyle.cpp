@@ -880,8 +880,20 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 			inputfilestream >> nWriteFreqSums;
 			string str;
 			inputfilestream >> str;
-			if(str != "start")
-				_domain->GetLustig()->InitSums(str);
+			if(str == "file")
+			{
+				string strFilename;
+				unsigned long nRestartTimestep;
+				inputfilestream >> strFilename;
+				inputfilestream >> nRestartTimestep;
+
+				global_log->info() << "LustigFormalism: Restart from timestep " << nRestartTimestep << " using file '" << strFilename << "' to initialize accumulated sums." << endl;
+				_domain->GetLustig()->InitRestart(strFilename, nRestartTimestep);
+			}
+			else if(str == "start")
+				global_log->info() << "LustigFormalism: Sampling starts from the very beginning." << endl;
+			else
+				global_log->error() << "LustigFormalism: Wrong statement: " << str << endl;
 
 			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop, nWriteFreqSums);
 			_domain->GetLustig()->StoreDomainDecompPointer(_domainDecomposition);
