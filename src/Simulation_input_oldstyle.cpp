@@ -897,6 +897,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 			_domain->GetLustig()->SetWriteFreq(nWriteFreq, nStart, nStop, nWriteFreqSums);
 			_domain->GetLustig()->StoreDomainDecompPointer(_domainDecomposition);
+			_domain->GetLustig()->StoreTimestepLength(timestepLength);
 
 		} else if (token == "CheckpointWriter") {
 

@@ -260,13 +260,14 @@ void Molecule::Fquadrupolesub(unsigned int i, double a[]) {
 	Fquadrupoleadd(i, minusA);
 }
 
-void Molecule::upd_preF(double dt) {
+void Molecule::upd_preF(double dt, double* dr) {
 	assert(_m > 0);
 	double dt_halve = .5 * dt;
 	double dtInv2m = dt_halve / _m;
 	for (unsigned short d = 0; d < 3; ++d) {
 		_v[d] += dtInv2m * _F[d];
-		_r[d] += dt * _v[d];
+		dr[d] = dt * _v[d];
+		_r[d] += dr[d];
 	}
 
 	double w[3];

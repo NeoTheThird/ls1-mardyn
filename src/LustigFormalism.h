@@ -21,13 +21,14 @@ public:
 	~LustigFormalism();
 
 	void SetWriteFreq(unsigned long nWriteFreq, unsigned long nStart, unsigned long nStop, unsigned long nWriteFreqSums)
-	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums; this->InitDatastructures();}
+	{_nWriteFreq = nWriteFreq; _nStart = nStart; _nStop = nStop; _nWriteFreqSums = nWriteFreqSums;}
 	void InitRestart(std::string strRestartFilenameSums, unsigned long nRestartTimestep);
 	unsigned long GetStart() {return _nStart;}
 	unsigned long GetStop()  {return _nStop;}
 	void InitNVT(Domain* domain, unsigned long N, double V, double T, double cutoffRadiusLJ);
 	void Init(const double& U6, const double& dUdV, const double& d2UdV2);
 	void InitWidom(const double& DU, const double& T);
+	void InitMSD(const unsigned long& nID, double const * dr);
 	void CalcGlobalValues(DomainDecompBase* domainDecomp);
     void CalcDerivatives();
 	void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -38,6 +39,9 @@ public:
     void SetNumWidomTests(unsigned int nNumWidomTests){_nNumWidomTestsGlobal = nNumWidomTests;}
     void EventConfigurationSampled();
     void StoreDomainDecompPointer(DomainDecompBase* domainDecomp) {_domainDecomp = domainDecomp;}
+    void StoreTimestepLength(double dTimestepLength) { _Dt_ts = dTimestepLength;}
+    void StartSamplingMSD(){_bSampleMSD = true;}
+    bool SamplingStartedMSD(){return _bSampleMSD;}
 
 private:
     // reset local values
@@ -147,6 +151,16 @@ private:
     // restart
     std::string _strRestartFilenameSums;
     unsigned long _nRestartTimestep;
+
+    // MSD
+    //double _D;           // self-diffusion coefficient
+    double _MSD;          // Mean Squared Displacement
+    double _Dt_ts;       // time step length
+    double _dInv6NDt_ts;  // 1 / (6*N*Dt_ts)
+    double** _dDisplacementVecLocal;
+    double** _dDisplacementVecGlobal;
+    double _dDisplacementGlobalSum;
+    bool _bSampleMSD;
 
 };  // class LustigFormalism
 

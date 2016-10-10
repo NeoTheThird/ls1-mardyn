@@ -291,7 +291,7 @@ public:
 	void Fquadrupolesub(unsigned int i, double a[]);
 
 	/** First step of the leap frog integrator */
-	void upd_preF(double dt);
+	void upd_preF(double dt, double* dr);
 	/** second step of the leap frog integrator */
 	void upd_postF(double dt_halve, double& summv2, double& sumIw2);
 

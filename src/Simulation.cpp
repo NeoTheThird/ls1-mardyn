@@ -880,6 +880,10 @@ void Simulation::simulate() {
                    }
                 }
 
+        // MSD
+        if(NULL != _domain->GetLustig() && _domain->GetLustig()->GetStart() < _simstep)
+            _domain->GetLustig()->StartSamplingMSD();
+
 		_integrator->eventNewTimestep(_moleculeContainer, _domain);
 
         // Lustig formalism

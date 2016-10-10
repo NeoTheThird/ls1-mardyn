@@ -48,6 +48,10 @@ LustigFormalism::LustigFormalism()
 	_WidomEnergyLocal  = NULL;
 	_WidomEnergyGlobal = NULL;
 
+    // MSD
+	_dDisplacementVecLocal  = NULL;
+	_dDisplacementVecLocal = NULL;
+
 	// reset sums
 	this->ResetSums();
 
@@ -56,6 +60,7 @@ LustigFormalism::LustigFormalism()
 	_nNumWidomTestsGlobal = 0;
 
 	_bSimstepTrigger = false;
+    _bSampleMSD = false;
 }
 
 void LustigFormalism::InitDatastructures()
@@ -78,6 +83,22 @@ void LustigFormalism::InitDatastructures()
 
 	_WidomEnergyLocal  = new double[_nWriteFreq];
 	_WidomEnergyGlobal = new double[_nWriteFreq];
+
+    // MSD
+    _dDisplacementVecLocal  = new double*[_N+1];
+    _dDisplacementVecGlobal = new double*[_N+1];
+
+	for(unsigned long id=0; id<_N+1; ++id)
+	{
+	    _dDisplacementVecLocal[id]  = new double[3];
+	    _dDisplacementVecGlobal[id] = new double[3];
+
+		for(unsigned long d=0; d<3; ++d)
+		{
+		    _dDisplacementVecLocal[id][d]  = 0.;
+		    _dDisplacementVecGlobal[id][d] = 0.;
+		}
+	}
 
 	// reset (init) local values
 	this->ResetLocalValues();
@@ -103,6 +124,15 @@ LustigFormalism::~LustigFormalism()
 
 	delete[] _WidomEnergyLocal;
 	delete[] _WidomEnergyGlobal;
+
+    // MSD
+	for(unsigned long id=0; id<_N+1; ++id)
+	{
+		delete[] _dDisplacementVecLocal[id];
+		delete[] _dDisplacementVecGlobal[id];
+	}
+	delete[] _dDisplacementVecGlobal;
+	delete[] _dDisplacementVecGlobal;
 }
 
 void LustigFormalism::InitRestart(std::string strRestartFilenameSums, unsigned long nRestartTimestep)
@@ -151,7 +181,7 @@ void LustigFormalism::InitSums()
 	_UdUdVGlobalSum   = atof(strTokens[7].c_str() );
 	_U2dUdVGlobalSum  = atof(strTokens[8].c_str() );
 	_UdUdV2GlobalSum  = atof(strTokens[9].c_str() );
-	_Ud2UdV2GlobalSum = atof(strTokens[10].c_str() );
+	_Ud2UdV2GlobalSum     = atof(strTokens[10].c_str() );
 	_WidomEnergyGlobalSum = atof(strTokens[11].c_str() );
 
 //	global_log->info() << "_nNumConfigs      = " << _nNumConfigs << endl;
@@ -249,6 +279,12 @@ void LustigFormalism::InitNVT(Domain* domain, unsigned long N, double V, double 
     cout << "_dUdV_LRC = " << _dUdV_LRC << endl;
     cout << "_d2UdV2_LRC = " << _d2UdV2_LRC << endl;
 #endif
+
+    // allocate data structures
+    this->InitDatastructures();
+
+    // MSD
+    // _dInv6NDt_ts = 1. / (6*_N*_Dt_ts);
 }
 
 void LustigFormalism::Init(const double& U6, const double& dUdVm3, const double& d2UdV2m3)
@@ -288,6 +324,13 @@ void LustigFormalism::InitWidom(const double& DU, const double& T)
 //	}
 }
 
+void LustigFormalism::InitMSD(const unsigned long& nID, double const * dr)
+{
+	_dDisplacementVecLocal[nID][0] += dr[0];
+	_dDisplacementVecLocal[nID][1] += dr[1];
+	_dDisplacementVecLocal[nID][2] += dr[2];
+}
+
 void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
 {
 
@@ -306,18 +349,29 @@ void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
     cout << "tsBufferIndexGlobal = " << tsBufferIndexGlobal << endl;
 #endif
 
-    // Collective Communiation
-    domainDecomp->collCommInit(4*_nWriteFreq);
+    // Collective Communication
+    domainDecomp->collCommInit(4*_nWriteFreq + 3*_N);
 
-    for(unsigned int i=0; i<_nWriteFreq; ++i)
-    {
-        domainDecomp->collCommAppendDouble(_ULocal[i]);
-        domainDecomp->collCommAppendDouble(_dUdVLocal[i]);
-        domainDecomp->collCommAppendDouble(_d2UdV2Local[i]);
-        domainDecomp->collCommAppendDouble(_WidomEnergyLocal[i]);
-    }
+    // loop over time step buffer
+	for(unsigned int i=0; i<_nWriteFreq; ++i)
+	{
+		domainDecomp->collCommAppendDouble(_ULocal[i]);
+		domainDecomp->collCommAppendDouble(_dUdVLocal[i]);
+		domainDecomp->collCommAppendDouble(_d2UdV2Local[i]);
+		domainDecomp->collCommAppendDouble(_WidomEnergyLocal[i]);
+	}
+	// loop over number of molecules
+	for(unsigned long id=1; id<=_N; ++id)
+	{
+		domainDecomp->collCommAppendDouble(_dDisplacementVecLocal[id][0]);
+		domainDecomp->collCommAppendDouble(_dDisplacementVecLocal[id][1]);
+		domainDecomp->collCommAppendDouble(_dDisplacementVecLocal[id][2]);
+	}
+
+	// reduce
     domainDecomp->collCommAllreduceSum();
 
+    // collect global values
     for(unsigned int i=0; i<_nWriteFreq; ++i)
     {
         _UGlobal[i]      = domainDecomp->collCommGetDouble();
@@ -325,6 +379,14 @@ void LustigFormalism::CalcGlobalValues(DomainDecompBase* domainDecomp)
         _d2UdV2Global[i] = domainDecomp->collCommGetDouble();
         _WidomEnergyGlobal[i] = domainDecomp->collCommGetDouble();
     }
+	for(unsigned long id=1; id<=_N; ++id)
+	{
+		_dDisplacementVecGlobal[id][0] = domainDecomp->collCommGetDouble();
+		_dDisplacementVecGlobal[id][1] = domainDecomp->collCommGetDouble();
+		_dDisplacementVecGlobal[id][2] = domainDecomp->collCommGetDouble();
+	}
+
+    // finalize
     domainDecomp->collCommFinalize();
 
 	// reset local values
@@ -423,6 +485,18 @@ void LustigFormalism::CalcDerivatives()
 		_mu_res = -log(_WidomEnergyGlobalSum * dInvNumWidomTests);
 	}
 
+	// MSD
+	double dr2 = 0.;
+
+	for(unsigned long id=1; id<=_N; ++id)
+	{
+		dr2 += _dDisplacementVecGlobal[id][0]*_dDisplacementVecGlobal[id][0];
+		dr2 += _dDisplacementVecGlobal[id][1]*_dDisplacementVecGlobal[id][1];
+		dr2 += _dDisplacementVecGlobal[id][2]*_dDisplacementVecGlobal[id][2];
+	}
+	// _D = dr2 * _dInv6NDt_ts * InvNumConfigs;
+	_MSD = dr2 * _InvN;
+
 	// thermodynamic properties
 }
 
@@ -441,6 +515,9 @@ void LustigFormalism::ResetSums()
     _UdUdV2GlobalSum  = 0.;
     _Ud2UdV2GlobalSum = 0.;
     _WidomEnergyGlobalSum = 0.;
+
+    //MSD
+    _dDisplacementGlobalSum = 0.;
 }
 
 void LustigFormalism::ResetLocalValues()
@@ -472,6 +549,9 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		filenamestream << "LustigFormalism" << ".dat";
 		string strFilename = filenamestream.str();
 
+		outputstream << "_Dt_ts = " << _Dt_ts << endl;
+//		outputstream << "_dInv6NDt_ts = " << _dInv6NDt_ts << endl;
+
 		outputstream << "      numConfigs";
 		outputstream << "                  mu_res";
 		outputstream << "                   _A10r";
@@ -482,6 +562,7 @@ void LustigFormalism::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain
 		outputstream << "                   _A30r";
 		outputstream << "                   _A21r";
 		outputstream << "                   _A12r";
+		outputstream << "                    _MSD";
 		outputstream << endl;
 
 		ofstream fileout(strFilename.c_str(), ios::out);
@@ -574,6 +655,7 @@ void LustigFormalism::WriteData(DomainDecompBase* domainDecomp, unsigned long si
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A30r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A21r;
 			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _A12r;
+			outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _MSD;
 			outputstream << endl;
 
 			ofstream fileout(strFilename.c_str(), ios::app);
