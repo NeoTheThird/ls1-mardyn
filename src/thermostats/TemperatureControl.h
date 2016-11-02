@@ -155,7 +155,7 @@ public:
     // heat supply
     void SetDeltaEkinParameters( unsigned int nWriteFreqDeltaEkin, unsigned int nNumSlabsDeltaEkin)
     {
-        _nWriteFreqDeltaEkin = nWriteFreqDeltaEkin; _nNumSlabsDeltaEkin = nNumSlabsDeltaEkin;
+        _nWriteFreqDeltaEkin = nWriteFreqDeltaEkin; _nNumSlabsDeltaEkin = nNumSlabsDeltaEkin; _bWriteDataDeltaEkin = true;
     }
     void WriteDataDeltaEkin(DomainDecompBase* domainDecomp, unsigned long simstep);
 
@@ -166,6 +166,7 @@ private:
     unsigned long _nStop;
 
     // heat supply
+    bool _bWriteDataDeltaEkin;
     unsigned int _nWriteFreqDeltaEkin;
     unsigned int _nNumSlabsDeltaEkin;
 

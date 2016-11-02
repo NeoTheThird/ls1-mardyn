@@ -7,7 +7,15 @@
 
 #include "thermostats/TemperatureControl.h"
 #include "particleContainer/ParticleContainer.h"
+
 #include "parallel/DomainDecompBase.h"
+#ifdef ENABLE_MPI
+#include "parallel/DomainDecomposition.h"
+#include "parallel/KDDecomposition.h"
+#else
+#include "parallel/DomainDecompDummy.h"
+#endif
+
 #include "molecules/Molecule.h"
 #include "Domain.h"
 
@@ -707,6 +715,11 @@ TemperatureControl::TemperatureControl(Domain* domain, DomainDecompBase* domainD
     // start/stop timestep
     _nStart = nStart;
     _nStop  = nStop;
+
+    // init heat supply variables
+    _bWriteDataDeltaEkin = false;
+    _nNumSlabsDeltaEkin = 1;
+    _nWriteFreqDeltaEkin = 1000;
 }
 
 TemperatureControl::~TemperatureControl()
@@ -818,7 +831,8 @@ void TemperatureControl::DoLoopsOverMolecules(DomainDecompBase* domainDecomposit
 
 
         // write out heat supply
-        this->WriteDataDeltaEkin(domainDecomposition, simstep);
+        if(true == _bWriteDataDeltaEkin)
+        	this->WriteDataDeltaEkin(domainDecomposition, simstep);
     }
 }
 
