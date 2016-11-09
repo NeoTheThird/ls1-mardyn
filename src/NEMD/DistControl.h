@@ -9,6 +9,8 @@
 #define DISTCONTROL_H_
 
 #include <string>
+#include <vector>
+#include "utils/ObserverBase.h"
 
 using namespace std;
 
@@ -17,18 +19,10 @@ class ParticleContainer;
 class DomainDecompBase;
 class Molecule;
 
-enum SimulationTypes
-{
-    SIMTYPE_EQUILIBRIUM = 1,
-    SIMTYPE_EVAPORATION = 2,
-    SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE = 3,
-    SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST = 4
-};
-
-class DistControl
+class DistControl : public SubjectBase
 {
 public:
-    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimType, double dVaporDensity, unsigned int nMethod);
+    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod);
     ~DistControl();
 
     // init
@@ -36,31 +30,8 @@ public:
 
     double GetInterfaceMidLeft() {return _dInterfaceMidLeft;}
     double GetInterfaceMidRight() {return _dInterfaceMidRight;}
-    void SetDistanceParameters(double d1090Thickness, double dCVFactor, double dTZoneFactor, double dSZoneFactor, double dCVWidth)
-    {
-        _d1090Thickness = d1090Thickness;
-        _dCVFactor      = dCVFactor;
-        _dTZoneFactor   = dTZoneFactor;
-        _dSZoneFactor   = dSZoneFactor;
-        _dCVWidth   = dCVWidth;
-    }
-    double Get1090Thickness() {return _d1090Thickness;}
     void SetWriteFreqProfiles(unsigned int nVal) {_nWriteFreqProfiles = nVal;}
-
-    // get positions
-    // positions
-    double GetCVLeft() {return _dControlVolumeLeft;}
-    double GetCVRight() {return _dControlVolumeRight;}
-    double GetTZoneLeft()  {return _dTZoneLeft;}
-    double GetTZoneRight() {return _dTZoneRight;}
-    double GetSZoneLeft_lc()  {return _dSZoneLeft_lc;}
-    double GetSZoneLeft_uc()  {return _dSZoneLeft_uc;}
-    double GetSZoneRight_lc() {return _dSZoneRight_lc;}
-    double GetSZoneRight_uc() {return _dSZoneRight_uc;}
-    double GetDriftControlLeft() {return _dDriftControlLeft;}
-    double GetDriftControlRight() {return _dDriftControlRight;}
-
-    int GetSimType() {return _nSimType;}
+    unsigned int GetUpdateFreq() {return _nUpdateFreq;}
 
     void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
     void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
@@ -71,15 +42,18 @@ public:
     // place method inside loop over molecule container
     void SampleProfiles(Molecule* mol);
 
-    // place methods after the loop
-private:
-    void EstimateInterfaceMidpoint(Domain* domain);  // called by UpdatePositions
-    void EstimateInterfaceMidpointsByForce();
-public:
     void UpdatePositions(unsigned long simstep, Domain* domain);
     void AlignSystemCenterOfMass(Domain* domain, Molecule* mol, unsigned long simstep);
 
+    // SubjectBase methods
+	virtual void registerObserver(ObserverBase* observer);
+	virtual void deregisterObserver(ObserverBase* observer);
+	virtual void informObserver();
+
 private:
+    // place methods after the loop
+    void EstimateInterfaceMidpoint(Domain* domain);  // called by UpdatePositions
+    void EstimateInterfaceMidpointsByForce();
     void ResetLocalValues();
 
 private:
@@ -106,32 +80,15 @@ private:
     double _dVaporDensity;
     unsigned int _nMethod;
 
-    // distance parameters
-    // all distances are related to the 10-90 thickness of the interface
-    double _d1090Thickness;
-    double _dCVFactor;
-    double _dTZoneFactor;
-    double _dSZoneFactor;
-    double _dCVWidth;
-
-    // positions
-    double _dControlVolumeLeft;
-    double _dControlVolumeRight;
-    double _dTZoneLeft;
-    double _dTZoneRight;
-    double _dSZoneLeft_lc;
-    double _dSZoneLeft_uc;
-    double _dSZoneRight_lc;
-    double _dSZoneRight_uc;
-    double _dDriftControlLeft;
-    double _dDriftControlRight;
-
     // write data
     string _strFilename;
     string _strFilenameProfilesPrefix;
 
     // simtype
     int _nSimType;
+
+    // observer
+	std::vector<ObserverBase*> _observer;
 
 };  // class DistControl
 

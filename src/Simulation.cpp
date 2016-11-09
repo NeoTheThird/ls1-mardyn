@@ -1145,19 +1145,32 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
             {
                 double dLowerCorner[3];
                 double dUpperCorner[3];
-                unsigned int nNumSlabs;
+                string strSubdivisionKey;
+                string strSubdivisionVal;
                 unsigned int nComp;
 
                 // read lower corner
                 for(unsigned short d=0; d<3; d++)
+                {
                     inputfilestream >> dLowerCorner[d];
+                }
 
                 // read upper corner
                 for(unsigned short d=0; d<3; d++)
-                    inputfilestream >> dUpperCorner[d];
+                {
+                	string strToken;
+                	inputfilestream >> strToken;
+                	if(strToken == "box")
+                		dUpperCorner[d] = _domain->getGlobalLength(d);
+                	else
+                		dUpperCorner[d] = atof(strToken.c_str() );
+
+//                	cout << "uc[" << d << "] = " << dUpperCorner[d] << endl;
+                }
 
                 // target component / temperature
-                inputfilestream >> nNumSlabs;
+                inputfilestream >> strSubdivisionKey;
+                inputfilestream >> strSubdivisionVal;
                 inputfilestream >> nComp;
 
             	string strToken;
@@ -1248,8 +1261,36 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                 else
                 {
                     // add regions
-                	_temperatureControl->AddRegion( dLowerCorner, dUpperCorner, nNumSlabs, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections, nTemperatureControlType,
-                									nStartAdjust, nStopAdjust, nAdjustFreq );
+                	tec::ControlRegion* region = new tec::ControlRegion( _temperatureControl, dLowerCorner, dUpperCorner, nComp, dTargetTemperature, dTemperatureExponent, strTransDirections,
+                			                                     nTemperatureControlType, nStartAdjust, nStopAdjust, nAdjustFreq );
+                	_temperatureControl->AddRegion(region);
+
+                    unsigned short refCoords[6];
+
+                    for(unsigned short d=0; d<6; d++)
+                        inputfilestream >> refCoords[d];
+
+                    region->PrepareAsObserver(refCoords);
+
+                    if(_distControl != NULL)
+                    	_distControl->registerObserver(region);
+
+                    // subdivision of region
+                    if("num" == strSubdivisionKey)
+                    {
+                    	unsigned int nNumSlabs = atoi(strSubdivisionVal.c_str() );
+                    	region->SetSubdivision(nNumSlabs);
+                    }
+                    else if("width" == strSubdivisionKey)
+                    {
+                    	double dSlabWidth = atof(strSubdivisionVal.c_str() );
+                    	region->SetSubdivision(dSlabWidth);
+                    }
+                    else
+                    {
+                    	global_log->error() << "TemperatureControl: wrong subdivision statement. Expected 'num' or 'width' keyword! Programm exit..." << endl;
+                    	exit(-1);
+                	}
                 }
 
             }  // if (strToken == "region")
@@ -1281,7 +1322,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
                  if(_driftControl == NULL)
                  {
-                     _driftControl = new DriftControl(nControlFreq, nStart, nStop);
+                     _driftControl = new DriftControl(_domain, _domainDecomposition, nControlFreq, nStart, nStop);
                  }
                  else
                  {
@@ -1306,7 +1347,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                  // read upper corner
                  for(unsigned short d=0; d<3; d++)
                  {
-                     inputfilestream >> dUpperCorner[d];
+                 	string strToken;
+                 	inputfilestream >> strToken;
+                 	if(strToken == "box")
+                 		dUpperCorner[d] = _domain->getGlobalLength(d);
+                 	else
+                 		dUpperCorner[d] = atof(strToken.c_str() );
+
+ //                	cout << "uc[" << d << "] = " << dUpperCorner[d] << endl;
                  }
 
                  // target component ID
@@ -1329,7 +1377,18 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                  else
                  {
                      // add regions
-                     _driftControl->AddRegion(dLowerCorner, dUpperCorner, nTargetComponent, dDirection, dDriftVeloTargetVal);
+                	 drc::ControlRegion* region = new drc::ControlRegion(_driftControl, dLowerCorner, dUpperCorner, nTargetComponent, dDirection, dDriftVeloTargetVal);
+                     _driftControl->AddRegion(region);
+
+                     unsigned short refCoords[6];
+
+                     for(unsigned short d=0; d<6; d++)
+                         inputfilestream >> refCoords[d];
+
+                     region->PrepareAsObserver(refCoords);
+
+                     if(_distControl != NULL)
+                     	_distControl->registerObserver(region);
                  }
              }
              else
@@ -1383,7 +1442,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                  // read upper corner
                  for(unsigned short d=0; d<3; d++)
                  {
-                     inputfilestream >> dUpperCorner[d];
+                 	string strToken;
+                 	inputfilestream >> strToken;
+                 	if(strToken == "box")
+                 		dUpperCorner[d] = _domain->getGlobalLength(d);
+                 	else
+                 		dUpperCorner[d] = atof(strToken.c_str() );
+
+ //                	cout << "uc[" << d << "] = " << dUpperCorner[d] << endl;
                  }
 
                  // target component ID
@@ -1400,7 +1466,18 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                  else
                  {
                      // add regions
-                     _densityControl->AddRegion(dLowerCorner, dUpperCorner, nTargetComponent, dTargetDensity);
+                     dec::ControlRegion* region = new dec::ControlRegion(_densityControl, dLowerCorner, dUpperCorner, nTargetComponent, dTargetDensity);
+                     _densityControl->AddRegion(region);
+
+                     unsigned short refCoords[6];
+
+                     for(unsigned short d=0; d<6; d++)
+                    	 inputfilestream >> refCoords[d];
+
+                      region->PrepareAsObserver(refCoords);
+
+                      if(_distControl != NULL)
+                    	  _distControl->registerObserver(region);
                  }
              }
              else
@@ -1417,8 +1494,6 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
              unsigned long nUpdateFreq = 1000;
              unsigned int nNumShells;
              double dInterfaceMidLeft, dInterfaceMidRight;
-             double d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth;
-             string strSimType;
              double dVaporDensity;
              unsigned int nMethod;
 
@@ -1442,41 +1517,14 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 				 inputfilestream >> nNumShells;
 	//             inputfilestream >> nUpdateFreq >> nNumShells;
 				 inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
-				 inputfilestream >> d1090Thickness >> dCVFactor >> dTZoneFactor >> dSZoneFactor >> dCVWidth;
-				 inputfilestream >> strSimType;
 				 inputfilestream >> dVaporDensity;
 				 inputfilestream >> nMethod;
 
-				 int nSimType = -1;
-
-				 if (strSimType == "equilibrium" || strSimType == "Equilibrium" )
-				 {
-					 nSimType = SIMTYPE_EQUILIBRIUM;
-				 }
-				 else if (strSimType == "evaporation" || strSimType == "Evaporation" )
-				 {
-					 nSimType = SIMTYPE_EVAPORATION;
-				 }
-				 else if (strSimType == "equilibrium_trapezoid" || strSimType == "Equilibrium_trapezoid" )
-				 {
-					 nSimType = SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE;
-				 }
-                 else if (strSimType == "equilibrium_temperature_adjust" || strSimType == "Equilibrium_temperature_adjust" )
-                 {
-                     nSimType = SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST;
-                 }
-				 else
-				 {
-					global_log->error() << "DistControl: invalid simtype, programm exit..." << endl;
-					exit(-1);
-				 }
-
 				 if(_distControl == NULL)
 				 {
-					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, nSimType, dVaporDensity, nMethod);
+					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, dVaporDensity, nMethod);
 
 					 // set distances
-					 _distControl->SetDistanceParameters(d1090Thickness, dCVFactor, dTZoneFactor, dSZoneFactor, dCVWidth);
 					 _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
 				 }
 				 else
@@ -1494,7 +1542,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
              if(_regionSampling == NULL)
              {
-                 _regionSampling = new RegionSampling(_domain);
+                 _regionSampling = new RegionSampling(_domain, _domainDecomposition);
              }
 
              inputfilestream >> token;
@@ -1504,43 +1552,107 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
                  double dLowerCorner[3];
                  double dUpperCorner[3];
 
-                 inputfilestream >> dLowerCorner[0] >> dLowerCorner[1] >> dLowerCorner[2];
-                 inputfilestream >> dUpperCorner[0] >> dUpperCorner[1] >> dUpperCorner[2];
+                 // read lower corner
+                 for(unsigned short d=0; d<3; d++)
+                 {
+                     inputfilestream >> dLowerCorner[d];
+                 }
 
-                 _regionSampling->AddRegion(dLowerCorner, dUpperCorner);
+                 // read upper corner
+                 for(unsigned short d=0; d<3; d++)
+                 {
+                 	string strToken;
+                 	inputfilestream >> strToken;
+                 	if(strToken == "box")
+                 		dUpperCorner[d] = _domain->getGlobalLength(d);
+                 	else
+                 		dUpperCorner[d] = atof(strToken.c_str() );
+
+ //                	cout << "uc[" << d << "] = " << dUpperCorner[d] << endl;
+                 }
+
+                 SampleRegion* region = new SampleRegion(_regionSampling, dLowerCorner, dUpperCorner);
+                 _regionSampling->AddRegion(region);
+
+                 unsigned short refCoords[6];
+
+                 for(unsigned short d=0; d<6; d++)
+                     inputfilestream >> refCoords[d];
+
+                 region->PrepareAsObserver(refCoords);
+
+                 if(_distControl != NULL)
+                 	_distControl->registerObserver(region);
              }
              else if(token == "Trho" || token == "tRho")
              {
-                 unsigned short nID;
-                 unsigned long initSamplingProfiles;
-                 unsigned long writeFrequencyProfiles;
-                 unsigned int nNumShellsProfiles;
+				unsigned short nID;
+				unsigned long initSamplingProfiles;
+				unsigned long writeFrequencyProfiles;
+				string strSubdivisionKey;
+				string strSubdivisionVal;
 
-                 inputfilestream >> nID >> initSamplingProfiles >> writeFrequencyProfiles >> nNumShellsProfiles;
+				inputfilestream >> nID >> initSamplingProfiles >> writeFrequencyProfiles >> strSubdivisionKey >> strSubdivisionVal;
 
-                 _regionSampling->GetSampleRegion(nID)->SetParamProfiles( initSamplingProfiles, writeFrequencyProfiles,
-                                                                          nNumShellsProfiles);
-             }
-             else if(token == "vdf" || token == "VDF")
-             {
-                 unsigned short nID;
-                 unsigned long initSamplingVDF;
-                 unsigned long writeFrequencyVDF;
-                 unsigned int nNumShellsVDF;
-                 unsigned int nNumDiscreteStepsVDF;
-                 double dVeloMax;
+				SampleRegion* region = _regionSampling->GetSampleRegion(nID);
+				region->SetParamProfiles( initSamplingProfiles, writeFrequencyProfiles);
 
-                 inputfilestream >> nID >> initSamplingVDF >> writeFrequencyVDF;
-                 inputfilestream >> nNumShellsVDF >> nNumDiscreteStepsVDF >> dVeloMax;
+				// subdivision of region
+				if("num" == strSubdivisionKey)
+				{
+					unsigned int nNumSlabs = atoi(strSubdivisionVal.c_str() );
+					region->SetSubdivisionProfiles(nNumSlabs);
+				}
+				else if("width" == strSubdivisionKey)
+				{
+					double dSlabWidth = atof(strSubdivisionVal.c_str() );
+					region->SetSubdivisionProfiles(dSlabWidth);
+				}
+				else
+				{
+					global_log->error() << "RegionSampling: wrong subdivision statement. Expected 'num' or 'width' keyword! Programm exit..." << endl;
+					exit(-1);
+				}
 
-                 _regionSampling->GetSampleRegion(nID)->SetParamVDF( initSamplingVDF, writeFrequencyVDF,
-                                                                     nNumShellsVDF, nNumDiscreteStepsVDF, dVeloMax);
-             }
-             else
-             {
-               global_log->error() << "RegionSampling options using wrong statements, programm exit..." << endl;
-               exit(-1);
-             }
+			}
+			else if(token == "vdf" || token == "VDF")
+			{
+				unsigned short nID;
+				unsigned long initSamplingVDF;
+				unsigned long writeFrequencyVDF;
+				string strSubdivisionKey;
+				string strSubdivisionVal;
+				unsigned int nNumDiscreteStepsVDF;
+				double dVeloMax;
+
+				inputfilestream >> nID >> initSamplingVDF >> writeFrequencyVDF;
+				inputfilestream >> strSubdivisionKey >> strSubdivisionVal >> nNumDiscreteStepsVDF >> dVeloMax;
+
+				SampleRegion* region = _regionSampling->GetSampleRegion(nID);
+				region->SetParamVDF( initSamplingVDF, writeFrequencyVDF, nNumDiscreteStepsVDF, dVeloMax);
+
+				// subdivision of region
+				if("num" == strSubdivisionKey)
+				{
+					unsigned int nNumSlabs = atoi(strSubdivisionVal.c_str() );
+					region->SetSubdivisionVDF(nNumSlabs);
+				}
+				else if("width" == strSubdivisionKey)
+				{
+					double dSlabWidth = atof(strSubdivisionVal.c_str() );
+					region->SetSubdivisionVDF(dSlabWidth);
+				}
+				else
+				{
+					global_log->error() << "RegionSampling: wrong subdivision statement. Expected 'num' or 'width' keyword! Programm exit..." << endl;
+					exit(-1);
+				}
+			}
+			else
+			{
+				global_log->error() << "RegionSampling options using wrong statements, programm exit..." << endl;
+				exit(-1);
+			}
 
          // <-- REGION_SAMPLING
 
@@ -1734,11 +1846,45 @@ void Simulation::prepare_start() {
 			<< _domain->getglobalNumMolecules() << " molecules." << endl;
 
     // Init NEMD feature objects
-    if(_distControl != NULL)
+    if(NULL != _distControl)
         _distControl->Init(_domainDecomposition, _domain, _moleculeContainer);
 
-    if(_regionSampling != NULL)
-        _regionSampling->Init(_domain);
+    // mheinen 2016-11-03 --> DISTANCE_CONTROL
+    if(NULL != _distControl)
+    {
+        Molecule* tM;
+
+        for( tM  = _moleculeContainer->begin();
+             tM != _moleculeContainer->end();
+             tM  = _moleculeContainer->next() )
+        {
+            // sample density profile
+            _distControl->SampleProfiles(tM);
+        }
+
+        // determine interface midpoints and update region positions
+        _distControl->UpdatePositions(_distControl->GetUpdateFreq(), _domain);
+    }
+    // <-- DISTANCE_CONTROL
+
+    // Init control instances (data structures)
+    if(NULL != _regionSampling)
+    {
+    	_regionSampling->PrepareRegionSubdivisions();
+        _regionSampling->Init();
+    }
+
+    if(NULL != _temperatureControl)
+    {
+		_temperatureControl->PrepareRegionSubdivisions();
+    	_temperatureControl->PrepareRegionDataStructures();
+    }
+
+    if(NULL != _densityControl)
+    {
+    	_densityControl->Init(_densityControl->GetControlFreq() );
+    	_densityControl->CheckRegionBounds();
+    }
 }
 
 void Simulation::simulate() {
@@ -1826,13 +1972,13 @@ void Simulation::simulate() {
                  tM  = _moleculeContainer->next() )
             {
                 // measure density
-                _densityControl->MeasureDensity(tM, _domainDecomposition, _simstep);
+                _densityControl->MeasureDensity(tM, _simstep);
 
     //                nNumMoleculesLocal++;
             }
 
             // calc global values
-            _densityControl->CalcGlobalValues(_domainDecomposition, _simstep);
+            _densityControl->CalcGlobalValues(_simstep);
 
 
             bool bDeleteMolecule;
@@ -1844,7 +1990,7 @@ void Simulation::simulate() {
                 bDeleteMolecule = false;
 
                 // control density
-                _densityControl->ControlDensity(_domainDecomposition, tM, this, _simstep, bDeleteMolecule);
+                _densityControl->ControlDensity(tM, this, _simstep, bDeleteMolecule);
 
 
                 if(true == bDeleteMolecule)
@@ -1859,7 +2005,7 @@ void Simulation::simulate() {
 
             }
             // write out deleted molecules data
-            _densityControl->WriteDataDeletedMolecules(_domainDecomposition, _simstep);
+            _densityControl->WriteDataDeletedMolecules(_simstep);
         }
 
         // update global number of particles
@@ -1889,78 +2035,6 @@ void Simulation::simulate() {
             // determine interface midpoints and update region positions
             _distControl->UpdatePositions(_simstep, _domain);
 
-
-            // update CV positions
-            if(_densityControl != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
-            {
-              // left CV
-              _densityControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetCVLeft() );
-
-              // right CV
-              _densityControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetCVRight() );
-            }
-
-            // update thermostat positions
-            if(_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
-            {
-                // middle thermostat region (liquid film)
-                _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
-                _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
-            }
-            else if (_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE)
-            {
-				// middle thermostat region (liquid film)
-				_temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
-				_temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
-
-				// T-grad regions
-				_temperatureControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
-				_temperatureControl->GetControlRegion(2)->SetUpperCorner(1, _distControl->GetTZoneLeft() );
-
-				_temperatureControl->GetControlRegion(3)->SetLowerCorner(1, _distControl->GetTZoneRight() );
-				_temperatureControl->GetControlRegion(3)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
-
-				// vapor regions
-				_temperatureControl->GetControlRegion(4)->SetLowerCorner(1, 0. );
-				_temperatureControl->GetControlRegion(4)->SetUpperCorner(1, _distControl->GetInterfaceMidLeft() );
-
-				_temperatureControl->GetControlRegion(5)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() );
-				_temperatureControl->GetControlRegion(5)->SetUpperCorner(1, _domain->getGlobalLength(1) );
-            }
-            else if (_temperatureControl != NULL && _distControl->GetSimType() == SIMTYPE_EQUILIBRIUM_TEMPERATURE_ADJUST)
-            {
-                // middle thermostat region (liquid film)
-                _temperatureControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetTZoneLeft() );
-                _temperatureControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetTZoneRight() );
-
-                // Interface regions
-                _temperatureControl->GetControlRegion(2)->SetLowerCorner(1, _distControl->GetInterfaceMidLeft() );
-                _temperatureControl->GetControlRegion(2)->SetUpperCorner(1, _distControl->GetInterfaceMidLeft() + _distControl->Get1090Thickness() );
-
-                _temperatureControl->GetControlRegion(3)->SetLowerCorner(1, _distControl->GetInterfaceMidRight() - _distControl->Get1090Thickness() );
-                _temperatureControl->GetControlRegion(3)->SetUpperCorner(1, _distControl->GetInterfaceMidRight() );
-            }
-
-            // update drift control positions
-            if(_driftControl != NULL)
-            {
-                // middle drift control region (inside liquid film)
-                _driftControl->GetControlRegion(1)->SetLowerCorner(1, _distControl->GetDriftControlLeft() );
-                _driftControl->GetControlRegion(1)->SetUpperCorner(1, _distControl->GetDriftControlRight() );
-            }
-
-            // update region sampling positions
-            if(_regionSampling != NULL && _distControl->GetSimType() == SIMTYPE_EVAPORATION)
-            {
-                // left sampling region
-                _regionSampling->GetSampleRegion(1)->SetLowerCorner(1, _distControl->GetSZoneLeft_lc() );
-                _regionSampling->GetSampleRegion(1)->SetUpperCorner(1, _distControl->GetSZoneLeft_uc() );
-
-                // right sampling region
-                _regionSampling->GetSampleRegion(2)->SetLowerCorner(1, _distControl->GetSZoneRight_lc() );
-                _regionSampling->GetSampleRegion(2)->SetUpperCorner(1, _distControl->GetSZoneRight_uc() );
-            }
-
             // write data
             _distControl->WriteData(_domainDecomposition, _domain, _simstep);
             _distControl->WriteDataProfiles(_domainDecomposition, _domain, _simstep);
@@ -1975,6 +2049,7 @@ void Simulation::simulate() {
             }
         }
         // <-- DISTANCE_CONTROL
+
 
 		// activate RDF sampling
 		if ((_simstep >= this->_initStatistics) && this->_rdf != NULL) {
@@ -2088,13 +2163,13 @@ void Simulation::simulate() {
                  tM  = _moleculeContainer->next() )
             {
                 // measure drift
-                _driftControl->MeasureDrift(tM, _domainDecomposition, _simstep);
+                _driftControl->MeasureDrift(tM, _simstep);
 
 //                cout << "id = " << tM->id() << ", (vx,vy,vz) = " << tM->v(0) << ", " << tM->v(1) << ", " << tM->v(2) << endl;
             }
 
             // calc global values
-            _driftControl->CalcGlobalValues(_domainDecomposition, _simstep);
+            _driftControl->CalcGlobalValues(_simstep);
 
             // calc scale factors
             _driftControl->CalcScaleFactors(_simstep);
@@ -2168,7 +2243,7 @@ void Simulation::simulate() {
 		// mheinen 2015-07-27 --> TEMPERATURE_CONTROL
         else if ( _temperatureControl != NULL)
         {
-            _temperatureControl->DoLoopsOverMolecules(_domainDecomposition, _moleculeContainer, _simstep);
+            _temperatureControl->DoLoopsOverMolecules(_moleculeContainer, _simstep);
         }
         // <-- TEMPERATURE_CONTROL
 

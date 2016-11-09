@@ -17,34 +17,71 @@
 
 using namespace std;
 
+// init static ID --> instance counting
+unsigned short SampleRegion::_nStaticID = 0;
 
-SampleRegion::SampleRegion(RegionSampling* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned short nID)
+SampleRegion::SampleRegion( ControlInstance* parent, double dLowerCorner[3], double dUpperCorner[3] )
+: CuboidRegionObs(parent, dLowerCorner, dUpperCorner)
 {
-    // set lower and upper corner
-    for(unsigned short d=0; d<3; ++d)
-    {
-        _dLowerCorner[d] = dLowerCorner[d];
-        _dUpperCorner[d] = dUpperCorner[d];
-    }
-
-    // set ID
-    _nID = nID;
+	// ID
+	_nID = ++_nStaticID;
 
     // init control
     _bDiscretisationDoneProfiles = false;
     _bDiscretisationDoneVDF = false;
 
-    // store parent pointer
-    _parent = parent;
+    // init subdivison option
+    _nSubdivisionOpt = SDOPT_UNKNOWN;
 }
 
 
 SampleRegion::~SampleRegion()
 {
-
 }
 
-void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
+void SampleRegion::PrepareSubdivisionProfiles()
+{
+	double dWidth = this->GetWidth(1);
+
+	switch(_nSubdivisionOpt)
+	{
+	case SDOPT_BY_NUM_SLABS:
+		_dShellWidthProfilesInit = this->GetWidth(1) / ( (double)(_nNumShellsProfiles) );
+		_dShellWidthProfiles = _dShellWidthProfilesInit;
+		break;
+	case SDOPT_BY_SLAB_WIDTH:
+		_nNumShellsProfiles = round(dWidth / _dShellWidthProfilesInit);
+		_dShellWidthProfiles = dWidth / ( (double)(_nNumShellsProfiles) );
+		break;
+	case SDOPT_UNKNOWN:
+	default:
+		global_log->error() << "ERROR in tec::ControlRegion::PrepareSubdivision(): Neither _dShellWidthProfilesInit nor _nNumShellsProfiles was set correctly! Programm exit..." << endl;
+		exit(-1);
+	}
+}
+
+void SampleRegion::PrepareSubdivisionVDF()
+{
+	double dWidth = this->GetWidth(1);
+
+	switch(_nSubdivisionOpt)
+	{
+	case SDOPT_BY_NUM_SLABS:
+		_dShellWidthVDFInit = this->GetWidth(1) / ( (double)(_nNumShellsVDF) );
+		_dShellWidthVDF = _dShellWidthVDFInit;
+		break;
+	case SDOPT_BY_SLAB_WIDTH:
+		_nNumShellsVDF = round(dWidth / _dShellWidthVDFInit);
+		_dShellWidthVDF = dWidth / ( (double)(_nNumShellsVDF) );
+		break;
+	case SDOPT_UNKNOWN:
+	default:
+		global_log->error() << "ERROR in SampleRegion::PrepareSubdivisionVDF(): Neither _dShellWidthVDFInit nor _nNumShellsVDF was set correctly! Programm exit..." << endl;
+		exit(-1);
+	}
+}
+
+void SampleRegion::InitSamplingProfiles(int nDimension)
 {
     // shell width
     double dNumShellsTemperature = (double) _nNumShellsProfiles;
@@ -53,6 +90,7 @@ void SampleRegion::InitSamplingProfiles(int nDimension, Domain* domain)
 
     // shell volume
     double dArea;
+    Domain* domain = this->GetParent()->GetDomain();
 
     switch(nDimension)
     {
@@ -1795,6 +1833,8 @@ void SampleRegion::ResetLocalValuesVDF()
 
 void SampleRegion::ResetLocalValuesProfiles()
 {
+	RegionSampling* parent = static_cast<RegionSampling*>(_parent);
+	unsigned int nNumComponents = parent->GetNumComponents();
 
     // reset cumulative data structures TODO: <-- should be placed elsewhere
     for(unsigned int s = 0; s < _nNumShellsProfiles; ++s)
@@ -1821,7 +1861,7 @@ void SampleRegion::ResetLocalValuesProfiles()
 
 
     // componentwise temperature / density
-    for(unsigned int c = 0; c < _parent->GetNumComponents(); ++c)
+    for(unsigned int c = 0; c < nNumComponents; ++c)
     {
         for(unsigned int s = 0; s < _nNumShellsProfiles; ++s)
         {
@@ -1835,7 +1875,7 @@ void SampleRegion::ResetLocalValuesProfiles()
 
     // --- componentwise; x,y,z ; j+/j-; slabwise; rho, vx,vy,vz; Fx,Fy,Fz ---
 
-    for(unsigned short c=0; c < _parent->GetNumComponents(); ++c)
+    for(unsigned short c=0; c < nNumComponents; ++c)
     {
         for(unsigned short s=0; s < _nNumShellsProfiles; ++s)
         {
@@ -1861,12 +1901,12 @@ void SampleRegion::UpdateSlabParameters()
 {
     double dWidth = this->GetWidth(1);
 
-    // update profile sampling parameters
-    // _nNumShellsProfiles = round(dWidth / _dShellWidthProfilesInit);  <-- number of slabs cannot increase, otherwise data structures have to be reallocated
+    // profiles
+    _nNumShellsProfiles = round(dWidth / _dShellWidthProfilesInit);
     _dShellWidthProfiles = dWidth / ( (double)(_nNumShellsProfiles) );
 
-    // update VDF sampling parameters
-    // _nNumShellsVDF = round(dWidth / _dShellWidthVDFInit); <-- number of slabs cannot increase, otherwise data structures have to be reallocated
+	// VDF
+    _nNumShellsVDF = round(dWidth / _dShellWidthVDFInit);
     _dShellWidthVDF = dWidth / ( (double)(_nNumShellsVDF) );
 
 
@@ -1889,14 +1929,11 @@ void SampleRegion::UpdateSlabParameters()
 
 // class RegionSampling
 
-RegionSampling::RegionSampling(Domain* domain)
+RegionSampling::RegionSampling(Domain* domain, DomainDecompBase* domainDecomp)
+: ControlInstance(domain, domainDecomp)
 {
-    //store domain pointer
-    _domain = domain;
-
     // number of components
     _nNumComponents = domain->getNumberOfComponents() + 1;  // + 1 because component 0 stands for all components
-
 }
 
 
@@ -1904,51 +1941,57 @@ RegionSampling::~RegionSampling()
 {
 }
 
-void RegionSampling::AddRegion(double dLowerCorner[3], double dUpperCorner[3] )
+void RegionSampling::AddRegion(SampleRegion* region)
 {
-    unsigned short nID = this->GetNumRegions() + 1;
-
-    _vecSampleRegions.push_back(SampleRegion(this, dLowerCorner, dUpperCorner, nID) );
+    _vecSampleRegions.push_back(region);
 }
 
-void RegionSampling::Init(Domain* domain)
+void RegionSampling::Init()
 {
     // init data structures
-    std::vector<SampleRegion>::iterator it;
+    std::vector<SampleRegion*>::iterator it;
 
     for(it=_vecSampleRegions.begin(); it!=_vecSampleRegions.end(); ++it)
     {
-        (*it).InitSamplingProfiles(RS_DIMENSION_Y, domain);
-        (*it).InitSamplingVDF(RS_DIMENSION_Y);
+        (*it)->InitSamplingProfiles(RS_DIMENSION_Y);
+        (*it)->InitSamplingVDF(RS_DIMENSION_Y);
     }
 }
 
 void RegionSampling::DoSampling(Molecule* mol, DomainDecompBase* domainDecomp, unsigned long simstep)
 {
     // sample profiles and vdf
-    std::vector<SampleRegion>::iterator it;
+    std::vector<SampleRegion*>::iterator it;
 
     for(it=_vecSampleRegions.begin(); it!=_vecSampleRegions.end(); ++it)
     {
-        (*it).SampleProfiles(mol, RS_DIMENSION_Y);
-        (*it).SampleVDF(mol, RS_DIMENSION_Y);
+        (*it)->SampleProfiles(mol, RS_DIMENSION_Y);
+        (*it)->SampleVDF(mol, RS_DIMENSION_Y);
     }
 }
 
 void RegionSampling::WriteData(DomainDecompBase* domainDecomp, unsigned long simstep, Domain* domain)
 {
     // write out profiles and vdf
-    std::vector<SampleRegion>::iterator it;
+    std::vector<SampleRegion*>::iterator it;
 
     for(it=_vecSampleRegions.begin(); it!=_vecSampleRegions.end(); ++it)
     {
-        (*it).WriteDataProfiles(domainDecomp, simstep, domain);
-        (*it).WriteDataVDF(domainDecomp, simstep);
+        (*it)->WriteDataProfiles(domainDecomp, simstep, domain);
+        (*it)->WriteDataVDF(domainDecomp, simstep);
     }
 }
 
+void RegionSampling::PrepareRegionSubdivisions()
+{
+    std::vector<SampleRegion*>::iterator it;
 
-
+    for(it=_vecSampleRegions.begin(); it!=_vecSampleRegions.end(); ++it)
+    {
+        (*it)->PrepareSubdivisionProfiles();
+        (*it)->PrepareSubdivisionVDF();
+    }
+}
 
 
 

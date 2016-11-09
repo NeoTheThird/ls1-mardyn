@@ -10,6 +10,7 @@
 #include "Domain.h"
 #include "particleContainer/ParticleContainer.h"
 #include "parallel/DomainDecompBase.h"
+#include "utils/Region.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -17,7 +18,7 @@
 using namespace std;
 
 
-DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, int nSimtype, double dVaporDensity, unsigned int nMethod)
+DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod)
 {
     _nUpdateFreq = nUpdateFreq;
     _nNumShells = nNumShells;
@@ -61,9 +62,6 @@ DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int 
 
     _strFilename = "DistControl.dat";
     _strFilenameProfilesPrefix = "DistControlProfiles";
-
-    // simtype
-    _nSimType = nSimtype;
 
     // vapor density
     _dVaporDensity = dVaporDensity;
@@ -486,25 +484,6 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     // set interface midpoints manually
     _dInterfaceMidLeft  = dInterfaceMidLeft;
     _dInterfaceMidRight = dInterfaceMidRight;
-
-    // control volume (CV)
-    _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
-    _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
-
-    // thermostating zone
-    _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-    _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
-
-    // sampling zone
-    _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
-    _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
-
-    _dSZoneLeft_lc  = _dControlVolumeLeft  - _dCVWidth;
-    _dSZoneRight_uc = _dControlVolumeRight + _dCVWidth;
-
-    // drift control region
-    _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-    _dDriftControlRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
 }
 
 void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
@@ -526,52 +505,7 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
     }
 
     // update positions
-
-    if(_nSimType == SIMTYPE_EVAPORATION)
-    {
-        // control volume (CV)
-        _dControlVolumeLeft  = _dInterfaceMidLeft  - _dCVFactor * _d1090Thickness;
-        _dControlVolumeRight = _dInterfaceMidRight + _dCVFactor * _d1090Thickness;
-
-        // thermostating zone
-        _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-        _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
-
-        // sampling zone
-        _dSZoneLeft_uc  = _dInterfaceMidLeft  + _dSZoneFactor * _d1090Thickness;
-        _dSZoneRight_lc = _dInterfaceMidRight - _dSZoneFactor * _d1090Thickness;
-
-        _dSZoneLeft_lc  = _dControlVolumeLeft  - _dCVWidth;
-        _dSZoneRight_uc = _dControlVolumeRight + _dCVWidth;
-    }
-    else if(_nSimType == SIMTYPE_EQUILIBRIUM_TRAPEZOID_T_PROFILE)
-    {
-        // thermostating zone
-        _dTZoneLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-        _dTZoneRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
-    }
-
-    // drift control region
-    _dDriftControlLeft  = _dInterfaceMidLeft  + _dTZoneFactor * _d1090Thickness;
-    _dDriftControlRight = _dInterfaceMidRight - _dTZoneFactor * _d1090Thickness;
-
-    // DEBUG
-#ifdef DEBUG
-    cout << "_dInterfaceMidLeft  = " << _dInterfaceMidLeft << endl;
-    cout << "_dInterfaceMidRight = " << _dInterfaceMidRight << endl;
-
-
-    cout << "_dVacuumLeft      = " << _dVacuumLeft << endl;
-    cout << "_dVacuumRight     = " << _dVacuumRight << endl;
-    cout << "_dTzoneLeft       = " << _dTzoneLeft << endl;
-    cout << "_dTzoneRight      = " << _dTzoneRight << endl;
-    cout << "_dLeftSzoneLeft   = " << _dLeftSzoneLeft << endl;
-    cout << "_dLeftSzoneRight  = " << _dLeftSzoneRight << endl;
-    cout << "_dRightSzoneLeft  = " << _dRightSzoneLeft << endl;
-    cout << "_dRightSzoneRight = " << _dRightSzoneRight << endl;
-    cout << "_dFluxAreaLeft    = " << _dFluxAreaLeft << endl;
-    cout << "_dFluxAreaRight   = " << _dFluxAreaRight << endl;
-#endif
+    this->informObserver();
 
     // reset local values
     this->ResetLocalValues();
@@ -607,16 +541,20 @@ void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsi
         outputstream << std::setw(20) << simstep;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidLeft;
         outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidRight;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dControlVolumeLeft;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dControlVolumeRight;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneLeft;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dTZoneRight;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft_lc;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneLeft_uc;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_lc;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dSZoneRight_uc;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dDriftControlLeft;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dDriftControlRight;
+
+        // observer data
+    	std::vector<ObserverBase*>::iterator it;
+
+    	for(it=_observer.begin(); it!=_observer.end(); it++)
+    	{
+    		CuboidRegionObs* region = static_cast<CuboidRegionObs*>(*it);
+    		if(NULL != region)
+    		{
+    	        outputstream << std::setw(16) << fixed << std::setprecision(7) << region->GetLowerCorner(1);
+    	        outputstream << std::setw(16) << fixed << std::setprecision(7) << region->GetUpperCorner(1);
+    		}
+    	}
+
         outputstream << endl;
 
         ofstream fileout(_strFilename.c_str(), ios::out|ios::app);
@@ -642,11 +580,20 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
 
     outputstream << "             simstep";
     outputstream << "         midLeft" << "        midRight";
-    outputstream << "          cvLeft" << "         cvRight";
-    outputstream << "          tzLeft" << "         tzRight";
-    outputstream << "       szLeft_lc" << "       szLeft_uc";
-    outputstream << "      szRight_lc" << "      szRight_uc";
-    outputstream << "          dcLeft" << "         dcRight";
+
+    // observer data
+	std::vector<ObserverBase*>::iterator it;
+
+	for(it=_observer.begin(); it!=_observer.end(); it++)
+	{
+		CuboidRegionObs* region = static_cast<CuboidRegionObs*>(*it);
+		if(NULL != region)
+		{
+			outputstream << "         " << region->GetParent()->GetShortName() << "l" << "[" << region->GetID() << "]";
+			outputstream << "         " << region->GetParent()->GetShortName() << "r" << "[" << region->GetID() << "]";
+		}
+	}
+
     outputstream << endl;
 
     ofstream fileout(_strFilename.c_str(), ios::out);
@@ -749,7 +696,33 @@ void DistControl::AlignSystemCenterOfMass(Domain* domain, Molecule* mol, unsigne
 #endif
 }
 
+void DistControl::registerObserver(ObserverBase* observer)
+{
+	_observer.push_back(observer);
+}
 
+void DistControl::deregisterObserver(ObserverBase* observer)
+{
+	std::vector<ObserverBase*>::iterator it;
+
+	for(it=_observer.begin(); it!=_observer.end(); it++)
+	{
+		if( (*it) == observer)
+		{
+			_observer.erase(it);
+		}
+	}
+}
+
+void DistControl::informObserver()
+{
+	std::vector<ObserverBase*>::iterator it;
+
+	for(it=_observer.begin(); it!=_observer.end(); it++)
+	{
+		(*it)->set(_dInterfaceMidLeft, _dInterfaceMidRight);
+	}
+}
 
 
 

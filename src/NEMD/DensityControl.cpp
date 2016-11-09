@@ -29,20 +29,16 @@
 
 using namespace std;
 
+// init static ID --> instance counting
+unsigned short dec::ControlRegion::_nStaticID = 0;
 
-// class ControlRegionD
+// class dec::ControlRegion
 
-ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nTargetComponentID, const double& dTargetDensity)
+dec::ControlRegion::ControlRegion(ControlInstance* parent, double dLowerCorner[3], double dUpperCorner[3], unsigned int nTargetComponentID, const double& dTargetDensity)
+: CuboidRegionObs(parent, dLowerCorner, dUpperCorner)
 {
-    // region span
-    for(unsigned short d=0; d<3; ++d)
-    {
-        _dLowerCorner[d] = dLowerCorner[d];
-        _dUpperCorner[d] = dUpperCorner[d];
-    }
-
-    // calc volume
-    _dInvertVolume = 1. / (this->GetWidth(0) * this->GetWidth(1) * this->GetWidth(2) );
+	// ID
+	_nID = ++_nStaticID;
 
     // target density
     _dTargetDensity = dTargetDensity;
@@ -50,26 +46,11 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
     // target component ID (inert gas)
     _nTargetComponentID = nTargetComponentID;
 
-    // store parent pointer
-    _parent = parent;
-
     // init process relevance
     _bProcessIsRelevant = true;
 
-    // check if control region is outside of simulation volume
-    double dBoxLengthY = _parent->GetDomain()->getGlobalLength(1);
-
-    if ( (_dLowerCorner[1] > dBoxLengthY && _dUpperCorner[1] > dBoxLengthY) || (_dLowerCorner[1] < 0. && _dUpperCorner[1] < 0.) )
-    {
-        cout << "ControlRegionD::ControlRegionD: Control region dimensions are outside of simulation volume! Programm exit..." << endl;
-        exit(-1);
-    }
-
     // init rank array
     _ranks = NULL;
-
-    // region ID
-    _nRegionID = _parent->GetNumRegions()+1;
 
     // reset local values
     _nDeletedNumMoleculesLocal = 0;
@@ -81,18 +62,37 @@ ControlRegionD::ControlRegionD(DensityControl* parent, double dLowerCorner[3], d
         _dDeletedEkinLocal[d] = 0.;
     }
 
-    this->WriteHeaderDeletedMolecules(_parent->GetDomainDecomposition() );
+    this->WriteHeaderDeletedMolecules();
 }
 
 
-ControlRegionD::~ControlRegionD()
+dec::ControlRegion::~ControlRegion()
 {
-
 }
 
-void ControlRegionD::InitMPI()
+void dec::ControlRegion::CheckBounds()
 {
+	// check if control region is outside of simulation volume
+	double dBoxLengthY = _parent->GetDomain()->getGlobalLength(1);
+
+	if ( (_dLowerCorner[1] > dBoxLengthY && _dUpperCorner[1] > dBoxLengthY) || (_dLowerCorner[1] < 0. && _dUpperCorner[1] < 0.) )
+	{
+		cout << "dec::ControlRegion::ControlRegion: Control region dimensions are outside of simulation volume! Programm exit..." << endl;
+		exit(-1);
+	}
+}
+
+void dec::ControlRegion::Init()
+{
+	// update region volume
+	this->UpdateVolume();
+}
+
+void dec::ControlRegion::InitMPI()
+{
+	// domain decomposition
     DomainDecompBase* domainDecomp = _parent->GetDomainDecomposition();
+
 //    int numprocs = domainDecomp->getNumProcs();
     int nRank = domainDecomp->getRank();
 
@@ -189,7 +189,7 @@ void ControlRegionD::InitMPI()
     }
 }
 
-void ControlRegionD::CalcGlobalValues(DomainDecompBase* domainDecomp)
+void dec::ControlRegion::CalcGlobalValues()
 {
 	// In vacuum evaporation simulation global density of control region has not to be calculated
 	if( 0. == _dTargetDensity)
@@ -208,8 +208,11 @@ void ControlRegionD::CalcGlobalValues(DomainDecompBase* domainDecomp)
 
 }
 
-void ControlRegionD::UpdateGlobalDensity(DomainDecompBase* domainDecomp, bool bDeleteMolecule)
+void dec::ControlRegion::UpdateGlobalDensity(bool bDeleteMolecule)
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = _parent->GetDomainDecomposition();
+
     double dDensityLocal = _dDensityGlobal;
     int nDeletionsLocal = 0 + bDeleteMolecule;
     int nDeletionsGlobal = 0;
@@ -232,7 +235,7 @@ void ControlRegionD::UpdateGlobalDensity(DomainDecompBase* domainDecomp, bool bD
     domainDecomp->collCommFinalize();
 }
 
-void ControlRegionD::MeasureDensity(Molecule* mol, DomainDecompBase* domainDecomp)
+void dec::ControlRegion::MeasureDensity(Molecule* mol)
 {
 	// In vacuum evaporation simulation global density of control region has not to be calculated
 	if( 0. == _dTargetDensity)
@@ -252,15 +255,8 @@ void ControlRegionD::MeasureDensity(Molecule* mol, DomainDecompBase* domainDecom
 }
 
 
-void ControlRegionD::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mol, Simulation* simulation, bool& bDeleteMolecule)
+void dec::ControlRegion::ControlDensity(Molecule* mol, Simulation* simulation, bool& bDeleteMolecule)
 {
-    /*
-    // DEBUG
-    cout << "_dLowerCorner = " << _dLowerCorner[0] << ", " << _dLowerCorner[1] << ", " << _dLowerCorner[2] << endl;
-    cout << "_dUpperCorner = " << _dUpperCorner[0] << ", " << _dUpperCorner[1] << ", " << _dUpperCorner[2] << endl;
-    // DEBUG
-*/
-
     /*
     // check component ID: if inert gas --> do nothing (return)
     if(mol->componentid()+1 == 3)  // program intern component ID starts with 0
@@ -322,13 +318,16 @@ void ControlRegionD::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mo
     }
 }
 
-void ControlRegionD::ResetLocalValues()
+void dec::ControlRegion::ResetLocalValues()
 {
     _nNumMoleculesLocal = 0;
 }
 
-void ControlRegionD::WriteHeaderDeletedMolecules(DomainDecompBase* domainDecomp)
+void dec::ControlRegion::WriteHeaderDeletedMolecules()
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = _parent->GetDomainDecomposition();
+
 #ifdef ENABLE_MPI
 int rank = domainDecomp->getRank();
 // int numprocs = domainDecomp->getNumProcs();
@@ -339,7 +338,7 @@ if (rank != 0)
     // write header
     stringstream outputstream;
     stringstream sstrFilename;    
-    sstrFilename << "DensityControl_del-mol-data_region" << _nRegionID << ".dat";
+    sstrFilename << "DensityControl_del-mol-data_region" << this->GetID() << ".dat";
 
     outputstream << "             simstep";
     outputstream << "         numMols";
@@ -359,8 +358,11 @@ if (rank != 0)
     fileout.close();
 }
 
-void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep)
+void dec::ControlRegion::WriteDataDeletedMolecules(unsigned long simstep)
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = _parent->GetDomainDecomposition();
+
     // calc global values 
 #ifdef ENABLE_MPI
 
@@ -400,7 +402,7 @@ void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, u
 
     stringstream outputstream;
     stringstream sstrFilename;
-    sstrFilename << "DensityControl_del-mol-data_region" << _nRegionID << ".dat";
+    sstrFilename << "DensityControl_del-mol-data_region" << this->GetID() << ".dat";
 
     outputstream << std::setw(20) << simstep;
     outputstream << std::setw(16) << _nDeletedNumMoleculesGlobal;
@@ -424,6 +426,7 @@ void ControlRegionD::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, u
 // class DensityControl
 
 DensityControl::DensityControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned long nControlFreq, unsigned long nStart, unsigned long nStop)
+: ControlInstance(domain, domainDecomp)
 {
     // control frequency
     _nControlFreq = nControlFreq;
@@ -431,10 +434,6 @@ DensityControl::DensityControl(DomainDecompBase* domainDecomp, Domain* domain, u
     // start/stop timestep
     _nStart = nStart;
     _nStop  = nStop;
-
-    // store domain / domainDecomp pointer
-    _domain = domain;
-    _domainDecomp = domainDecomp;
 
     // deleted molecules data
     _nWriteFreqDeleted = 1000;
@@ -444,19 +443,17 @@ DensityControl::~DensityControl()
 {
 }
 
-void DensityControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], unsigned int nTargetComponentID, const double& dTargetDensity)
+void DensityControl::AddRegion(dec::ControlRegion* region)
 {
-    ControlRegionD region(this, dLowerCorner, dUpperCorner, nTargetComponentID, dTargetDensity);
-
     _vecControlRegions.push_back(region);
 
     // check / set process relevance
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
     bool bProcessIsRelevant = false;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        if ( true == (*it).ProcessIsRelevant() );
+        if ( true == (*it)->ProcessIsRelevant() );
             bProcessIsRelevant = true;
     }
 
@@ -466,59 +463,69 @@ void DensityControl::AddRegion(double dLowerCorner[3], double dUpperCorner[3], u
         _bProcessIsRelevant = false;
 }
 
-void DensityControl::MeasureDensity(Molecule* mol, DomainDecompBase* domainDecomp, unsigned long simstep)
+void DensityControl::MeasureDensity(Molecule* mol, unsigned long simstep)
 {
     if(simstep % _nControlFreq != 0)
         return;
 
     // measure drift in each control region
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).MeasureDensity(mol, domainDecomp);
+        (*it)->MeasureDensity(mol);
     }
 }
 
-void DensityControl::CalcGlobalValues(DomainDecompBase* domainDecomp, unsigned long simstep)
+void DensityControl::CalcGlobalValues(unsigned long simstep)
 {
     if(simstep % _nControlFreq != 0)
         return;
 
     // calc global values for control region
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).CalcGlobalValues(domainDecomp);
+        (*it)->CalcGlobalValues();
     }
 }
 
-void DensityControl::UpdateGlobalDensities(DomainDecompBase* domainDecomp, unsigned long simstep, bool bDeleteMolecule)
+void DensityControl::UpdateGlobalDensities(unsigned long simstep, bool bDeleteMolecule)
 {
     if(simstep % _nControlFreq != 0)
         return;
 
     // calc global values for control region
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).UpdateGlobalDensity(domainDecomp, bDeleteMolecule);
+        (*it)->UpdateGlobalDensity(bDeleteMolecule);
     }
 }
 
-void DensityControl::ControlDensity(DomainDecompBase* domainDecomp, Molecule* mol, Simulation* simulation, unsigned long simstep, bool& bDeleteMolecule)
+void DensityControl::ControlDensity(Molecule* mol, Simulation* simulation, unsigned long simstep, bool& bDeleteMolecule)
 {
     if(simstep % _nControlFreq != 0)
         return;
 
     // control drift of all regions
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).ControlDensity(domainDecomp, mol, simulation, bDeleteMolecule);
+        (*it)->ControlDensity(mol, simulation, bDeleteMolecule);
+    }
+}
+
+void DensityControl::CheckRegionBounds()
+{
+    std::vector<dec::ControlRegion*>::iterator it;
+
+    for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
+    {
+        (*it)->CheckBounds();
     }
 }
 
@@ -528,38 +535,38 @@ void DensityControl::Init(unsigned long simstep)
         return;
 
     // reset local values
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).ResetLocalValues();
+        (*it)->ResetLocalValues();
 
-        // update volume
-        (*it).UpdateVolume();
+        // Init
+        (*it)->Init();
     }
 }
 
 void DensityControl::InitMPI()
 {
     // reset local values
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).InitMPI();
+        (*it)->InitMPI();
     }
 }
 
-void DensityControl::WriteDataDeletedMolecules(DomainDecompBase* domainDecomp, unsigned long simstep)
+void DensityControl::WriteDataDeletedMolecules(unsigned long simstep)
 {
     if(simstep % _nWriteFreqDeleted != 0)
         return;
 
-    std::vector<ControlRegionD>::iterator it;
+    std::vector<dec::ControlRegion*>::iterator it;
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        (*it).WriteDataDeletedMolecules(domainDecomp, simstep);
+        (*it)->WriteDataDeletedMolecules(simstep);
     }
 }
 
