@@ -1522,7 +1522,7 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 
 				 if(_distControl == NULL)
 				 {
-					 _distControl = new DistControl(_domain, nUpdateFreq, nNumShells, dVaporDensity, nMethod);
+					 _distControl = new DistControl(_domainDecomposition, _domain, nUpdateFreq, nNumShells, dVaporDensity, nMethod);
 
 					 // set distances
 					 _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
@@ -1847,7 +1847,7 @@ void Simulation::prepare_start() {
 
     // Init NEMD feature objects
     if(NULL != _distControl)
-        _distControl->Init(_domainDecomposition, _domain, _moleculeContainer);
+        _distControl->Init(_moleculeContainer);
 
     // mheinen 2016-11-03 --> DISTANCE_CONTROL
     if(NULL != _distControl)
@@ -1863,7 +1863,7 @@ void Simulation::prepare_start() {
         }
 
         // determine interface midpoints and update region positions
-        _distControl->UpdatePositions(_distControl->GetUpdateFreq(), _domain);
+        _distControl->UpdatePositions(_distControl->GetUpdateFreq() );
     }
     // <-- DISTANCE_CONTROL
 
@@ -2033,11 +2033,11 @@ void Simulation::simulate() {
             }
 
             // determine interface midpoints and update region positions
-            _distControl->UpdatePositions(_simstep, _domain);
+            _distControl->UpdatePositions(_simstep);
 
             // write data
-            _distControl->WriteData(_domainDecomposition, _domain, _simstep);
-            _distControl->WriteDataProfiles(_domainDecomposition, _domain, _simstep);
+            _distControl->WriteData(_simstep);
+            _distControl->WriteDataProfiles(_simstep);
 
 
             // align system center of mass
@@ -2045,7 +2045,7 @@ void Simulation::simulate() {
                  tM != _moleculeContainer->end();
                  tM  = _moleculeContainer->next() )
             {
-                _distControl->AlignSystemCenterOfMass(_domain, tM, _simstep);
+                _distControl->AlignSystemCenterOfMass(tM, _simstep);
             }
         }
         // <-- DISTANCE_CONTROL

@@ -18,7 +18,8 @@
 using namespace std;
 
 
-DistControl::DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod)
+DistControl::DistControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod)
+: ControlInstance(domain, domainDecomp)
 {
     _nUpdateFreq = nUpdateFreq;
     _nNumShells = nNumShells;
@@ -230,7 +231,7 @@ void DistControl::EstimateInterfaceMidpointsByForce()
     _dInterfaceMidRight = _dMidpointPositions[nIndexMin];
 }
 
-void DistControl::EstimateInterfaceMidpoint(Domain* domain)
+void DistControl::EstimateInterfaceMidpoint()
 {
 #ifdef ENABLE_MPI
 
@@ -459,6 +460,7 @@ void DistControl::EstimateInterfaceMidpoint(Domain* domain)
 
          // 4. Berechnung der Mittelpunktsposition
          // nNumSlabslower == nIndexSlabLower + 1 == nIndexSlabGreater
+         Domain* domain = this->GetDomain();
          double xm, x1;
          double dOuterBoundarySampleZone = domain->getGlobalLength(1);  //this->GetUpperCorner()[1];
          unsigned int numShellsLower = _nNumShells-1 - nIndexSlabGreater;
@@ -486,7 +488,7 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     _dInterfaceMidRight = dInterfaceMidRight;
 }
 
-void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
+void DistControl::UpdatePositions(unsigned long simstep)
 {
     // update with respect to update frequency
     if(simstep % _nUpdateFreq != 0 || simstep == 0 || simstep == 1)  // TODO init timestep
@@ -495,7 +497,7 @@ void DistControl::UpdatePositions(unsigned long simstep, Domain* domain)
     // TODO: check for initial timestep???
 
     if(_nMethod == 1)
-    	this->EstimateInterfaceMidpoint(domain);
+    	this->EstimateInterfaceMidpoint();
     else if (_nMethod == 2)
     	this->EstimateInterfaceMidpointsByForce();
     else
@@ -521,8 +523,11 @@ void DistControl::ResetLocalValues()
     }
 }
 
-void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
+void DistControl::WriteData(unsigned long simstep)
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = this->GetDomainDecomposition();
+
     // write out data
     stringstream outputstream;
 
@@ -566,8 +571,11 @@ void DistControl::WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsi
     }
 }
 
-void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
+void DistControl::WriteHeader()
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = this->GetDomainDecomposition();
+
     // write header
     stringstream outputstream;
 
@@ -606,8 +614,11 @@ void DistControl::WriteHeader(DomainDecompBase* domainDecomp, Domain* domain)
 }
 
 
-void DistControl::WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep)
+void DistControl::WriteDataProfiles(unsigned long simstep)
 {
+	// domain decomposition
+	DomainDecompBase* domainDecomp = this->GetDomainDecomposition();
+
     // write out data
     stringstream outputstream;
     stringstream filenamestream;
@@ -655,15 +666,18 @@ void DistControl::WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* doma
 }
 
 
-void DistControl::Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer)
+void DistControl::Init(ParticleContainer* particleContainer)
 {
     // write output file with header
-    this->WriteHeader(domainDecomp, domain);
+    this->WriteHeader();
 }
 
 
-void DistControl::AlignSystemCenterOfMass(Domain* domain, Molecule* mol, unsigned long simstep)
+void DistControl::AlignSystemCenterOfMass(Molecule* mol, unsigned long simstep)
 {
+	// domain
+	Domain* domain = this->GetDomain();
+
     // update with respect to update frequency
     if(simstep % _nUpdateFreq != 0 || simstep == 0 || simstep == 1)  // TODO init timestep
         return;

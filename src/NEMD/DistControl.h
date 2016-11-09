@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include "utils/ObserverBase.h"
+#include "utils/Region.h"
 
 using namespace std;
 
@@ -19,12 +20,13 @@ class ParticleContainer;
 class DomainDecompBase;
 class Molecule;
 
-class DistControl : public SubjectBase
+class DistControl : public ControlInstance, public SubjectBase
 {
 public:
-    DistControl(Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod);
+    DistControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod);
     ~DistControl();
 
+    std::string GetShortName() {return "DiC";}
     // init
     void InitPositions(double dInterfaceMidLeft, double dInterfaceMidRight);
 
@@ -33,17 +35,17 @@ public:
     void SetWriteFreqProfiles(unsigned int nVal) {_nWriteFreqProfiles = nVal;}
     unsigned int GetUpdateFreq() {return _nUpdateFreq;}
 
-    void Init(DomainDecompBase* domainDecomp, Domain* domain, ParticleContainer* particleContainer);
-    void WriteHeader(DomainDecompBase* domainDecomp, Domain* domain);
-    void WriteData(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
-    void WriteDataProfiles(DomainDecompBase* domainDecomp, Domain* domain, unsigned long simstep);
+    void Init(ParticleContainer* particleContainer);
+    void WriteHeader();
+    void WriteData(unsigned long simstep);
+    void WriteDataProfiles(unsigned long simstep);
 
 
     // place method inside loop over molecule container
     void SampleProfiles(Molecule* mol);
 
-    void UpdatePositions(unsigned long simstep, Domain* domain);
-    void AlignSystemCenterOfMass(Domain* domain, Molecule* mol, unsigned long simstep);
+    void UpdatePositions(unsigned long simstep);
+    void AlignSystemCenterOfMass(Molecule* mol, unsigned long simstep);
 
     // SubjectBase methods
 	virtual void registerObserver(ObserverBase* observer);
@@ -52,7 +54,7 @@ public:
 
 private:
     // place methods after the loop
-    void EstimateInterfaceMidpoint(Domain* domain);  // called by UpdatePositions
+    void EstimateInterfaceMidpoint();  // called by UpdatePositions
     void EstimateInterfaceMidpointsByForce();
     void ResetLocalValues();
 
