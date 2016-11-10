@@ -71,7 +71,6 @@ public:
     void WriteData(unsigned long simstep);
     void WriteDataProfiles(unsigned long simstep);
 
-
     // place method inside loop over molecule container
     void SampleProfiles(Molecule* mol);
 
@@ -86,6 +85,7 @@ public:
 
 private:
     // place methods after the loop
+	void CalcProfiles();
     void EstimateInterfaceMidpoint();  // called by UpdatePositions
     void EstimateInterfaceMidpointsByForce();
     void ResetLocalValues();
@@ -94,6 +94,10 @@ private:
     void InitDataStructurePointers();
     void AllocateDataStructures();
 	void InitDataStructures();
+
+	// processing profiles
+	void SmoothProfiles(const unsigned int& nNumNeighbourVals);
+	void DerivateProfiles(const unsigned int& nNumNeighbourVals);
 
 private:
     double _dInterfaceMidLeft;
