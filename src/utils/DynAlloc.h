@@ -12,14 +12,14 @@
 using namespace std;
 
 // leak save dynamic memory allocation
-void AllocateUnsLongArray(unsigned long* &ptr, const unsigned int& nSize)
+inline void AllocateUnsLongArray(unsigned long* &ptr, const unsigned int& nSize)
 {
 	if(NULL != ptr)
 		delete[] ptr;
 	ptr = new unsigned long[nSize];
 }
 
-void AllocateDoubleArray(double* &ptr, const unsigned int& nSize)
+inline void AllocateDoubleArray(double* &ptr, const unsigned int& nSize)
 {
 	if(NULL != ptr)
 		delete[] ptr;

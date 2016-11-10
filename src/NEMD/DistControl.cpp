@@ -11,6 +11,8 @@
 #include "particleContainer/ParticleContainer.h"
 #include "parallel/DomainDecompBase.h"
 #include "utils/Region.h"
+#include "utils/DynAlloc.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -18,57 +20,26 @@
 using namespace std;
 
 
-DistControl::DistControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned int nUpdateFreq, unsigned int nNumShells, double dVaporDensity, unsigned int nMethod)
+DistControl::DistControl(DomainDecompBase* domainDecomp, Domain* domain, unsigned int nUpdateFreq, unsigned int nWriteFreqProfiles)
 : ControlInstance(domain, domainDecomp)
 {
+	// update frequency
     _nUpdateFreq = nUpdateFreq;
-    _nNumShells = nNumShells;
-
-    // number of molecules
-    _nNumMoleculesLocal  = new unsigned long[_nNumShells];
-    _nNumMoleculesGlobal = new unsigned long[_nNumShells];
-
-    // density profile
-    _dDensityProfile = new double[_nNumShells];
-    _dDensityProfileSmoothed = new double[_nNumShells];
-    _dDensityProfileSmoothedDerivation = new double[_nNumShells];
-
-    // force profile
-    _dForceSumLocal  = new double [_nNumShells];
-    _dForceSumGlobal = new double [_nNumShells];
-    _dForceProfile   = new double [_nNumShells];
-    _dForceProfileSmoothed   = new double [_nNumShells];
-
-    // reset local values
-    this->ResetLocalValues();
-
-    // calc shell width and shell volume
-    double dNumShells = (double) (_nNumShells);
-
-    _dShellWidth = domain->getGlobalLength(1) / dNumShells;
-    _dInvertShellWidth = 1. / _dShellWidth;
-    _dShellVolume = _dShellWidth * domain->getGlobalLength(0) * domain->getGlobalLength(2);
-
-    // profile midpoint positions
-    _dMidpointPositions = new double[_nNumShells];
-
-    for(unsigned int s = 0; s < _nNumShells; ++s)
-    {
-        _dMidpointPositions[s] = (0.5 + s)*_dShellWidth;
-    }
 
     // write data
-    _nWriteFreq = _nUpdateFreq / 10;
-    _nWriteFreqProfiles = 100000;
+    _nWriteFreq = _nUpdateFreq;
+    _nWriteFreqProfiles = nWriteFreqProfiles;
 
     _strFilename = "DistControl.dat";
     _strFilenameProfilesPrefix = "DistControlProfiles";
 
-    // vapor density
-    _dVaporDensity = dVaporDensity;
+    // init method variables
+    _sstrInit.clear();
+	_strFilenameInit = "unknown";
+	_nRestartTimestep = 0;
 
-    // method of interface midpoint determination
-    _nMethod = nMethod;  // 1: old one, 2: new one (density derivation)
+	// init data structure pointers
+	this->InitDataStructurePointers();
 }
 
 DistControl::~DistControl()
@@ -76,6 +47,112 @@ DistControl::~DistControl()
 
 }
 
+void DistControl::PrepareSubdivision()
+{
+	Domain* domain = this->GetDomain();
+	double dWidth = domain->getGlobalLength(1);
+
+	switch(_nSubdivisionOpt)
+	{
+	case SDOPT_BY_NUM_SLABS:
+		_dShellWidth = dWidth / ( (double)(_nNumShells) );
+		break;
+	case SDOPT_BY_SLAB_WIDTH:
+		_nNumShells = round(dWidth / _dShellWidth);
+		_dShellWidth = dWidth / ( (double)(_nNumShells) );
+		break;
+	case SDOPT_UNKNOWN:
+	default:
+		global_log->error() << "ERROR in DistControl::PrepareSubdivision(): Neither _dShellWidth nor _nNumShells was set correctly! Programm exit..." << endl;
+		exit(-1);
+	}
+
+	_dInvertShellWidth = 1. / _dShellWidth;
+    _dShellVolume = _dShellWidth * domain->getGlobalLength(0) * domain->getGlobalLength(2);
+
+//	cout << "DistControl::_nNumShells = " << _nNumShells << endl;
+}
+
+void DistControl::InitDataStructurePointers()
+{
+    // number of molecules
+	_nNumMoleculesLocal = NULL;
+	_nNumMoleculesGlobal = NULL;
+
+	// density profile
+	_dDensityProfile = NULL;
+	_dDensityProfileSmoothed = NULL;
+	_dDensityProfileSmoothedDerivation = NULL;
+
+    // force profile
+	_dForceSumLocal = NULL;
+	_dForceSumGlobal = NULL;
+	_dForceProfile = NULL;
+	_dForceProfileSmoothed = NULL;
+
+	// profile midpoint positions
+	_dMidpointPositions = NULL;
+}
+
+void DistControl::AllocateDataStructures()
+{
+    // number of molecules
+	AllocateUnsLongArray(_nNumMoleculesLocal, _nNumShells);
+	AllocateUnsLongArray(_nNumMoleculesGlobal, _nNumShells);
+
+	// density profile
+	AllocateDoubleArray(_dDensityProfile, _nNumShells);
+	AllocateDoubleArray(_dDensityProfileSmoothed, _nNumShells);
+	AllocateDoubleArray(_dDensityProfileSmoothedDerivation, _nNumShells);
+
+    // force profile
+	AllocateDoubleArray(_dForceSumLocal, _nNumShells);
+	AllocateDoubleArray(_dForceSumGlobal, _nNumShells);
+	AllocateDoubleArray(_dForceProfile, _nNumShells);
+	AllocateDoubleArray(_dForceProfileSmoothed, _nNumShells);
+
+	// profile midpoint positions
+	AllocateDoubleArray(_dMidpointPositions, _nNumShells);
+}
+
+void DistControl::InitDataStructures()
+{
+    for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+		// number of molecules
+		_nNumMoleculesLocal[s] = 0;
+		_nNumMoleculesGlobal[s] = 0;
+
+		// density profile
+		_dDensityProfile[s] = 0.;
+		_dDensityProfileSmoothed[s] = 0.;
+		_dDensityProfileSmoothedDerivation[s] = 0.;
+
+		// force profile
+		_dForceSumLocal[s] = 0.;
+		_dForceSumGlobal[s] = 0.;
+		_dForceProfile[s] = 0.;
+		_dForceProfileSmoothed[s] = 0.;
+
+		// profile midpoint positions
+		_dMidpointPositions[s] = (0.5 + s)*_dShellWidth;
+    }
+}
+
+void DistControl::PrepareDataStructures()
+{
+	this->AllocateDataStructures();
+	this->InitDataStructures();
+}
+
+// update method
+void DistControl::SetUpdateMethod(const int& nMethod, const double& dVal)
+{
+	_nMethod = nMethod;
+
+	if(DCUM_DENSITY_PROFILE == nMethod)
+		_dVaporDensity = dVal;
+}
 
 void DistControl::SampleProfiles(Molecule* mol)
 {
@@ -488,6 +565,82 @@ void DistControl::InitPositions(double dInterfaceMidLeft, double dInterfaceMidRi
     _dInterfaceMidRight = dInterfaceMidRight;
 }
 
+void DistControl::UpdatePositionsInit(ParticleContainer* particleContainer)
+{
+	switch(_nMethodInit )
+	{
+	case DCIM_START_CONFIGURATION:
+		Molecule* tM;
+
+		for( tM  = particleContainer->begin();
+			 tM != particleContainer->end();
+			 tM  = particleContainer->next() )
+		{
+			// sample density profile
+			this->SampleProfiles(tM);
+		}
+
+		// determine interface midpoints and update region positions
+		this->UpdatePositions(this->GetUpdateFreq() );
+
+		cout << "DistControl::_dInterfaceMidLeft = " << _dInterfaceMidLeft << endl;
+		cout << "DistControl::_dInterfaceMidRight = " << _dInterfaceMidRight << endl;
+
+		return;
+	case DCIM_MIDPOINT_VALUES:
+
+		_sstrInit >> _dInterfaceMidLeft;
+		_sstrInit >> _dInterfaceMidRight;
+		break;
+	case DCIM_READ_FROM_FILE:
+		{
+		_sstrInit >> _strFilenameInit;
+		_sstrInit >> _nRestartTimestep;
+//		cout << "_strFilenameInit = " << _strFilenameInit << endl;
+//		cout << "_nRestartTimestep = " << _nRestartTimestep << endl;
+
+		ifstream filein(_strFilenameInit.c_str(), ios::in);
+
+		string strLine, strToken;
+		string strTokens[20];
+
+		while (getline (filein, strLine))
+		{
+			stringstream sstr;
+			sstr << strLine;
+
+			sstr >> strToken;
+
+			if( (unsigned long) (atoi(strToken.c_str() ) ) == _nRestartTimestep)
+			{
+				int i=1;
+				while (sstr >> strTokens[i])
+					i++;
+			}
+		}
+
+		_dInterfaceMidLeft  = atof(strTokens[1].c_str() );
+		_dInterfaceMidRight = atof(strTokens[2].c_str() );
+
+		filein.close();
+		break;
+		}
+	case DCIM_UNKNOWN:
+	default:
+		cout << "DistControl: Wrong Init Method! Programm exit..." << endl;
+		exit(-1);
+	}
+
+	cout << "DistControl::_dInterfaceMidLeft = " << _dInterfaceMidLeft << endl;
+	cout << "DistControl::_dInterfaceMidRight = " << _dInterfaceMidRight << endl;
+
+    // update positions
+    this->informObserver();
+
+    // reset local values
+    this->ResetLocalValues();
+}
+
 void DistControl::UpdatePositions(unsigned long simstep)
 {
     // update with respect to update frequency
@@ -496,13 +649,18 @@ void DistControl::UpdatePositions(unsigned long simstep)
 
     // TODO: check for initial timestep???
 
-    if(_nMethod == 1)
-    	this->EstimateInterfaceMidpoint();
-    else if (_nMethod == 2)
-    	this->EstimateInterfaceMidpointsByForce();
-    else
+    // update midpoint coordinates with respect to desired method
+    switch(_nMethod)
     {
-    	cout << "DistControl::UpdatePositions: Corrupted code!!! Programm exit..." << endl;
+    case DCUM_DENSITY_PROFILE:
+		this->EstimateInterfaceMidpoint();
+		break;
+    case DCUM_FORCE_PROFILE:
+    	this->EstimateInterfaceMidpointsByForce();
+    	break;
+    case DCUM_UNKNOWN:
+    default:
+		cout << "DistControl::UpdatePositions: Corrupted code!!! Programm exit..." << endl;
     	exit(-1);
     }
 

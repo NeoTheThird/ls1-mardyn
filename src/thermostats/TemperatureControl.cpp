@@ -239,7 +239,7 @@ void tec::ControlRegion::AllocateDataStructuresT()
 
 void tec::ControlRegion::InitDataStructuresT()
 {
-	cout << "_nNumSlabsReserve = " << _nNumSlabsReserve << endl;
+//	cout << "tec::ControlRegion::_nNumSlabsReserve = " << _nNumSlabsReserve << endl;
 
 	// init temperature datastructures
     for(unsigned int s = 0; s<_nNumSlabsReserve; ++s)

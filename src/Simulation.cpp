@@ -1491,49 +1491,116 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
          // mheinen 2015-03-16 --> DISTANCE_CONTROL
          } else if (token == "DistControl" || token == "distControl" ) {
 
-             unsigned long nUpdateFreq = 1000;
-             unsigned int nNumShells;
-             double dInterfaceMidLeft, dInterfaceMidRight;
-             double dVaporDensity;
-             unsigned int nMethod;
+			string strToken;
+			inputfilestream >> strToken;
 
-        	 string strToken;
-        	 inputfilestream >> strToken;
+			if(strToken == "param")
+			{
+				unsigned long nUpdateFreq = 1000;
+				unsigned int nWriteFreqProfiles = 1000;
+				string strSubdivisionKey;
+                string strSubdivisionVal;
 
-        	 if(strToken == "WriteFreqProfiles")
-        	 {
-        		 if(_distControl != NULL)
-        		 {
-        			 unsigned int nWriteFreqProfiles;
-        			 inputfilestream >> nWriteFreqProfiles;
+				inputfilestream >> nUpdateFreq >> nWriteFreqProfiles >> strSubdivisionKey >> strSubdivisionVal;
 
-        			 _distControl->SetWriteFreqProfiles(nWriteFreqProfiles);
-        		 }
-        	 }
-        	 else
-        	 {
-        		 nUpdateFreq = atoi(strToken.c_str());
+				if(_distControl == NULL)
+				{
+					_distControl = new DistControl(_domainDecomposition, _domain, nUpdateFreq, nWriteFreqProfiles);
 
-				 inputfilestream >> nNumShells;
-	//             inputfilestream >> nUpdateFreq >> nNumShells;
-				 inputfilestream >> dInterfaceMidLeft >> dInterfaceMidRight;
-				 inputfilestream >> dVaporDensity;
-				 inputfilestream >> nMethod;
+					// subdivision of system to sample profiles
+                    if("num" == strSubdivisionKey)
+                    {
+                    	unsigned int nNumSlabs = atoi(strSubdivisionVal.c_str() );
+                    	_distControl->SetSubdivision(nNumSlabs);
+                    }
+                    else if("width" == strSubdivisionKey)
+                    {
+                    	double dSlabWidth = atof(strSubdivisionVal.c_str() );
+                    	_distControl->SetSubdivision(dSlabWidth);
+                    }
+                    else
+                    {
+                    	global_log->error() << "DistControl: wrong subdivision statement. Expected 'num' or 'width' keyword! Programm exit..." << endl;
+                    	exit(-1);
+                	}
+                    _distControl->PrepareSubdivision();
+                    _distControl->PrepareDataStructures();
+				}
+				else
+				{
+					global_log->error() << "DistControl object allready exist, programm exit..." << endl;
+					exit(-1);
+				}
+			}
+			else if(strToken == "method")
+			{
+				if(_distControl == NULL)
+				{
+					global_log->error() << "DistControl object does not exist, programm exit..." << endl;
+					exit(-1);
+				}
 
-				 if(_distControl == NULL)
-				 {
-					 _distControl = new DistControl(_domainDecomposition, _domain, nUpdateFreq, nNumShells, dVaporDensity, nMethod);
+				int nMethod;
+				double dVal = 0.;
+				inputfilestream >> nMethod;
 
-					 // set distances
-					 _distControl->InitPositions(dInterfaceMidLeft, dInterfaceMidRight);
-				 }
-				 else
-				 {
-				   global_log->error() << "DistControl object allready exist, programm exit..." << endl;
-				   exit(-1);
-				 }
-			 }
+				switch(nMethod)
+				{
+				case DCUM_DENSITY_PROFILE:
+					inputfilestream >> dVal;
+					_distControl->SetUpdateMethod(nMethod, dVal);
+					break;
+				case DCUM_FORCE_PROFILE:
+					_distControl->SetUpdateMethod(nMethod, dVal);
+					break;
+				case DCUM_UNKNOWN:
+				default:
+					cout << "DistControl: Unknown update method! Programm exit..." << endl;
+					exit(-1);
+				}
+			}
+			else if(strToken == "init")
+			{
+				if(_distControl == NULL)
+				{
+					global_log->error() << "DistControl object does not exist, programm exit..." << endl;
+					exit(-1);
+				}
 
+				string strToken;
+				std::stringstream sstr;
+				inputfilestream >> strToken;
+
+				if(strToken == "startconfig")
+				{
+					sstr.clear();
+					_distControl->SetInitMethod(DCIM_START_CONFIGURATION, sstr);
+				}
+				else if(strToken == "values")
+				{
+					char buffer[128];
+					inputfilestream.getline(buffer, 128);
+					sstr << buffer;
+//					cout << "sstr = " << sstr.str() << endl;
+					_distControl->SetInitMethod(DCIM_MIDPOINT_VALUES, sstr);
+				}
+				else if(strToken == "file")
+				{
+					char buffer[128];
+					inputfilestream.getline(buffer, 128);
+					sstr << buffer;
+//					cout << "sstr = " << sstr.str() << endl;
+					string strToken;
+//					inputfilestream >> strToken;
+//					cout << "strToken = " << strToken << endl;
+					_distControl->SetInitMethod(DCIM_READ_FROM_FILE, sstr);
+				}
+				else
+				{
+					cout << "DistControl: Wrong statements, expected 'startconfig|values|file' ! Programm exit..." << endl;
+					exit(-1);
+				}
+			}
          // <-- DISTANCE_CONTROL
 
 
@@ -1852,18 +1919,8 @@ void Simulation::prepare_start() {
     // mheinen 2016-11-03 --> DISTANCE_CONTROL
     if(NULL != _distControl)
     {
-        Molecule* tM;
-
-        for( tM  = _moleculeContainer->begin();
-             tM != _moleculeContainer->end();
-             tM  = _moleculeContainer->next() )
-        {
-            // sample density profile
-            _distControl->SampleProfiles(tM);
-        }
-
-        // determine interface midpoints and update region positions
-        _distControl->UpdatePositions(_distControl->GetUpdateFreq() );
+		_distControl->UpdatePositionsInit(_moleculeContainer);
+    	_distControl->WriteData(0);
     }
     // <-- DISTANCE_CONTROL
 
