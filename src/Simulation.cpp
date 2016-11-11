@@ -1540,24 +1540,15 @@ void Simulation::initConfigOldstyle(const string& inputfilename) {
 					exit(-1);
 				}
 
-				int nMethod;
-				double dVal = 0.;
-				inputfilestream >> nMethod;
+				string strMethod;
+				std::stringstream sstr;
+				char buffer[128];
 
-				switch(nMethod)
-				{
-				case DCUM_DENSITY_PROFILE:
-					inputfilestream >> dVal;
-					_distControl->SetUpdateMethod(nMethod, dVal);
-					break;
-				case DCUM_FORCE_PROFILE:
-					_distControl->SetUpdateMethod(nMethod, dVal);
-					break;
-				case DCUM_UNKNOWN:
-				default:
-					cout << "DistControl: Unknown update method! Programm exit..." << endl;
-					exit(-1);
-				}
+				inputfilestream >> strMethod;
+				inputfilestream.getline(buffer, 128);
+				sstr << buffer;
+
+				_distControl->SetUpdateMethod(strMethod, sstr);
 			}
 			else if(strToken == "init")
 			{

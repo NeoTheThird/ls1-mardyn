@@ -26,7 +26,8 @@ enum DistControlUpdateMethods
 {
 	DCUM_UNKNOWN = 0,
 	DCUM_DENSITY_PROFILE = 1,
-	DCUM_FORCE_PROFILE = 2,
+	DCUM_DENSITY_PROFILE_DERIVATION = 2,
+//	DCUM_FORCE_PROFILE = 3,
 };
 
 enum DistControlInitMethods
@@ -62,7 +63,7 @@ public:
     unsigned int GetWriteFreqProfiles() {return _nWriteFreqProfiles;}
 
     // set update/init method
-    void SetUpdateMethod(const int& nMethod, const double& dVal);
+    void SetUpdateMethod(const std::string& strMethod, const std::stringstream& sstr);
     void SetInitMethod(const int& nMethod, const std::stringstream& sstr) {_nMethodInit = nMethod; _sstrInit << sstr.rdbuf();}
     int GetInitMethod() {return _nMethodInit;}
 
@@ -96,8 +97,8 @@ private:
 	void InitDataStructures();
 
 	// processing profiles
-	void SmoothProfiles(const unsigned int& nNumNeighbourVals);
-	void DerivateProfiles(const unsigned int& nNumNeighbourVals);
+	void SmoothProfiles(const unsigned int& nNeighbourVals);
+	void DerivateProfiles(const unsigned int& nNeighbourVals);
 
 private:
     double _dInterfaceMidLeft;
@@ -120,8 +121,13 @@ private:
     unsigned int _nUpdateFreq;
     unsigned int _nWriteFreq;
     unsigned int _nWriteFreqProfiles;
-    double _dVaporDensity;
+
+	// update method
     int _nMethod;
+	double _dVaporDensity;
+	unsigned short _nNeighbourValsSmooth;
+	unsigned short _nNeighbourValsDerivate;
+
     int _nMethodInit;
     std::stringstream _sstrInit;
 	std::string _strFilenameInit;

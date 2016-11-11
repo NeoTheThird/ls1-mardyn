@@ -12,10 +12,13 @@
 #include "parallel/DomainDecompBase.h"
 #include "utils/Region.h"
 #include "utils/DynAlloc.h"
+#include "utils/Math.h"
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <numeric>
+#include <cstdlib>
 
 using namespace std;
 
@@ -146,12 +149,41 @@ void DistControl::PrepareDataStructures()
 }
 
 // update method
-void DistControl::SetUpdateMethod(const int& nMethod, const double& dVal)
+void DistControl::SetUpdateMethod(const std::string& strMethod, const std::stringstream& sstr)
 {
-	_nMethod = nMethod;
+	std::stringstream sstrcopy;
+	sstrcopy << sstr.rdbuf();
+	bool bWrongNumArg = false;
+	std::string strExpected = "";
 
-	if(DCUM_DENSITY_PROFILE == nMethod)
-		_dVaporDensity = dVal;
+	if(strMethod == "density")
+	{
+		_nMethod = DCUM_DENSITY_PROFILE;
+		sstrcopy >> _dVaporDensity;
+		bWrongNumArg = (sstrcopy.fail() || !(sstrcopy.eof() ) );
+		strExpected = "Expected: 'DistControl method density <double>'. ";
+	}
+	else if(strMethod == "denderiv")
+	{
+		_nMethod = DCUM_DENSITY_PROFILE_DERIVATION;
+		sstrcopy >> _nNeighbourValsSmooth;
+		sstrcopy >> _nNeighbourValsDerivate;
+		bWrongNumArg = (sstrcopy.fail() || !(sstrcopy.eof() ) );
+		strExpected = "Expected: 'DistControl method denderiv <unsigned short> <unsigned short>'. ";
+	}
+	else
+	{
+		strExpected = "Expected: 'DistControl method density|denderiv ... '. ";
+		cout << "ERROR in DistControl. " << strExpected << "Programm exit..." << endl;
+		exit(-1);
+	}
+
+	// check number of arguments
+	if( true == bWrongNumArg)
+	{
+		cout << "ERROR in DistControl. " << strExpected << "Programm exit..." << endl;
+		exit(-1);
+	}
 }
 
 void DistControl::SampleProfiles(Molecule* mol)
@@ -202,10 +234,10 @@ void DistControl::CalcProfiles()
     }
 
 	// smooth profiles
-	this->SmoothProfiles(5);
+	this->SmoothProfiles(_nNeighbourValsSmooth);
 
     // density derivation
-    this->DerivateProfiles(5);
+    this->DerivateProfiles(_nNeighbourValsDerivate);
 }
 
 void DistControl::EstimateInterfaceMidpointsByForce()
@@ -595,7 +627,7 @@ void DistControl::UpdatePositions(unsigned long simstep)
     case DCUM_DENSITY_PROFILE:
 		this->EstimateInterfaceMidpoint();
 		break;
-    case DCUM_FORCE_PROFILE:
+    case DCUM_DENSITY_PROFILE_DERIVATION:
     	this->EstimateInterfaceMidpointsByForce();
     	break;
     case DCUM_UNKNOWN:
@@ -836,13 +868,13 @@ void DistControl::informObserver()
 	}
 }
 
-void DistControl::SmoothProfiles(const unsigned int& nNumNeighbourVals)
+void DistControl::SmoothProfiles(const unsigned int& nNeighbourVals)
 {
 	// smooth profiles
-	double dNumSmoothedVals = (double)(2.*nNumNeighbourVals+1);
+	double dNumSmoothedVals = (double)(2.*nNeighbourVals+1);
 
 	unsigned int l = 0;
-	unsigned int r = nNumNeighbourVals;
+	unsigned int r = nNeighbourVals;
 
 	for(unsigned int s = 0; s < _nNumShells; ++s)
 	{
@@ -857,19 +889,22 @@ void DistControl::SmoothProfiles(const unsigned int& nNumNeighbourVals)
 		_dDensityProfileSmoothed[s] = dDensitySum / dNumSmoothedVals;
 		_dForceProfileSmoothed[s]   = dForceSum   / dNumSmoothedVals;
 
-		if(l < nNumNeighbourVals)
+		if(l < nNeighbourVals)
 			l++;
 
-		if(s >= (_nNumShells-1 - nNumNeighbourVals) )
+		if(s >= (_nNumShells-1 - nNeighbourVals) )
 			r--;
 	}
 }
 
-void DistControl::DerivateProfiles(const unsigned int& nNumNeighbourVals)
+void DistControl::DerivateProfiles(const unsigned int& nNeighbourVals)
 {
     unsigned int l = 0;
-    unsigned int r = nNumNeighbourVals;
+    unsigned int r = nNeighbourVals;
 
+/*
+ * derivate by two points
+ *
     for(unsigned int s = 0; s < _nNumShells; ++s)
     {
         double dy = _dDensityProfileSmoothed[s+r] - _dDensityProfileSmoothed[s-l];
@@ -883,5 +918,42 @@ void DistControl::DerivateProfiles(const unsigned int& nNumNeighbourVals)
         if(s >= (_nNumShells-1 - nNumNeighbourVals) )
             r--;
     }
+*/
+
+	vector<double> x;
+	vector<double> y;
+
+	for(unsigned int s = 0; s < _nNumShells; ++s)
+    {
+		x.clear();
+		y.clear();
+
+		for(unsigned int i = s-l; i<=s+r; ++i)
+    	{
+			x.push_back(_dMidpointPositions[i] );
+			y.push_back(_dDensityProfileSmoothed[i] );
+    	}
+		double beta1, beta2;
+        LinearRegression(x, y, beta1, beta2);
+
+        _dDensityProfileSmoothedDerivation[s] = beta2;
+
+        if(l < nNeighbourVals)
+            l++;
+
+        if(s >= (_nNumShells-1 - nNeighbourVals) )
+            r--;
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
 
