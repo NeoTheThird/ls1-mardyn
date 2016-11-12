@@ -228,7 +228,7 @@ void DistControl::CalcProfiles()
         _dDensityProfile[s] = _nNumMoleculesGlobal[s] * dInvertSampleTimesteps * dInvertShellVolume;
 
         if(_nNumMoleculesGlobal[s] > 0) 
-            _dForceProfile[s] = _dForceSumGlobal[s] / (double)(_nNumMoleculesGlobal[s]);
+            _dForceProfile[s] = _dForceSumGlobal[s] / (double)(_nNumMoleculesGlobal[s]) * dInvertSampleTimesteps;
         else
             _dForceProfile[s] = 0.;
     }
