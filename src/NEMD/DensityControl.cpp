@@ -26,6 +26,7 @@
 //#include <iterator>  // std::advance
 
 #include <cstdlib>
+#include <limits>
 
 using namespace std;
 
@@ -340,17 +341,17 @@ if (rank != 0)
     stringstream sstrFilename;    
     sstrFilename << "DensityControl_del-mol-data_region" << this->GetID() << ".dat";
 
-    outputstream << "             simstep";
+    outputstream << "         simstep";
     outputstream << "         numMols";
-    outputstream << "           U_kin";
-    outputstream << "         U_trans";
-    outputstream << "           U_rot";
-    outputstream << "              vx";
-    outputstream << "              vy";
-    outputstream << "              vz";
-    outputstream << "             vx2";
-    outputstream << "             vy2";
-    outputstream << "             vz2";
+    outputstream << "                   U_kin";
+    outputstream << "                 U_trans";
+    outputstream << "                   U_rot";
+    outputstream << "                      vx";
+    outputstream << "                      vy";
+    outputstream << "                      vz";
+    outputstream << "                     vx2";
+    outputstream << "                     vy2";
+    outputstream << "                     vz2";
     outputstream << endl;
 
     ofstream fileout(sstrFilename.str().c_str(), ios::out);
@@ -404,17 +405,17 @@ void dec::ControlRegion::WriteDataDeletedMolecules(unsigned long simstep)
     stringstream sstrFilename;
     sstrFilename << "DensityControl_del-mol-data_region" << this->GetID() << ".dat";
 
-    outputstream << std::setw(20) << simstep;
+    outputstream << std::setw(16) << simstep;
     outputstream << std::setw(16) << _nDeletedNumMoleculesGlobal;
 
     for(unsigned int d=0; d<3; ++d)
-        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedEkinGlobal[d];
+        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDeletedEkinGlobal[d];
 
     for(unsigned int d=0; d<3; ++d)
-        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedVelocityGlobal[d];
+        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDeletedVelocityGlobal[d];
 
     for(unsigned int d=0; d<3; ++d)
-        outputstream << std::setw(16) << fixed << std::setprecision(3) << _dDeletedVelocitySquaredGlobal[d];
+        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDeletedVelocitySquaredGlobal[d];
 
     outputstream << endl;
 
