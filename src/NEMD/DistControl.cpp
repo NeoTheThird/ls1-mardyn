@@ -19,6 +19,7 @@
 #include <sstream>
 #include <numeric>
 #include <cstdlib>
+#include <limits>
 
 using namespace std;
 
@@ -674,8 +675,8 @@ void DistControl::WriteData(unsigned long simstep)
     {
 #endif
         outputstream << std::setw(20) << simstep;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidLeft;
-        outputstream << std::setw(16) << fixed << std::setprecision(7) << _dInterfaceMidRight;
+        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dInterfaceMidLeft;
+        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dInterfaceMidRight;
 
         // observer data
     	std::vector<ObserverBase*>::iterator it;
@@ -685,8 +686,8 @@ void DistControl::WriteData(unsigned long simstep)
     		CuboidRegionObs* region = static_cast<CuboidRegionObs*>(*it);
     		if(NULL != region)
     		{
-    	        outputstream << std::setw(16) << fixed << std::setprecision(7) << region->GetLowerCorner(1);
-    	        outputstream << std::setw(16) << fixed << std::setprecision(7) << region->GetUpperCorner(1);
+    	        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << region->GetLowerCorner(1);
+    	        outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << region->GetUpperCorner(1);
     		}
     	}
 
@@ -717,7 +718,8 @@ void DistControl::WriteHeader()
 #endif
 
     outputstream << "             simstep";
-    outputstream << "         midLeft" << "        midRight";
+    outputstream << "                 midLeft";
+    outputstream << "                midRight";
 
     // observer data
 	std::vector<ObserverBase*>::iterator it;
@@ -727,8 +729,8 @@ void DistControl::WriteHeader()
 		CuboidRegionObs* region = static_cast<CuboidRegionObs*>(*it);
 		if(NULL != region)
 		{
-			outputstream << "         " << region->GetParent()->GetShortName() << "l" << "[" << region->GetID() << "]";
-			outputstream << "         " << region->GetParent()->GetShortName() << "r" << "[" << region->GetID() << "]";
+			outputstream << "                 " << region->GetParent()->GetShortName() << "l" << "[" << region->GetID() << "]";
+			outputstream << "                 " << region->GetParent()->GetShortName() << "r" << "[" << region->GetID() << "]";
 		}
 	}
 
@@ -773,16 +775,22 @@ void DistControl::WriteDataProfiles(unsigned long simstep)
 #endif
 
         // write header
-        outputstream << "           y" << "         rho" << "  rho_smooth" << "     drho/dy" << "          Fy" << "   Fy_smooth" << endl;
+        outputstream << "                   coord";
+        outputstream << "                     rho";
+        outputstream << "              rho_smooth";
+        outputstream << "                 drho/dy";
+        outputstream << "                      Fy";
+        outputstream << "               Fy_smooth";
+        outputstream << endl;
 
         for(unsigned int s=0; s<_nNumShells; s++)
         {
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dMidpointPositions[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfile[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfileSmoothed[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dDensityProfileSmoothedDerivation[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfile[s];
-            outputstream << std::setw(12) << fixed << std::setprecision(3) << _dForceProfileSmoothed[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dMidpointPositions[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDensityProfile[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDensityProfileSmoothed[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dDensityProfileSmoothedDerivation[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dForceProfile[s];
+            outputstream << std::setw(24) << std::scientific << std::setprecision(std::numeric_limits<double>::digits10) << _dForceProfileSmoothed[s];
             outputstream << endl;
         }
 
