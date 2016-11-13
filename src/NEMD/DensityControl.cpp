@@ -453,7 +453,7 @@ void DensityControl::AddRegion(dec::ControlRegion* region)
 
     for(it=_vecControlRegions.begin(); it!=_vecControlRegions.end(); ++it)
     {
-        if ( true == (*it)->ProcessIsRelevant() );
+        if ( true == (*it)->ProcessIsRelevant() )
             bProcessIsRelevant = true;
     }
 
